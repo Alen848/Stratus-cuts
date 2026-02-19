@@ -1,0 +1,8 @@
+/home/dante/projects/VilLan/turnera-saas/.devenv/flake.json
+/home/dante/projects/VilLan/turnera-saas/.devenv.flake.nix
+/home/dante/projects/VilLan/turnera-saas/.env
+/home/dante/projects/VilLan/turnera-saas/backend/requirements.txt
+/home/dante/projects/VilLan/turnera-saas/devenv.local.nix
+/home/dante/projects/VilLan/turnera-saas/devenv.lock
+/home/dante/projects/VilLan/turnera-saas/devenv.nix
+/home/dante/projects/VilLan/turnera-saas/devenv.yaml
