@@ -1,14 +1,39 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from app.database.connection import Base, engine
+from app.routes.clientes import router as clientes_router
+from app.routes.empleados import router as empleados_router
+from app.routes.servicios import router as servicios_router
 from app.routes.turns import router as turns_router
+from app.routes.pagos import router as pagos_router
+from app.routes.horarios_empleado import router as horarios_empleado_router
+from app.routes.bloqueos_agenda import router as bloqueos_agenda_router
+from app.routes.usuarios import router as usuarios_router
 
+# Crear tablas en la base de datos (si no existen)
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Turnera SaaS API")
+app = FastAPI(title="Turnera Peluquería API", version="1.0.0")
 
+# Configuración CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Incluir routers
+app.include_router(clientes_router)
+app.include_router(empleados_router)
+app.include_router(servicios_router)
 app.include_router(turns_router)
-
+app.include_router(pagos_router)
+app.include_router(horarios_empleado_router)
+app.include_router(bloqueos_agenda_router)
+app.include_router(usuarios_router)
 
 @app.get("/")
 def root():
-    return {"message": "API funcionando"}
+    return {"message": "API Turnera funcionando"}
