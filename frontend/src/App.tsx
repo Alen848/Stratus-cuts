@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ClienteList } from './components/ClienteList';
 import { ReservaForm } from './components/ReservaForm';
+import { TurnoList } from './components/TurnoList';
 import './App.css';
 
 const queryClient = new QueryClient({
@@ -14,25 +15,27 @@ const queryClient = new QueryClient({
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <div style={{ padding: '40px 20px', minHeight: '100vh', backgroundColor: '#f3f4f6' }}>
-        <header style={{ marginBottom: '40px', textAlign: 'center' }}>
-          <h1 style={{ fontSize: '2.5rem', color: '#4338ca', fontWeight: 'bold' }}>VilLan Turnera</h1>
-          <p style={{ color: '#6b7280' }}>Gestión profesional de turnos y clientes</p>
+      <div className="py-10 px-5 min-h-screen bg-gray-50">
+        <header className="mb-10 text-center">
+          <h1 className="text-4xl text-indigo-700 font-extrabold tracking-tight">VilLan Turnera</h1>
+          <p className="text-gray-500 mt-2 text-lg italic">Gestión profesional de turnos y clientes</p>
         </header>
         
-        <main style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', 
-          gap: '40px', 
-          maxWidth: '1200px', 
-          margin: '0 auto' 
-        }}>
-          <section>
-            <ReservaForm />
-          </section>
+        <main className="max-w-7xl mx-auto space-y-12">
+          {/* Fila superior: Formulario y Clientes */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+            <section>
+              <ReservaForm />
+            </section>
 
-          <section className="bg-white shadow-lg rounded-xl p-2 border border-gray-100">
-            <ClienteList />
+            <section className="bg-white shadow-xl rounded-2xl p-4 border border-gray-100 h-fit">
+              <ClienteList />
+            </section>
+          </div>
+
+          {/* Fila inferior: Reservas */}
+          <section className="bg-white shadow-xl rounded-2xl p-6 border border-gray-100">
+            <TurnoList />
           </section>
         </main>
       </div>

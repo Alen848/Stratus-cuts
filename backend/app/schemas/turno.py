@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Optional, List
 from .cliente import Cliente
 from .empleado import Empleado
-from .servicio import Servicio
+from .turno_servicio import TurnoServicio
 
 class TurnoBase(BaseModel):
     fecha_hora: datetime
@@ -27,7 +27,7 @@ class Turno(TurnoBase):
     id: int
     cliente: Cliente
     empleado: Empleado
-    servicios: List[Servicio]  # Podríamos usar un esquema específico si es necesario
+    servicios: List[TurnoServicio] 
 
     class Config:
         from_attributes = True

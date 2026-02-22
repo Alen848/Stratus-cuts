@@ -101,7 +101,15 @@ export function ReservaForm() {
       return;
     }
 
-    mutation.mutate(formData);
+    const payload = {
+      cliente_id: parseInt(formData.cliente_id),
+      empleado_id: parseInt(formData.empleado_id),
+      servicios_ids: [parseInt(formData.servicio_id)],
+      fecha_hora: formData.fecha_hora,
+      observaciones: formData.notas
+    };
+
+    mutation.mutate(payload);
   };
 
   /**

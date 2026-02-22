@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy import Column, Integer, String, DateTime, func
 from sqlalchemy.orm import relationship
 from app.database.connection import Base
 
@@ -10,7 +10,7 @@ class Cliente(Base):
     telefono = Column(String(20))
     email = Column(String(100), unique=True, index=True)
     direccion = Column(String(200))
-    fecha_registro = Column(DateTime, server_default="CURRENT_TIMESTAMP")
+    fecha_registro = Column(DateTime, server_default=func.now())
 
     # Relaciones
     turnos = relationship("Turno", back_populates="cliente")
