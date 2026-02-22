@@ -1,6 +1,5 @@
 from sqlalchemy.orm import Session, joinedload
-from app.models.turno import Turno
-from app.models.turno_servicio import TurnoServicio
+from app.models import Turno, TurnoServicio, Servicio
 from app.schemas.turno import TurnoCreate, TurnoUpdate
 
 def get_turno(db: Session, turno_id: int):

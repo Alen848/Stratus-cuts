@@ -9,7 +9,7 @@ def get_clientes(db: Session, skip: int = 0, limit: int = 100):
     return db.query(Cliente).offset(skip).limit(limit).all()
 
 def create_cliente(db: Session, cliente: ClienteCreate):
-    db_cliente = Cliente(**cliente.dict())
+    db_cliente = Cliente(**cliente.model_dump())
     db.add(db_cliente)
     db.commit()
     db.refresh(db_cliente)
@@ -18,7 +18,7 @@ def create_cliente(db: Session, cliente: ClienteCreate):
 def update_cliente(db: Session, cliente_id: int, cliente: ClienteUpdate):
     db_cliente = get_cliente(db, cliente_id)
     if db_cliente:
-        for key, value in cliente.dict(exclude_unset=True).items():
+        for key, value in cliente.model_dump(exclude_unset=True).items():
             setattr(db_cliente, key, value)
         db.commit()
         db.refresh(db_cliente)

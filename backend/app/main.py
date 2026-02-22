@@ -1,6 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database.connection import Base, engine
+
+# Importar todos los modelos para que SQLAlchemy los reconozca
+from app.models import cliente, empleado, servicio, turno, turno_servicio, pago, horario_empleado, bloqueo_agenda, usuario
+
 from app.routes.clientes import router as clientes_router
 from app.routes.empleados import router as empleados_router
 from app.routes.servicios import router as servicios_router
@@ -18,7 +22,7 @@ app = FastAPI(title="Turnera Peluquería API", version="1.0.0")
 # Configuración CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
