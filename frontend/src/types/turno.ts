@@ -17,6 +17,7 @@ export interface TurnoServicio {
 export interface Turno {
   id: number;
   fecha_hora: string;
+	duracion: number;
   estado: string;
   observaciones: string | null;
   cliente_id: number;

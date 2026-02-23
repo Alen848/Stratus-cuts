@@ -45,6 +45,7 @@ export function TurnoList() {
           <thead className="border-b bg-gray-50 font-bold text-gray-700 uppercase tracking-wider text-xs">
             <tr>
               <th className="px-6 py-4">Fecha y Hora</th>
+							<th className="px-6 py-4">Duracion</th>
               <th className="px-6 py-4">Cliente</th>
               <th className="px-6 py-4">Profesional</th>
               <th className="px-6 py-4">Servicios</th>
@@ -55,6 +56,7 @@ export function TurnoList() {
             {turnos?.map((turno) => (
               <tr key={turno.id} className="border-b hover:bg-indigo-50/30 transition-colors">
                 <td className="px-6 py-4 font-medium text-indigo-900">{formatFecha(turno.fecha_hora)}</td>
+                <td className="px-6 py-4 font-medium text-indigo-700">{turno.duracion} min</td>
                 <td className="px-6 py-4 font-semibold text-gray-800">{turno.cliente?.nombre || 'Desconocido'}</td>
                 <td className="px-6 py-4 text-gray-700">{turno.empleado?.nombre || 'No asignado'}</td>
                 <td className="px-6 py-4 text-gray-600">

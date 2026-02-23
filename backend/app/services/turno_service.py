@@ -1,6 +1,9 @@
+from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 from app.models import Turno, TurnoServicio, Servicio
 from app.schemas.turno import TurnoCreate, TurnoUpdate
+from datetime import timedelta, date
+from fastapi import HTTPException
 
 def get_turno(db: Session, turno_id: int):
     return db.query(Turno).options(
@@ -17,29 +20,57 @@ def get_turnos(db: Session, skip: int = 0, limit: int = 100):
     ).offset(skip).limit(limit).all()
 
 def create_turno(db: Session, turno: TurnoCreate):
-    # Crear el turno principal
+    servicios_db = db.query(Servicio).filter(Servicio.id.in_(turno.servicios_ids)).all()
+    
+    # Calcula la duracion total del turno
+    total_duracion = sum(s.duracion_minutos for s in servicios_db)
+
+    if total_duracion == 0:
+        total_duracion = turno.duracion
+
+    # Comprueba la disponibilidad del horario con el profesional seleccionado
+    nuevo_inicio = turno.fecha_hora
+    nuevo_fin = nuevo_inicio + timedelta(minutes=total_duracion)
+    dia_del_turno = turno.fecha_hora.date()
+
+    turnos_existentes = db.query(Turno).filter(
+        (Turno.empleado_id == turno.empleado_id) | (Turno.cliente_id == turno.cliente_id), 
+        Turno.estado != "cancelado", 
+        func.date(Turno.fecha_hora) == dia_del_turno
+    ).all()
+
+    for t_existente in turnos_existentes:
+        existente_inicio = t_existente.fecha_hora
+        existente_fin = existente_inicio + timedelta(minutes=t_existente.duracion)
+        
+        if nuevo_inicio < existente_fin and nuevo_fin > existente_inicio:
+            # El empleado no esta disponible
+            if t_existente.empleado_id == turno.empleado_id:
+                raise HTTPException(status_code=400, detail = "El profesional seleccionado ya tiene un turno en ese horario.")
+            # El cliente ya tiene un turno en ese horario
+            if t_existente.cliente_id == turno.cliente_id:
+                raise HTTPException(status_code=400, detail = "El cliente ya tiene otro turno en ese horario.")
+
     db_turno = Turno(
-        fecha_hora=turno.fecha_hora,
-        estado=turno.estado,
-        observaciones=turno.observaciones,
-        cliente_id=turno.cliente_id,
-        empleado_id=turno.empleado_id
+        fecha_hora = turno.fecha_hora,
+        duracion = total_duracion,
+        estado = turno.estado,
+        observaciones = turno.observaciones,
+        cliente_id = turno.cliente_id,
+        empleado_id = turno.empleado_id
     )
     db.add(db_turno)
-    db.flush()  # Para obtener el id del turno
+    db.flush()
 
-    # Agregar servicios
-    for servicio_id in turno.servicios_ids:
-        # Obtener precio del servicio desde la base de datos (podríamos pasarlo en el request)
-        servicio = db.query(Servicio).filter(Servicio.id == servicio_id).first()
-        if servicio:
-            turno_servicio = TurnoServicio(
-                turno_id=db_turno.id,
-                servicio_id=servicio_id,
-                cantidad=1,
-                precio_unitario=servicio.precio
-            )
-            db.add(turno_servicio)
+    for servicio in servicios_db:
+        turno_servicio = TurnoServicio(
+            turno_id = db_turno.id,
+            servicio_id = servicio.id,
+            cantidad = 1,
+            precio_unitario = servicio.precio
+        )
+        db.add(turno_servicio)
+
     db.commit()
     db.refresh(db_turno)
     return db_turno

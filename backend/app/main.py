@@ -8,7 +8,7 @@ from app.models import cliente, empleado, servicio, turno, turno_servicio, pago,
 from app.routes.clientes import router as clientes_router
 from app.routes.empleados import router as empleados_router
 from app.routes.servicios import router as servicios_router
-from app.routes.turns import router as turns_router
+from app.routes.turnos import router as turns_router
 from app.routes.pagos import router as pagos_router
 from app.routes.horarios_empleado import router as horarios_empleado_router
 from app.routes.bloqueos_agenda import router as bloqueos_agenda_router

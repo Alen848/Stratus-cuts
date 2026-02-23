@@ -7,6 +7,7 @@ class Turno(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     fecha_hora = Column(DateTime, nullable=False)
+    duracion = Column(Integer, default=30)
     estado = Column(String(20), default="pendiente")  # pendiente, confirmado, cancelado, completado
     observaciones = Column(String(500))
     cliente_id = Column(Integer, ForeignKey("clientes.id"), nullable=False)

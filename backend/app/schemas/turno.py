@@ -7,6 +7,7 @@ from .turno_servicio import TurnoServicio
 
 class TurnoBase(BaseModel):
     fecha_hora: datetime
+    duracion: int = 30
     estado: str = "pendiente"
     observaciones: Optional[str] = None
     cliente_id: int
