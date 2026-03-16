@@ -1,6 +1,6 @@
 # Entorno Nix y devenv
-.devenv/
-.direnv/
+# .devenv/
+# .direnv/
 
 # Backend (Python / FastAPI)
 __pycache__/
@@ -21,7 +21,7 @@ yarn-error.log*
 pnpm-debug.log*
 
 # Base de datos local
-*.db
+# *.db
 *.sqlite
 *.sqlite3
 
