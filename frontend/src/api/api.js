@@ -37,10 +37,9 @@ export const turnos = {
   update:   (id, data)               => api.put(`/turns/${id}`, data),
   delete:   (id)                     => api.delete(`/turns/${id}`),
 
-  // Retorna slots disponibles: [{hora, disponible, fecha_hora}]
-  // Ejemplo: turnos.getDisponibles(1, '2024-12-01', 30)
-  getDisponibles: (empleadoId, fecha, duracion = 30) =>
-    api.get(`/turns/disponibles/${empleadoId}`, { params: { fecha, duracion } }),
+  // Retorna disponibilidad semanal: { '2024-12-01': [{hora, disponible, ...}], ... }
+  getDisponibilidadSemanal: (empleadoId, fechaInicio) =>
+    api.get(`/turns/disponibilidad-semanal/${empleadoId}`, { params: { fecha_inicio: fechaInicio } }),
 };
 
 // ─── Pagos ────────────────────────────────────────────────────────────────────
@@ -69,8 +68,10 @@ export const gastos = {
 
 // ─── Caja  →  /caja ──────────────────────────────────────────────────────────
 export const caja = {
-  diaria:  (fecha)     => api.get('/caja/diaria',  { params: { fecha } }),
-  mensual: (anio, mes) => api.get('/caja/mensual', { params: { anio, mes } }),
+  diaria:    (fecha)     => api.get('/caja/diaria',  { params: { fecha } }),
+  mensual:   (anio, mes) => api.get('/caja/mensual', { params: { anio, mes } }),
+  getCierre: (fecha)     => api.get('/caja/cierre',   { params: { fecha } }),
+  cerrar:    (data)      => api.post('/caja/cerrar', data),
 };
 
 // ─── Comisiones (helper local, no requiere endpoint dedicado) ─────────────────

@@ -7,6 +7,7 @@ from app.database.connection import get_db
 from app.services import pago_service
 from app.schemas.pago import Pago, PagoCreate, PagoUpdate
 from app.schemas.gasto import Gasto, GastoCreate, GastoUpdate
+from app.schemas.cierre_caja import CierreCaja, CierreCajaCreate
 
 # ─── Router de Pagos (/pagos) ──────────────────────────────────────────────────
 pagos_router = APIRouter(prefix="/pagos", tags=["Pagos"])
@@ -94,3 +95,19 @@ def caja_mensual(anio: int, mes: int, db: Session = Depends(get_db)):
     if not (1 <= mes <= 12):
         raise HTTPException(status_code=400, detail="El mes debe estar entre 1 y 12.")
     return pago_service.get_caja_mensual(db, anio, mes)
+
+@caja_router.get("/cierre", response_model=CierreCaja)
+def get_cierre(fecha: DateType, db: Session = Depends(get_db)):
+    """Obtiene el cierre de caja de una fecha específica."""
+    cierre = pago_service.get_cierre_caja(db, fecha)
+    if not cierre:
+        raise HTTPException(status_code=404, detail="No se encontró un cierre para esta fecha.")
+    return cierre
+
+@caja_router.post("/cerrar", response_model=CierreCaja)
+def cerrar_caja(cierre: CierreCajaCreate, db: Session = Depends(get_db)):
+    """Realiza el cierre de caja para una fecha."""
+    existente = pago_service.get_cierre_caja(db, cierre.fecha)
+    if existente:
+        raise HTTPException(status_code=400, detail="Ya existe un cierre para esta fecha.")
+    return pago_service.create_cierre_caja(db, cierre)

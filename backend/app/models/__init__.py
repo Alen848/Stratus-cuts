@@ -8,3 +8,4 @@ from .horario_empleado import HorarioEmpleado
 from .bloqueo_agenda import BloqueoAgenda
 from .usuario import Usuario
 from .gasto import Gasto  
+from .cierre_caja import CierreCaja

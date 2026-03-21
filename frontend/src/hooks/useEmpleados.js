@@ -26,5 +26,24 @@ export function useEmpleados() {
     return res.data;
   };
 
-  return { empleados, loading, error, refetch: fetchEmpleados, addEmpleado };
+  const editEmpleado = async (id, data) => {
+    const res = await empleadosApi.updateEmpleado(id, data);
+    setEmpleados((prev) => prev.map(e => e.id === id ? res.data : e));
+    return res.data;
+  };
+
+  const removeEmpleado = async (id) => {
+    await empleadosApi.deleteEmpleado(id);
+    setEmpleados((prev) => prev.filter(e => e.id !== id));
+  };
+
+  return { 
+    empleados, 
+    loading, 
+    error, 
+    refetch: fetchEmpleados, 
+    addEmpleado,
+    editEmpleado,
+    removeEmpleado
+  };
 }

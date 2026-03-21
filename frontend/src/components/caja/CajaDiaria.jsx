@@ -4,6 +4,8 @@ import ResumenCards  from './ResumenCards';
 import GastoModal    from './GastoModal';
 import TablaGastos   from './TablaGastos';
 import TablaIngresos from './TablaIngresos';
+import CierreModal   from './CierreModal';
+import { formatCurrency } from '../../utils/formatters';
 
 const hoy = () => new Date().toISOString().slice(0, 10);
 
@@ -19,20 +21,32 @@ const SectionTitle = ({ children, action }) => (
 export default function CajaDiaria() {
   const [fecha, setFecha]     = useState(hoy());
   const [data, setData]       = useState(null);
+  const [cierre, setCierre]   = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState('');
 
-  const [modalOpen, setModalOpen]         = useState(false);
-  const [gastoEditando, setGastoEditando] = useState(null);
+  const [modalOpen, setModalOpen]             = useState(false);
+  const [cierreModalOpen, setCierreModalOpen] = useState(false);
+  const [gastoEditando, setGastoEditando]     = useState(null);
 
   const fetchCaja = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
-      const res = await caja.diaria(fecha);
-      setData(res.data);
-    } catch {
-      setError('No se pudo cargar la caja del día.');
+      
+      const resCaja = await caja.diaria(fecha);
+      setData(resCaja.data);
+
+      try {
+        const resCierre = await caja.getCierre(fecha);
+        setCierre(resCierre.data);
+      } catch (err) {
+        // Un 404 es normal si no se ha cerrado la caja, no es un error que deba detener todo
+        setCierre(null);
+      }
+    } catch (err) {
+      console.error('Error al cargar caja:', err);
+      setError('Error al cargar datos: ' + (err.response?.data?.detail || err.message));
     } finally {
       setLoading(false);
     }
@@ -55,32 +69,81 @@ export default function CajaDiaria() {
     fetchCaja();
   };
 
+  const handleCerrarCaja = async (form) => {
+    try {
+      await caja.cerrar(form);
+      fetchCaja();
+      setCierreModalOpen(false);
+    } catch (err) {
+      alert(err.response?.data?.detail || 'No se pudo cerrar la caja');
+    }
+  };
+
+  const estaCerrado = Boolean(cierre);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
 
-      {/* Selector de fecha */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <label style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Fecha:</label>
-        <input
-          type="date" value={fecha}
-          onChange={e => setFecha(e.target.value)}
-          style={{
-            padding: '6px 12px', borderRadius: 'var(--radius-sm)',
-            border: '1px solid var(--border-strong)',
-            background: 'var(--bg-elevated)', color: 'var(--text-primary)', fontSize: '13px',
-          }}
-        />
-        <button onClick={fetchCaja} style={{
-          padding: '6px 14px', borderRadius: 'var(--radius-sm)',
-          border: '1px solid var(--gold-border)', background: 'var(--gold-dim)',
-          color: 'var(--gold)', cursor: 'pointer', fontSize: '13px',
-        }}>
-          Actualizar
-        </button>
+      {/* Cabecera y Selector de fecha */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <label style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Fecha:</label>
+          <input
+            type="date" value={fecha}
+            onChange={e => setFecha(e.target.value)}
+            style={{
+              padding: '6px 12px', borderRadius: 'var(--radius-sm)',
+              border: '1px solid var(--border-strong)',
+              background: 'var(--bg-elevated)', color: 'var(--text-primary)', fontSize: '13px',
+            }}
+          />
+          <button onClick={fetchCaja} style={{
+            padding: '6px 14px', borderRadius: 'var(--radius-sm)',
+            border: '1px solid var(--gold-border)', background: 'var(--gold-dim)',
+            color: 'var(--gold)', cursor: 'pointer', fontSize: '13px',
+          }}>
+            Actualizar
+          </button>
+        </div>
+
+        {estaCerrado ? (
+          <div style={{ 
+            display: 'flex', alignItems: 'center', gap: '10px',
+            padding: '8px 16px', borderRadius: 'var(--radius-sm)',
+            background: 'rgba(72, 187, 120, 0.1)', border: '1px solid #48bb78',
+            color: '#48bb78', fontSize: '13px', fontWeight: 600
+          }}>
+            <span style={{ fontSize: '18px' }}>✓</span>
+            <span>CAJA CERRADA</span>
+            {cierre && (
+              <span style={{ fontSize: '11px', opacity: 0.8, marginLeft: '8px', borderLeft: '1px solid #48bb78', paddingLeft: '8px' }}>
+                Real: {formatCurrency(cierre.efectivo_real)} (Dif: {formatCurrency(cierre.diferencia)})
+              </span>
+            )}
+          </div>
+        ) : (
+          <button 
+            onClick={() => setCierreModalOpen(true)}
+            style={{
+              padding: '10px 24px', borderRadius: 'var(--radius-sm)',
+              border: 'none', background: 'var(--gold)',
+              color: '#000', cursor: 'pointer', fontSize: '14px',
+              fontWeight: 700, transition: 'all 0.2s',
+              boxShadow: '0 4px 12px rgba(212, 175, 55, 0.3)',
+              textTransform: 'uppercase', letterSpacing: '0.05em'
+            }}
+          >
+            Finalizar y Cerrar Caja
+          </button>
+        )}
       </div>
 
       {loading && <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Cargando...</div>}
-      {error   && <div style={{ color: 'var(--color-danger, #e53e3e)', fontSize: '13px' }}>{error}</div>}
+      {error   && (
+        <div style={{ color: 'var(--color-danger, #e53e3e)', fontSize: '13px', padding: '12px', background: 'rgba(229, 62, 62, 0.1)', borderRadius: 'var(--radius-sm)' }}>
+          {error}
+        </div>
+      )}
 
       {data && !loading && (
         <>
@@ -96,7 +159,7 @@ export default function CajaDiaria() {
             <SectionTitle>
               Ingresos del día
               <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                Turnos confirmados y completados
+                Solo turnos completados (pagados)
               </span>
             </SectionTitle>
             <TablaIngresos ingresos={data.detalle_ingresos} />
@@ -106,24 +169,26 @@ export default function CajaDiaria() {
           <div>
             <SectionTitle
               action={
-                <button
-                  onClick={() => { setGastoEditando(null); setModalOpen(true); }}
-                  style={{
-                    padding: '6px 14px', borderRadius: 'var(--radius-sm)',
-                    border: '1px solid var(--gold-border)', background: 'var(--gold-dim)',
-                    color: 'var(--gold)', cursor: 'pointer', fontSize: '12px',
-                  }}
-                >
-                  + Agregar gasto
-                </button>
+                !estaCerrado && (
+                  <button
+                    onClick={() => { setGastoEditando(null); setModalOpen(true); }}
+                    style={{
+                      padding: '6px 14px', borderRadius: 'var(--radius-sm)',
+                      border: '1px solid var(--gold-border)', background: 'var(--gold-dim)',
+                      color: 'var(--gold)', cursor: 'pointer', fontSize: '12px',
+                    }}
+                  >
+                    + Agregar gasto
+                  </button>
+                )
               }
             >
               Gastos del día
             </SectionTitle>
             <TablaGastos
               gastos={data.detalle_gastos}
-              onEdit={g => { setGastoEditando(g); setModalOpen(true); }}
-              onDelete={handleEliminarGasto}
+              onEdit={estaCerrado ? null : (g => { setGastoEditando(g); setModalOpen(true); })}
+              onDelete={estaCerrado ? null : handleEliminarGasto}
             />
           </div>
         </>
@@ -134,6 +199,14 @@ export default function CajaDiaria() {
         onClose={() => setModalOpen(false)}
         onSubmit={handleGuardarGasto}
         gasto={gastoEditando}
+      />
+
+      <CierreModal
+        isOpen={cierreModalOpen}
+        onClose={() => setCierreModalOpen(false)}
+        onSubmit={handleCerrarCaja}
+        resumen={data}
+        fecha={fecha}
       />
     </div>
   );

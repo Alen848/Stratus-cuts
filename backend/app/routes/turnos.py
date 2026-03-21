@@ -48,18 +48,15 @@ def delete_turno(turno_id: int, db: Session = Depends(get_db)):
     return {"detail": "Turno eliminado correctamente"}
 
 
-# ─── Horarios disponibles ──────────────────────────────────────────────────────
-@router.get("/disponibles/{empleado_id}")
-def get_horarios_disponibles(
+# ─── Disponibilidad Semanal ──────────────────────────────────────────────────
+@router.get("/disponibilidad-semanal/{empleado_id}")
+def get_disponibilidad_semanal(
     empleado_id: int,
-    fecha: DateType,      # query param: ?fecha=2024-12-01
-    duracion: int = 30,   # query param opcional: ?duracion=60
+    fecha_inicio: DateType,  # query param: ?fecha_inicio=2024-12-01
     db: Session = Depends(get_db)
 ):
     """
-    Retorna los slots horarios del día para un empleado.
-    - Horario: 10:00 a 20:00
-    - Intervalos: cada 30 minutos
-    - Cada slot indica si está disponible u ocupado
+    Retorna la disponibilidad semanal (7 días) para un profesional.
+    Considera los horarios laborales configurados por el administrador.
     """
-    return turno_service.get_horarios_disponibles(db, empleado_id, fecha, duracion)
+    return turno_service.get_horarios_semanales(db, empleado_id, fecha_inicio)

@@ -103,7 +103,18 @@ export default function TurnosPage() {
       }
       return resultado; // ← necesario para que TurnoModal obtenga el id
     } catch (e) {
-      notify(e.response?.data?.detail || 'Ocurrió un error', 'error');
+      console.error("Error en submit:", e);
+      let msg = 'Ocurrió un error';
+      if (e.response?.status === 422) {
+        // Los errores 422 de FastAPI vienen en un array 'detail'
+        const detail = e.response.data?.detail;
+        msg = Array.isArray(detail) 
+          ? detail.map(err => `${err.loc[1]}: ${err.msg}`).join(', ')
+          : (typeof detail === 'string' ? detail : 'Datos inválidos');
+      } else {
+        msg = e.response?.data?.detail || e.message || msg;
+      }
+      notify(msg, 'error');
       throw e;
     }
   };

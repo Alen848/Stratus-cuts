@@ -4,6 +4,7 @@ import { useTurnos }    from '../hooks/useTurnos';
 import { useApp }       from '../context/AppContext';
 import { gastos as gastosApi } from '../api/api';
 import EmpleadoModal from '../components/empleados/EmpleadoModal';
+import HorariosModal from '../components/empleados/HorariosModal';
 import Avatar     from '../components/ui/Avatar';
 import Button     from '../components/ui/Button';
 import EmptyState from '../components/ui/EmptyState';
@@ -45,7 +46,7 @@ function saveComision(empleadoId, porcentaje) {
 /* ════════════════════════════════════════════
    Vista: Equipo
 ════════════════════════════════════════════ */
-function VistaEquipo({ empleados, loading, turnos, onAdd }) {
+function VistaEquipo({ empleados, loading, turnos, onAdd, onEdit, onHorarios, onDelete }) {
   const turnosPorEmpleado = (id) =>
     turnos.filter(t => t.empleado_id === id && t.estado !== 'cancelado').length;
 
@@ -84,7 +85,7 @@ function VistaEquipo({ empleados, loading, turnos, onAdd }) {
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             <Avatar nombre={e.nombre} apellido={e.apellido} size={48} />
-            <div>
+            <div style={{ flex: 1 }}>
               <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 400 }}>
                 {e.nombre} {e.apellido}
               </div>
@@ -105,6 +106,12 @@ function VistaEquipo({ empleados, loading, turnos, onAdd }) {
                 <span style={{ color: 'var(--text-muted)' }}>✆</span> {e.telefono}
               </div>
             )}
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+            <Button size="sm" variant="ghost" onClick={() => onEdit(e)}>Editar</Button>
+            <Button size="sm" variant="ghost" onClick={() => onHorarios(e)}>📅 Horarios</Button>
+            <Button size="sm" variant="danger" onClick={() => onDelete(e.id)}>✕</Button>
           </div>
 
           <div style={{
@@ -427,16 +434,43 @@ function VistaComisiones({ empleados, turnos, loading }) {
    Página principal
 ════════════════════════════════════════════ */
 export default function EmpleadosPage() {
-  const { empleados, loading, addEmpleado } = useEmpleados();
+  const { empleados, loading, addEmpleado, editEmpleado, removeEmpleado } = useEmpleados();
   const { turnos }  = useTurnos();
   const { notify }  = useApp();
 
-  const [modalOpen, setModalOpen] = useState(false);
-  const [vista, setVista]         = useState('equipo');
+  const [modalOpen, setModalOpen]                 = useState(false);
+  const [horariosModalOpen, setHorariosModalOpen] = useState(false);
+  const [editingEmpleado, setEditingEmpleado]     = useState(null);
+  const [vista, setVista]                         = useState('equipo');
+
+  const openCreate = () => { setEditingEmpleado(null); setModalOpen(true); };
+  const openEdit   = (e)  => { setEditingEmpleado(e);  setModalOpen(true); };
+  const openHorarios = (e) => { setEditingEmpleado(e); setHorariosModalOpen(true); };
 
   const handleSubmit = async (data) => {
-    await addEmpleado(data);
-    notify('Profesional agregado');
+    try {
+      if (editingEmpleado) {
+        await editEmpleado(editingEmpleado.id, data);
+        notify('Profesional actualizado');
+      } else {
+        await addEmpleado(data);
+        notify('Profesional agregado');
+      }
+      setModalOpen(false);
+    } catch (e) {
+      notify('Error al guardar profesional', 'error');
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm('¿Eliminar este profesional?')) {
+      try {
+        await removeEmpleado(id);
+        notify('Profesional eliminado');
+      } catch {
+        notify('Error al eliminar profesional', 'error');
+      }
+    }
   };
 
   const tabStyle = (active) => ({
@@ -463,14 +497,15 @@ export default function EmpleadosPage() {
         </div>
 
         {vista === 'equipo' && (
-          <Button variant="primary" onClick={() => setModalOpen(true)}>+ Nuevo profesional</Button>
+          <Button variant="primary" onClick={openCreate}>+ Nuevo profesional</Button>
         )}
       </div>
 
       {vista === 'equipo' ? (
         <VistaEquipo
           empleados={empleados} loading={loading}
-          turnos={turnos} onAdd={() => setModalOpen(true)}
+          turnos={turnos} onAdd={openCreate}
+          onEdit={openEdit} onHorarios={openHorarios} onDelete={handleDelete}
         />
       ) : (
         <VistaComisiones
@@ -482,6 +517,13 @@ export default function EmpleadosPage() {
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
         onSubmit={handleSubmit}
+        empleado={editingEmpleado}
+      />
+
+      <HorariosModal
+        isOpen={horariosModalOpen}
+        onClose={() => setHorariosModalOpen(false)}
+        empleado={editingEmpleado}
       />
     </div>
   );

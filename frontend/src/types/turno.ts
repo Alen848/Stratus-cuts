@@ -19,6 +19,7 @@ export interface Turno {
   fecha_hora: string;
 	duracion: number;
   estado: string;
+  metodo_pago: string | null;
   observaciones: string | null;
   cliente_id: number;
   empleado_id: number;
