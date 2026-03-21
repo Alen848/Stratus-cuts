@@ -5,10 +5,12 @@ from dotenv import load_dotenv
 
 load_dotenv()  # Cargar variables de entorno desde .env
 
-# URL de conexión a MySQL (ajustar según tu entorno)
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-engine = create_engine(DATABASE_URL, echo=True)  # echo=True para ver queries en consola
+# echo=True solo en modo DEBUG (evita loggear queries en producción)
+DEBUG = os.getenv("DEBUG", "false").lower() == "true"
+
+engine = create_engine(DATABASE_URL, echo=DEBUG)
 
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 

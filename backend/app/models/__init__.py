@@ -7,3 +7,4 @@ from .pago import Pago
 from .horario_empleado import HorarioEmpleado
 from .bloqueo_agenda import BloqueoAgenda
 from .usuario import Usuario
+from .gasto import Gasto  

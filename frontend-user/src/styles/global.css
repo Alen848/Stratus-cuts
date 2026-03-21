@@ -1,0 +1,64 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap');
+
+:root {
+  --bg:           #080c14;
+  --bg-2:         #0d1220;
+  --border:       rgba(255, 255, 255, 0.1);
+  --border-hover: rgba(95, 168, 200, 0.35);
+  --accent:       #5fa8c8;
+  --accent-light: #7dbdd8;
+  --accent-glow:  rgba(95, 168, 200, 0.35);
+  --gold:         #d4c9b0;
+  --text:         #eeeae3;
+  --text-primary: #eeeae3;
+  --muted:        rgba(255, 255, 255, 0.7);
+  --text-muted:   rgba(255, 255, 255, 0.7);
+  --text-faint:   rgba(255, 255, 255, 0.5);
+  --card:         #0d1220;
+  --success:      #34d399;
+  --font-serif:   'DM Serif Display', serif;
+  --font-sans:    'DM Sans', sans-serif;
+  --font-display: 'DM Serif Display', serif;
+  --font-body:    'DM Sans', sans-serif;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  font-size: 18px;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* 
+  IMPORTANTE: la animación de main NO puede usar transform.
+  Cualquier transform en un ancestro rompe position:fixed en los hijos.
+  Solo usamos opacity para el fade-in de página.
+*/
+@keyframes pageEnter {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+main {
+  animation: pageEnter 0.4s ease forwards;
+}

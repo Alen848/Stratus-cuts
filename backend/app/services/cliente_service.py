@@ -9,6 +9,19 @@ def get_clientes(db: Session, skip: int = 0, limit: int = 100):
     return db.query(Cliente).offset(skip).limit(limit).all()
 
 def create_cliente(db: Session, cliente: ClienteCreate):
+    # Si viene email, buscar si ya existe
+    if cliente.email:
+        existing = db.query(Cliente).filter(Cliente.email == cliente.email).first()
+        if existing:
+            return existing
+
+    # Si viene teléfono, buscar si ya existe
+    if cliente.telefono:
+        existing = db.query(Cliente).filter(Cliente.telefono == cliente.telefono).first()
+        if existing:
+            return existing
+
+    # Si no existe, crear nuevo
     db_cliente = Cliente(**cliente.model_dump())
     db.add(db_cliente)
     db.commit()
