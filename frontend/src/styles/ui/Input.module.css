@@ -8,6 +8,7 @@
   font-size: 12px;
   color: var(--text-secondary);
   letter-spacing: 0.04em;
+  font-weight: 500;
 }
 
 .field {
@@ -20,17 +21,25 @@
   font-size: 13px;
   font-family: var(--font-body);
   outline: none;
-  transition: border-color 0.2s;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+.field::placeholder {
+  color: var(--text-muted);
 }
 .field:focus {
-  border-color: var(--gold-border);
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px var(--gold-dim);
 }
 
 .fieldError {
   border-color: var(--danger);
 }
+.fieldError:focus {
+  box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.15);
+}
 
 .errorMsg {
   font-size: 11px;
   color: var(--danger);
+  font-weight: 500;
 }

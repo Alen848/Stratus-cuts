@@ -8,17 +8,35 @@
   gap: 12px;
   position: relative;
   overflow: hidden;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+}
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--gold), transparent);
+  opacity: 0;
+  transition: opacity 0.2s;
 }
 .card:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
+  border-color: var(--border-strong);
+}
+.card:hover::before {
+  opacity: 1;
 }
 
-/* Variante dorada */
+/* Variante acento */
 .accent {
-  background: linear-gradient(135deg, var(--gold-dim), rgba(201, 168, 76, 0.05));
+  background: linear-gradient(135deg, var(--gold-dim), rgba(77, 144, 240, 0.04));
   border-color: var(--gold-border);
+}
+.accent::before {
+  opacity: 1;
 }
 
 .top {
@@ -28,14 +46,16 @@
 }
 
 .cardLabel {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-muted);
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
+  font-weight: 600;
 }
 
 .icon {
   font-size: 20px;
+  opacity: 0.7;
 }
 
 .bottom {
@@ -46,18 +66,19 @@
 
 .value {
   font-family: var(--font-display);
-  font-size: 36px;
-  font-weight: 400;
+  font-size: 34px;
+  font-weight: 600;
   line-height: 1;
   color: var(--text-primary);
+  letter-spacing: -0.02em;
 }
 .valueAccent {
-  color: var(--gold);
+  color: var(--gold-light);
 }
 
 .trend {
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 600;
   margin-bottom: 4px;
 }
 .trendUp   { color: var(--success); }

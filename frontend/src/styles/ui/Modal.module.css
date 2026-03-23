@@ -2,7 +2,7 @@
   position: fixed;
   inset: 0;
   z-index: 1000;
-  background: rgba(0, 0, 0, 0.75);
+  background: rgba(5, 10, 25, 0.82);
   backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
@@ -27,13 +27,15 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  background: var(--bg-elevated);
 }
 
 .title {
   font-family: var(--font-display);
-  font-size: 22px;
-  font-weight: 500;
+  font-size: 20px;
+  font-weight: 600;
   color: var(--text-primary);
+  letter-spacing: -0.01em;
 }
 
 .closeBtn {
@@ -45,10 +47,11 @@
   line-height: 1;
   padding: 4px;
   border-radius: 4px;
-  transition: color 0.2s;
+  transition: color 0.15s, background 0.15s;
 }
 .closeBtn:hover {
   color: var(--text-primary);
+  background: var(--bg-hover);
 }
 
 .body {
