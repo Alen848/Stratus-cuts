@@ -1,14 +1,10 @@
+import styles from '../../styles/ui/Card.module.css';
+
 export default function Card({ children, style = {}, className = '' }) {
   return (
     <div
-      className={className}
-      style={{
-        background: 'var(--bg-surface)',
-        border: '1px solid var(--border)',
-        borderRadius: 'var(--radius-lg)',
-        padding: '24px',
-        ...style,
-      }}
+      className={`${styles.card} ${className}`}
+      style={style}
     >
       {children}
     </div>

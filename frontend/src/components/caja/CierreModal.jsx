@@ -10,22 +10,27 @@ export default function CierreModal({ isOpen, onClose, onSubmit, resumen, fecha 
 
   // Totales calculados a partir del resumen
   const saldoAnterior = resumen?.saldo_anterior || 0;
-  
-  const ingresosEfectivo = resumen?.detalle_ingresos
-    ?.filter(i => i.metodo_pago?.toLowerCase() === 'efectivo')
-    ?.reduce((acc, curr) => acc + curr.monto, 0) || 0;
-  
-  const totalTransferencia = resumen?.detalle_ingresos
-    ?.filter(i => i.metodo_pago?.toLowerCase() === 'transferencia')
-    ?.reduce((acc, curr) => acc + curr.monto, 0) || 0;
 
-  const totalDebito = resumen?.detalle_ingresos
-    ?.filter(i => i.metodo_pago?.toLowerCase() === 'débito' || i.metodo_pago?.toLowerCase() === 'tarjeta')
-    ?.reduce((acc, curr) => acc + curr.monto, 0) || 0;
+  const detalleIngresos = resumen?.detalle_ingresos || [];
+
+  const ingresosEfectivo = detalleIngresos
+    .filter(i => {
+      const m = i.metodo_pago?.toLowerCase();
+      return m === 'efectivo' || !m || m === 'no especificado';
+    })
+    .reduce((acc, curr) => acc + curr.monto, 0);
+
+  const totalTransferencia = detalleIngresos
+    .filter(i => i.metodo_pago?.toLowerCase() === 'transferencia')
+    .reduce((acc, curr) => acc + curr.monto, 0);
+
+  const totalDebito = detalleIngresos
+    .filter(i => ['débito', 'debito', 'tarjeta'].includes(i.metodo_pago?.toLowerCase()))
+    .reduce((acc, curr) => acc + curr.monto, 0);
 
   const totalGastos = resumen?.total_gastos || 0;
-  
-  // LOGICA: Saldo Anterior + Ingresos Efectivo - Gastos
+
+  // LOGICA: Saldo Anterior + Ingresos Efectivo (incluye sin método definido) - Gastos
   const teoricoEfectivo = saldoAnterior + ingresosEfectivo - totalGastos;
   
   const diferencia = (parseFloat(efectivoReal) || 0) - teoricoEfectivo;
@@ -93,7 +98,7 @@ export default function CierreModal({ isOpen, onClose, onSubmit, resumen, fecha 
           </div>
           
           <div style={{ marginTop: '12px', opacity: 0.6, fontSize: '11px', fontStyle: 'italic' }}>
-            * No incluye Transferencias ($ {totalTransferencia.toLocaleString()}) ni Débito ($ {totalDebito.toLocaleString()}) ya que no afectan al efectivo físico.
+            * No incluye Transferencias ($ {totalTransferencia.toLocaleString()}) ni Débito ($ {totalDebito.toLocaleString()}) ya que no afectan al efectivo físico. Los ingresos sin método de pago se tratan como efectivo.
           </div>
         </div>
 

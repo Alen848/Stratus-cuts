@@ -1,11 +1,15 @@
-from sqlalchemy import Column, Integer, Float, Date, DateTime, String, func
+from sqlalchemy import Column, Integer, Float, Date, DateTime, String, ForeignKey, UniqueConstraint, func
 from app.database.connection import Base
 
 class CierreCaja(Base):
     __tablename__ = "cierres_caja"
+    __table_args__ = (
+        UniqueConstraint("salon_id", "fecha", name="uq_cierre_salon_fecha"),
+    )
 
     id                     = Column(Integer, primary_key=True, index=True)
-    fecha                  = Column(Date,    unique=True, nullable=False, index=True)
+    salon_id               = Column(Integer, ForeignKey("salones.id"), nullable=False, index=True)
+    fecha                  = Column(Date,    nullable=False, index=True)
     
     saldo_anterior         = Column(Float,   default=0.0) # lo que quedó de ayer
     

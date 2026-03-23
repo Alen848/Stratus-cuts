@@ -37,13 +37,9 @@ export default function CajaDiaria() {
       const resCaja = await caja.diaria(fecha);
       setData(resCaja.data);
 
-      try {
-        const resCierre = await caja.getCierre(fecha);
-        setCierre(resCierre.data);
-      } catch (err) {
-        // Un 404 es normal si no se ha cerrado la caja, no es un error que deba detener todo
-        setCierre(null);
-      }
+      const resCierre = await caja.getCierre(fecha);
+      // El backend devuelve null (200) si no hay cierre para esa fecha
+      setCierre(resCierre.data ?? null);
     } catch (err) {
       console.error('Error al cargar caja:', err);
       setError('Error al cargar datos: ' + (err.response?.data?.detail || err.message));
@@ -151,7 +147,7 @@ export default function CajaDiaria() {
             totalIngresos={data.total_ingresos}
             totalGastos={data.total_gastos}
             gananciaNeta={data.ganancia_neta}
-            cantidadPagos={data.cantidad_turnos}
+            cantidadTurnos={data.cantidad_turnos}
           />
 
           {/* Ingresos */}
@@ -159,7 +155,7 @@ export default function CajaDiaria() {
             <SectionTitle>
               Ingresos del día
               <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                Solo turnos completados (pagados)
+                Turnos confirmados y completados
               </span>
             </SectionTitle>
             <TablaIngresos ingresos={data.detalle_ingresos} />

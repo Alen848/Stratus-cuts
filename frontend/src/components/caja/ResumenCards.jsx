@@ -28,7 +28,7 @@ function Card({ label, value, color = 'var(--text-primary)', sub }) {
   );
 }
 
-export default function ResumenCards({ totalIngresos, totalGastos, gananciaNeta, cantidadPagos }) {
+export default function ResumenCards({ totalIngresos, totalGastos, gananciaNeta, cantidadTurnos }) {
   return (
     <div style={{
       display: 'grid',
@@ -39,7 +39,7 @@ export default function ResumenCards({ totalIngresos, totalGastos, gananciaNeta,
         label="Ingresos"
         value={formatCurrency(totalIngresos)}
         color="var(--color-success, #4caf7d)"
-        sub={`${cantidadPagos} pago${cantidadPagos !== 1 ? 's' : ''}`}
+        sub={`${cantidadTurnos ?? 0} turno${cantidadTurnos !== 1 ? 's' : ''}`}
       />
       <Card
         label="Gastos"

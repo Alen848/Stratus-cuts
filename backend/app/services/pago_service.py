@@ -13,31 +13,45 @@ from app.schemas.cierre_caja import CierreCajaCreate
 
 ARG_TZ = timezone(timedelta(hours=-3))
 
-def check_dia_abierto(db: Session, fecha: date):
-    """Verifica si el día ya tiene un cierre de caja."""
-    cierre = db.query(CierreCaja).filter(CierreCaja.fecha == fecha).first()
+
+def check_dia_abierto(db: Session, salon_id: int, fecha: date):
+    """Verifica si el día ya tiene un cierre de caja para este salón."""
+    cierre = db.query(CierreCaja).filter(
+        CierreCaja.salon_id == salon_id,
+        CierreCaja.fecha == fecha,
+    ).first()
     if cierre:
         raise HTTPException(
-            status_code=400, 
+            status_code=400,
             detail=f"El día {fecha} ya está cerrado. No se pueden realizar modificaciones."
         )
 
+
 # ─── CRUD Pagos ────────────────────────────────────────────────────────────────
 
-def get_pago(db: Session, pago_id: int):
-    return db.query(Pago).filter(Pago.id == pago_id).first()
+def get_pago(db: Session, pago_id: int, salon_id: int):
+    return db.query(Pago).join(Turno).filter(
+        Pago.id == pago_id,
+        Turno.salon_id == salon_id,
+    ).first()
 
 
-def get_pagos(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(Pago).order_by(Pago.fecha_pago.desc()).offset(skip).limit(limit).all()
+def get_pagos(db: Session, salon_id: int, skip: int = 0, limit: int = 100):
+    return db.query(Pago).join(Turno).filter(
+        Turno.salon_id == salon_id
+    ).order_by(Pago.fecha_pago.desc()).offset(skip).limit(limit).all()
 
 
-def create_pago(db: Session, pago: PagoCreate):
-    turno = db.query(Turno).filter(Turno.id == pago.turno_id).first()
+def create_pago(db: Session, pago: PagoCreate, salon_id: int):
+    turno = db.query(Turno).filter(
+        Turno.id == pago.turno_id,
+        Turno.salon_id == salon_id,
+    ).first()
     if not turno:
         raise HTTPException(status_code=404, detail="Turno no encontrado.")
     if turno.estado == "cancelado":
         raise HTTPException(status_code=400, detail="No se puede registrar un pago en un turno cancelado.")
+    check_dia_abierto(db, salon_id, turno.fecha_hora.date())
     pago_existente = db.query(Pago).filter(Pago.turno_id == pago.turno_id).first()
     if pago_existente:
         raise HTTPException(status_code=400, detail="Este turno ya tiene un pago registrado.")
@@ -52,18 +66,24 @@ def create_pago(db: Session, pago: PagoCreate):
     )
     db.add(db_pago)
     turno.estado = "completado"
+    turno.metodo_pago = pago.metodo_pago
     db.commit()
     db.refresh(db_pago)
     return db_pago
 
 
-def update_pago(db: Session, pago_id: int, pago_update: PagoUpdate):
-    db_pago = get_pago(db, pago_id)
+def update_pago(db: Session, pago_id: int, pago_update: PagoUpdate, salon_id: int):
+    db_pago = get_pago(db, pago_id, salon_id)
     if not db_pago:
         return None
+    turno = db.query(Turno).filter(Turno.id == db_pago.turno_id).first()
+    if turno:
+        check_dia_abierto(db, salon_id, turno.fecha_hora.date())
     update_data = pago_update.model_dump(exclude_unset=True)
     if "monto" in update_data and update_data["monto"] <= 0:
         raise HTTPException(status_code=400, detail="El monto debe ser mayor a 0.")
+    if "metodo_pago" in update_data and turno:
+        turno.metodo_pago = update_data["metodo_pago"]
     for field, value in update_data.items():
         setattr(db_pago, field, value)
     db.commit()
@@ -71,13 +91,15 @@ def update_pago(db: Session, pago_id: int, pago_update: PagoUpdate):
     return db_pago
 
 
-def delete_pago(db: Session, pago_id: int):
-    db_pago = get_pago(db, pago_id)
+def delete_pago(db: Session, pago_id: int, salon_id: int):
+    db_pago = get_pago(db, pago_id, salon_id)
     if not db_pago:
         return None
     turno = db.query(Turno).filter(Turno.id == db_pago.turno_id).first()
-    if turno and turno.estado == "completado":
-        turno.estado = "confirmado"
+    if turno:
+        check_dia_abierto(db, salon_id, turno.fecha_hora.date())
+        if turno.estado == "completado":
+            turno.estado = "confirmado"
     db.delete(db_pago)
     db.commit()
     return db_pago
@@ -85,23 +107,29 @@ def delete_pago(db: Session, pago_id: int):
 
 # ─── CRUD Gastos ───────────────────────────────────────────────────────────────
 
-def get_gasto(db: Session, gasto_id: int):
-    return db.query(Gasto).filter(Gasto.id == gasto_id).first()
+def get_gasto(db: Session, gasto_id: int, salon_id: int):
+    return db.query(Gasto).filter(
+        Gasto.id == gasto_id,
+        Gasto.salon_id == salon_id,
+    ).first()
 
 
-def get_gastos(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(Gasto).order_by(Gasto.fecha.desc()).offset(skip).limit(limit).all()
+def get_gastos(db: Session, salon_id: int, skip: int = 0, limit: int = 100):
+    return db.query(Gasto).filter(
+        Gasto.salon_id == salon_id
+    ).order_by(Gasto.fecha.desc()).offset(skip).limit(limit).all()
 
 
-def create_gasto(db: Session, gasto_data):
+def create_gasto(db: Session, gasto_data, salon_id: int):
     fecha = gasto_data.fecha if gasto_data.fecha else datetime.now()
-    check_dia_abierto(db, fecha.date())
+    check_dia_abierto(db, salon_id, fecha.date())
     db_gasto = Gasto(
+        salon_id=salon_id,
         descripcion=gasto_data.descripcion,
         monto=gasto_data.monto,
         categoria=gasto_data.categoria,
         fecha=fecha,
-        observaciones=gasto_data.observaciones
+        observaciones=gasto_data.observaciones,
     )
     db.add(db_gasto)
     db.commit()
@@ -109,13 +137,11 @@ def create_gasto(db: Session, gasto_data):
     return db_gasto
 
 
-def update_gasto(db: Session, gasto_id: int, gasto_update):
-    db_gasto = get_gasto(db, gasto_id)
+def update_gasto(db: Session, gasto_id: int, gasto_update, salon_id: int):
+    db_gasto = get_gasto(db, gasto_id, salon_id)
     if not db_gasto:
         return None
-    
-    check_dia_abierto(db, db_gasto.fecha.date())
-    
+    check_dia_abierto(db, salon_id, db_gasto.fecha.date())
     for field, value in gasto_update.model_dump(exclude_unset=True).items():
         setattr(db_gasto, field, value)
     db.commit()
@@ -123,13 +149,11 @@ def update_gasto(db: Session, gasto_id: int, gasto_update):
     return db_gasto
 
 
-def delete_gasto(db: Session, gasto_id: int):
-    db_gasto = get_gasto(db, gasto_id)
+def delete_gasto(db: Session, gasto_id: int, salon_id: int):
+    db_gasto = get_gasto(db, gasto_id, salon_id)
     if not db_gasto:
         return None
-        
-    check_dia_abierto(db, db_gasto.fecha.date())
-    
+    check_dia_abierto(db, salon_id, db_gasto.fecha.date())
     db.delete(db_gasto)
     db.commit()
     return db_gasto
@@ -137,20 +161,25 @@ def delete_gasto(db: Session, gasto_id: int):
 
 # ─── Cierres de caja ───────────────────────────────────────────────────────────
 
-def get_cierre_caja(db: Session, fecha: date):
-    return db.query(CierreCaja).filter(CierreCaja.fecha == fecha).first()
+def get_cierre_caja(db: Session, salon_id: int, fecha: date):
+    return db.query(CierreCaja).filter(
+        CierreCaja.salon_id == salon_id,
+        CierreCaja.fecha == fecha,
+    ).first()
 
-def get_ultimo_saldo_real(db: Session, fecha: date) -> float:
-    """Busca el cierre más reciente anterior a la fecha dada y retorna su efectivo_real."""
-    ultimo_cierre = db.query(CierreCaja)\
-        .filter(CierreCaja.fecha < fecha)\
-        .order_by(CierreCaja.fecha.desc())\
-        .first()
+
+def get_ultimo_saldo_real(db: Session, salon_id: int, fecha: date) -> float:
+    ultimo_cierre = db.query(CierreCaja).filter(
+        CierreCaja.salon_id == salon_id,
+        CierreCaja.fecha < fecha,
+    ).order_by(CierreCaja.fecha.desc()).first()
     return ultimo_cierre.efectivo_real if ultimo_cierre else 0.0
 
-def create_cierre_caja(db: Session, cierre: CierreCajaCreate):
+
+def create_cierre_caja(db: Session, cierre: CierreCajaCreate, salon_id: int):
     try:
         db_cierre = CierreCaja(
+            salon_id=salon_id,
             fecha=cierre.fecha,
             saldo_anterior=cierre.saldo_anterior,
             total_efectivo_teorico=cierre.total_efectivo_teorico,
@@ -159,7 +188,7 @@ def create_cierre_caja(db: Session, cierre: CierreCajaCreate):
             total_gastos=cierre.total_gastos,
             efectivo_real=cierre.efectivo_real,
             diferencia=cierre.diferencia,
-            observaciones=cierre.observaciones
+            observaciones=cierre.observaciones,
         )
         db.add(db_cierre)
         db.commit()
@@ -167,14 +196,12 @@ def create_cierre_caja(db: Session, cierre: CierreCajaCreate):
         return db_cierre
     except Exception as e:
         db.rollback()
-        print(f"Error guardando cierre: {e}")
         raise HTTPException(status_code=500, detail=f"Error en base de datos: {str(e)}")
 
 
 # ─── Helpers caja ──────────────────────────────────────────────────────────────
 
 def _calcular_monto_turno(turno: Turno) -> float:
-    """Suma precio_unitario * cantidad de cada servicio del turno."""
     if not turno.servicios:
         return 0.0
     return sum(
@@ -184,7 +211,6 @@ def _calcular_monto_turno(turno: Turno) -> float:
 
 
 def _ingresos_por_empleado(turnos: list) -> list:
-    """Agrupa ingresos por empleado a partir de una lista de turnos."""
     emp_dict: dict = {}
     for turno in turnos:
         if not turno.empleado:
@@ -204,26 +230,28 @@ def _ingresos_por_empleado(turnos: list) -> list:
     return list(emp_dict.values())
 
 
-def _query_turnos(db: Session, *filtros) -> list:
-    """Trae turnos completados con todas las relaciones necesarias."""
+def _query_turnos(db: Session, salon_id: int, *filtros) -> list:
     return db.query(Turno).options(
         joinedload(Turno.empleado),
         joinedload(Turno.cliente),
-        joinedload(Turno.servicios)
+        joinedload(Turno.servicios),
     ).filter(
-        Turno.estado == "completado",
-        *filtros
+        Turno.salon_id == salon_id,
+        Turno.estado.in_(["confirmado", "completado"]),
+        *filtros,
     ).all()
 
 
 # ─── Caja diaria ──────────────────────────────────────────────────────────────
 
-def get_caja_diaria(db: Session, fecha: date) -> dict:
-    turnos = _query_turnos(db, func.date(Turno.fecha_hora) == fecha)
-    gastos = db.query(Gasto).filter(func.date(Gasto.fecha) == fecha).all()
-    
-    saldo_anterior = get_ultimo_saldo_real(db, fecha)
+def get_caja_diaria(db: Session, salon_id: int, fecha: date) -> dict:
+    turnos = _query_turnos(db, salon_id, func.date(Turno.fecha_hora) == fecha)
+    gastos = db.query(Gasto).filter(
+        Gasto.salon_id == salon_id,
+        func.date(Gasto.fecha) == fecha,
+    ).all()
 
+    saldo_anterior = get_ultimo_saldo_real(db, salon_id, fecha)
     total_ingresos = sum(_calcular_monto_turno(t) for t in turnos)
     total_gastos   = sum(g.monto for g in gastos)
 
@@ -250,11 +278,11 @@ def get_caja_diaria(db: Session, fecha: date) -> dict:
         ],
         "detalle_gastos": [
             {
-                "id":           g.id,
-                "descripcion":  g.descripcion,
-                "monto":        g.monto,
-                "categoria":    g.categoria,
-                "fecha":        g.fecha.isoformat(),
+                "id":            g.id,
+                "descripcion":   g.descripcion,
+                "monto":         g.monto,
+                "categoria":     g.categoria,
+                "fecha":         g.fecha.isoformat(),
                 "observaciones": g.observaciones,
             }
             for g in gastos
@@ -264,13 +292,14 @@ def get_caja_diaria(db: Session, fecha: date) -> dict:
 
 # ─── Caja mensual ─────────────────────────────────────────────────────────────
 
-def get_caja_mensual(db: Session, anio: int, mes: int) -> dict:
+def get_caja_mensual(db: Session, salon_id: int, anio: int, mes: int) -> dict:
     turnos = _query_turnos(
-        db,
+        db, salon_id,
         extract("year",  Turno.fecha_hora) == anio,
         extract("month", Turno.fecha_hora) == mes,
     )
     gastos = db.query(Gasto).filter(
+        Gasto.salon_id == salon_id,
         extract("year",  Gasto.fecha) == anio,
         extract("month", Gasto.fecha) == mes,
     ).all()

@@ -5,10 +5,26 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+// Inyectar token en cada request
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    console.error('API Error:', err.response?.data || err.message);
+    if (err.response?.status === 401) {
+      // Token expirado o inválido — limpiar y redirigir al login
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/login';
+    } else if (err.response?.status !== 404) {
+      console.error('API Error:', err.response?.data || err.message);
+    }
     return Promise.reject(err);
   }
 );

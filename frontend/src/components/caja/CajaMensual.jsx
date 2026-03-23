@@ -170,7 +170,7 @@ export default function CajaMensual() {
             totalIngresos={data.total_ingresos}
             totalGastos={data.total_gastos}
             gananciaNeta={data.ganancia_neta}
-            cantidadPagos={data.cantidad_pagos}
+            cantidadTurnos={data.cantidad_turnos}
           />
 
           <div>
@@ -185,7 +185,10 @@ export default function CajaMensual() {
 
           <div>
             <SectionTitle>Comisiones por empleado</SectionTitle>
-            <ComisionesEmpleados empleados={data.ingresos_por_empleado} />
+            <ComisionesEmpleados
+              empleados={data.ingresos_por_empleado}
+              fecha={`${anio}-${String(mes).padStart(2, '0')}-${new Date(anio, mes, 0).getDate()}`}
+            />
           </div>
         </>
       )}

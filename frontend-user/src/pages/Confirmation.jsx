@@ -173,7 +173,10 @@ const Confirmation = () => {
     );
   }
 
-  const fecha = new Date(turno.fecha_hora).toLocaleString('es-AR', {
+  // El backend devuelve datetimes naive (sin zona horaria). Forzamos parseo como
+  // hora local reemplazando la T por espacio para evitar que el navegador lo trate como UTC.
+  const fechaStr = turno.fecha_hora?.replace('T', ' ').split('.')[0] || '';
+  const fecha = new Date(fechaStr).toLocaleString('es-AR', {
     dateStyle: 'full',
     timeStyle: 'short',
   });

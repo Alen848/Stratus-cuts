@@ -1,0 +1,18 @@
+/* Estructura estática — color, size y fontSize se calculan inline en el componente */
+.avatar {
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 500;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.img {
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--border);
+  flex-shrink: 0;
+}

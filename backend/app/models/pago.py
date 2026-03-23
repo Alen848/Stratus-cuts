@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Integer, Float, DateTime, String, ForeignKey
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 from app.database.connection import Base
 
 class Pago(Base):
@@ -8,7 +9,7 @@ class Pago(Base):
     id = Column(Integer, primary_key=True, index=True)
     turno_id = Column(Integer, ForeignKey("turnos.id"), nullable=False)
     monto = Column(Float, nullable=False)
-    fecha_pago = Column(DateTime, server_default="CURRENT_TIMESTAMP")
+    fecha_pago = Column(DateTime, server_default=func.now())
     metodo_pago = Column(String(50))  # efectivo, tarjeta, transferencia, etc.
     observaciones = Column(String(255))
 

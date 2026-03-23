@@ -1,3 +1,4 @@
+from .salon import Salon
 from .cliente import Cliente
 from .empleado import Empleado
 from .servicio import Servicio
@@ -7,5 +8,5 @@ from .pago import Pago
 from .horario_empleado import HorarioEmpleado
 from .bloqueo_agenda import BloqueoAgenda
 from .usuario import Usuario
-from .gasto import Gasto  
+from .gasto import Gasto
 from .cierre_caja import CierreCaja

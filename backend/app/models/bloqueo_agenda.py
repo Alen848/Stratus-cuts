@@ -5,7 +5,8 @@ from app.database.connection import Base
 class BloqueoAgenda(Base):
     __tablename__ = "bloqueos_agenda"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id          = Column(Integer, primary_key=True, index=True)
+    salon_id    = Column(Integer, ForeignKey("salones.id"), nullable=False, index=True)
     empleado_id = Column(Integer, ForeignKey("empleados.id"), nullable=True)  # null = bloqueo general
     fecha_inicio = Column(DateTime, nullable=False)
     fecha_fin = Column(DateTime, nullable=False)

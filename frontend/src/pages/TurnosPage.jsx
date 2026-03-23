@@ -292,11 +292,12 @@ export default function TurnosPage() {
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
         onSubmit={handleSubmit}
-        onPagoRegistrado={handlePagoRegistrado} 
+        onPagoRegistrado={handlePagoRegistrado}
         turno={editingTurno}
         clientes={clientes}
         empleados={empleados}
         servicios={servicios}
+        turnos={turnos}
       />
     </div>
   );
