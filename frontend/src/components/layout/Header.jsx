@@ -1,14 +1,15 @@
 import { useLocation } from 'react-router-dom';
+import ThemeToggle from '../ui/ThemeToggle';
 import styles from '../../styles/layout/Header.module.css';
 
 const PAGE_TITLES = {
-  '/':          { title: 'Dashboard',  subtitle: 'Resumen general del negocio'     },
-  '/turnos':    { title: 'Turnos',     subtitle: 'Gestión de citas y reservas'     },
-  '/clientes':  { title: 'Clientes',   subtitle: 'Base de datos de clientes'       },
-  '/empleados': { title: 'Empleados',  subtitle: 'Equipo de profesionales'         },
-  '/servicios': { title: 'Servicios',  subtitle: 'Catálogo de servicios'           },
-  '/caja':      { title: 'Caja',       subtitle: 'Ingresos, gastos y ganancias'    },
-  '/analisis':  { title: 'Análisis',   subtitle: 'Estadísticas del negocio'        },
+  '/':          { title: 'Dashboard',  subtitle: 'Resumen general del negocio'  },
+  '/turnos':    { title: 'Turnos',     subtitle: 'Gestión de citas y reservas'  },
+  '/clientes':  { title: 'Clientes',   subtitle: 'Base de datos de clientes'    },
+  '/empleados': { title: 'Empleados',  subtitle: 'Equipo de profesionales'      },
+  '/servicios': { title: 'Servicios',  subtitle: 'Catálogo de servicios'        },
+  '/caja':      { title: 'Caja',       subtitle: 'Ingresos, gastos y ganancias' },
+  '/analisis':  { title: 'Análisis',   subtitle: 'Estadísticas del negocio'     },
 };
 
 export default function Header() {
@@ -31,6 +32,7 @@ export default function Header() {
           <span className={styles.dateIcon}>◷</span>
           <span className={styles.dateText}>{dateStr}</span>
         </div>
+        <ThemeToggle />
         <div className={styles.userAvatar}>A</div>
       </div>
     </header>

@@ -5,8 +5,8 @@
   justify-content: center;
   background: var(--bg-base);
   background-image:
-    radial-gradient(ellipse at 20% 50%, rgba(77, 144, 240, 0.08) 0%, transparent 60%),
-    radial-gradient(ellipse at 80% 20%, rgba(77, 144, 240, 0.05) 0%, transparent 50%);
+    radial-gradient(ellipse at 20% 50%, var(--gold-dim) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 20%, var(--gold-dim) 0%, transparent 50%);
   padding: 24px;
 }
 

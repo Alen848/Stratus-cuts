@@ -1,52 +1,104 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap');
 
-:root {
-  /* ── Fondo navy ─────────────────────────────────────────────── */
+/* ════════════════════════════════════════════════════════════════
+   TEMA OSCURO (default)
+   ════════════════════════════════════════════════════════════════ */
+:root,
+[data-theme="dark"] {
+  /* Fondos */
   --bg-base:        #0b1628;
   --bg-surface:     #101f3a;
   --bg-elevated:    #172a4e;
   --bg-hover:       #1e3460;
 
-  /* ── Acento azul ────────────────────────────────────────────── */
-  --gold:           #4d90f0;          /* renombrado semánticamente pero mantenido como var */
+  /* Acento azul */
+  --gold:           #4d90f0;
   --gold-light:     #7ab3f5;
   --gold-dim:       rgba(77, 144, 240, 0.14);
   --gold-border:    rgba(77, 144, 240, 0.28);
 
-  /* ── Texto ──────────────────────────────────────────────────── */
+  /* Texto */
   --text-primary:   #e8f0ff;
   --text-secondary: #8fa8d5;
   --text-muted:     #4a6090;
 
-  /* ── Bordes ─────────────────────────────────────────────────── */
+  /* Bordes */
   --border:         rgba(255, 255, 255, 0.07);
   --border-strong:  rgba(255, 255, 255, 0.13);
 
-  /* ── Estados ────────────────────────────────────────────────── */
+  /* Overlay modales */
+  --overlay-bg:     rgba(5, 10, 25, 0.82);
+
+  /* Estados */
   --success:        #34d399;
   --warning:        #fbbf24;
-  --danger:         #f87171;
+  --danger:         #e3654b;
   --info:           #60a5fa;
 
-  /* ── Radios ─────────────────────────────────────────────────── */
-  --radius-sm:      6px;
-  --radius-md:      10px;
-  --radius-lg:      16px;
-
-  /* ── Sombras ────────────────────────────────────────────────── */
+  /* Sombras */
   --shadow-sm:      0 1px 4px rgba(0, 0, 0, 0.5);
   --shadow-md:      0 4px 20px rgba(0, 0, 0, 0.55);
   --shadow-lg:      0 12px 48px rgba(0, 0, 0, 0.65);
-
-  /* ── Tipografía ─────────────────────────────────────────────── */
-  --font-display:   'Outfit', system-ui, sans-serif;
-  --font-body:      'Inter', system-ui, sans-serif;
-
-  /* ── Layout ─────────────────────────────────────────────────── */
-  --sidebar-w:      240px;
-  --header-h:       64px;
 }
 
+/* ════════════════════════════════════════════════════════════════
+   TEMA CLARO
+   ════════════════════════════════════════════════════════════════ */
+[data-theme="light"] {
+  /* Fondos — blanco con toque celeste muy suave */
+  --bg-base:        #f0f5ff;
+  --bg-surface:     #ffffff;
+  --bg-elevated:    #e6edfb;
+  --bg-hover:       #dae4f7;
+
+  /* Acento azul (más saturado para contrastar sobre blanco) */
+  --gold:           #2563eb;
+  --gold-light:     #3b82f6;
+  --gold-dim:       rgba(37, 99, 235, 0.1);
+  --gold-border:    rgba(37, 99, 235, 0.22);
+
+  /* Texto */
+  --text-primary:   #0f172a;
+  --text-secondary: #334155;
+  --text-muted:     #94a3b8;
+
+  /* Bordes */
+  --border:         rgba(15, 23, 42, 0.08);
+  --border-strong:  rgba(15, 23, 42, 0.15);
+
+  /* Overlay modales */
+  --overlay-bg:     rgba(15, 23, 42, 0.55);
+
+  /* Estados (más saturados para legibilidad sobre blanco) */
+  --success:        #059669;
+  --warning:        #d97706;
+  --danger:         #dc2626;
+  --info:           #2563eb;
+
+  /* Sombras suaves con tinte azul */
+  --shadow-sm:      0 1px 4px rgba(15, 23, 42, 0.07);
+  --shadow-md:      0 4px 20px rgba(15, 23, 42, 0.1);
+  --shadow-lg:      0 12px 48px rgba(15, 23, 42, 0.13);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   VARIABLES FIJAS (no cambian con el tema)
+   ════════════════════════════════════════════════════════════════ */
+:root {
+  --radius-sm:    6px;
+  --radius-md:    10px;
+  --radius-lg:    16px;
+
+  --font-display: 'Outfit', system-ui, sans-serif;
+  --font-body:    'Inter', system-ui, sans-serif;
+
+  --sidebar-w:    240px;
+  --header-h:     64px;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   RESET & BASE
+   ════════════════════════════════════════════════════════════════ */
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -55,6 +107,11 @@
 
 html, body, #root {
   height: 100%;
+}
+
+/* Transición suave al cambiar tema */
+*, *::before, *::after {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease, box-shadow 0.2s ease;
 }
 
 body {
