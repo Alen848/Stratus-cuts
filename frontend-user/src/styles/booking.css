@@ -406,6 +406,78 @@
   opacity: 0.7;
 }
 
+/* ── Day strip (horizontal scrollable) ── */
+.day-strip {
+  display: flex;
+  gap: 0.4rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+  margin-top: 0.15rem;
+  /* hide scrollbar but keep scroll */
+  scrollbar-width: none;
+}
+.day-strip::-webkit-scrollbar { display: none; }
+
+.day-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.65rem 0.75rem;
+  min-width: 52px;
+  flex-shrink: 0;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.day-pill:hover:not(.dp-selected) {
+  border-color: rgba(95,168,200,0.35);
+  background: rgba(95,168,200,0.05);
+}
+
+.day-pill.dp-today {
+  border-color: rgba(255,255,255,0.14);
+}
+
+.day-pill.dp-selected {
+  border-color: #5fa8c8;
+  background: rgba(95,168,200,0.13);
+}
+
+.dp-weekday {
+  font-size: 0.62rem;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.3);
+  pointer-events: none;
+}
+
+.day-pill.dp-selected .dp-weekday { color: rgba(95,168,200,0.7); }
+
+.dp-num {
+  font-family: 'DM Serif Display', serif;
+  font-size: 1.25rem;
+  color: #eeeae3;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.day-pill.dp-selected .dp-num { color: #5fa8c8; }
+
+.dp-month {
+  font-size: 0.58rem;
+  color: rgba(255,255,255,0.18);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  pointer-events: none;
+}
+
+.day-pill.dp-today .dp-month { color: rgba(255,255,255,0.28); }
+
 /* ── Animations ── */
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(20px); }

@@ -9,7 +9,8 @@ const PAGE_TITLES = {
   '/empleados': { title: 'Empleados',  subtitle: 'Equipo de profesionales'      },
   '/servicios': { title: 'Servicios',  subtitle: 'Catálogo de servicios'        },
   '/caja':      { title: 'Caja',       subtitle: 'Ingresos, gastos y ganancias' },
-  '/analisis':  { title: 'Análisis',   subtitle: 'Estadísticas del negocio'     },
+  '/analisis':       { title: 'Análisis',       subtitle: 'Estadísticas del negocio'         },
+  '/recordatorios':  { title: 'Recordatorios', subtitle: 'Avisos por WhatsApp a clientes'   },
 };
 
 export default function Header() {

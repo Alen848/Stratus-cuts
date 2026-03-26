@@ -1,7 +1,10 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AppProvider }   from './context/AppContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
+
+const queryClient = new QueryClient();
 import Layout            from './components/layout/Layout';
 import LoginPage         from './pages/LoginPage';
 import DashboardPage     from './pages/DashboardPage';
@@ -10,7 +13,8 @@ import ClientesPage      from './pages/ClientesPage';
 import EmpleadosPage     from './pages/EmpleadosPage';
 import ServiciosPage     from './pages/ServiciosPage';
 import CajaPage          from './pages/CajaPage';
-import AnalisisPage      from './pages/AnalisisPage';
+import AnalisisPage          from './pages/AnalisisPage';
+import RecordatoriosPage     from './pages/RecordatoriosPage';
 import './styles/globals.css';
 
 function PrivateRoutes() {
@@ -27,7 +31,8 @@ function PrivateRoutes() {
           <Route path="empleados"   element={<EmpleadosPage />}  />
           <Route path="servicios"   element={<ServiciosPage />}  />
           <Route path="caja"        element={<CajaPage />}       />
-          <Route path="analisis"    element={<AnalisisPage />}   />
+          <Route path="analisis"        element={<AnalisisPage />}        />
+          <Route path="recordatorios"   element={<RecordatoriosPage />}   />
         </Route>
       </Routes>
     </AppProvider>
@@ -36,6 +41,7 @@ function PrivateRoutes() {
 
 export default function App() {
   return (
+    <QueryClientProvider client={queryClient}>
     <ThemeProvider>
       <AuthProvider>
         <BrowserRouter>
@@ -46,5 +52,6 @@ export default function App() {
         </BrowserRouter>
       </AuthProvider>
     </ThemeProvider>
+    </QueryClientProvider>
   );
 }

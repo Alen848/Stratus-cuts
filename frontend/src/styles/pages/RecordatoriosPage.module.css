@@ -1,0 +1,162 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+/* ── Sección ──────────────────────────────────────────────────────────── */
+.section {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  gap: 1rem;
+}
+
+.sectionTitle {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.sectionSub {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 0.15rem;
+}
+
+.sectionActions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 7px;
+  background: var(--gold-dim);
+  color: var(--gold);
+  border: 1px solid var(--gold-border);
+  border-radius: 99px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.btnAll {
+  padding: 0.4rem 1rem;
+  background: var(--gold);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.btnAll:hover  { opacity: 0.85; }
+.btnAll:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Card ─────────────────────────────────────────────────────────────── */
+.card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  gap: 1rem;
+  transition: background 0.15s;
+}
+
+.card:last-child { border-bottom: none; }
+.card:hover { background: var(--bg-hover); }
+
+.cardLeft { flex: 1; min-width: 0; }
+
+.clienteNombre {
+  font-weight: 600;
+  font-size: 0.92rem;
+  color: var(--text-primary);
+  margin-bottom: 0.35rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cardMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+}
+
+.metaItem {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.metaIcon {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.diasBadge {
+  background: var(--gold-dim);
+  color: var(--gold);
+  border: 1px solid var(--gold-border);
+  padding: 0.1rem 0.5rem;
+  border-radius: 99px;
+  font-weight: 500;
+}
+
+.cardRight { flex-shrink: 0; }
+
+.btnWa {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 1rem;
+  background: #25d366;
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.btnWa:hover    { opacity: 0.85; }
+.btnWa:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.waIcon { font-size: 0.9rem; }
+
+.noPhone {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* ── Empty ────────────────────────────────────────────────────────────── */
+.empty {
+  padding: 1.5rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}

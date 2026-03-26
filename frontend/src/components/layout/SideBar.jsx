@@ -8,8 +8,9 @@ const NAV_ITEMS = [
   { to: '/clientes',  icon: '◎', label: 'Clientes'   },
   { to: '/empleados', icon: '◉', label: 'Empleados'  },
   { to: '/servicios', icon: '◆', label: 'Servicios'  },
-  { to: '/caja',      icon: '◈', label: 'Caja'       },
-  { to: '/analisis',  icon: '◑', label: 'Análisis'   },
+  { to: '/caja',          icon: '◈', label: 'Caja'          },
+  { to: '/analisis',      icon: '◑', label: 'Análisis'      },
+  { to: '/recordatorios', icon: '◎', label: 'Recordatorios' },
 ];
 
 export default function Sidebar() {

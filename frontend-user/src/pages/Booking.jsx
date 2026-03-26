@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { createCliente, createTurno, getEmpleados, getDisponibilidadSemanal } from '../services/api';
 import '../styles/booking.css';
 
-const TODAY = new Date().toISOString().split('T')[0];
 
 export default function Booking() {
   const location = useLocation();
@@ -206,18 +205,35 @@ export default function Booking() {
           {/* ── Fecha ── */}
           <div className="field">
             <label className="field-label">Fecha <span className="field-req">*</span></label>
-            <input
-              className="field-input"
-              type="date"
-              name="fecha"
-              value={selectedDate}
-              min={TODAY}
-              onChange={e => handleDateChange(e.target.value)}
-              disabled={!selectedEmpleado}
-              required
-            />
-            {!selectedEmpleado && (
-              <span className="field-hint">Elegí un profesional primero</span>
+            {!selectedEmpleado ? (
+              <span className="field-hint" style={{ padding: '0.6rem 0' }}>
+                Elegí un profesional primero
+              </span>
+            ) : (
+              <div className="day-strip">
+                {Array.from({ length: 30 }, (_, i) => {
+                  const d = new Date();
+                  d.setDate(d.getDate() + i);
+                  const iso = d.toISOString().split('T')[0];
+                  const dayName = d.toLocaleDateString('es-AR', { weekday: 'short' }).replace('.', '');
+                  const dayNum  = d.getDate();
+                  const monthStr = d.toLocaleDateString('es-AR', { month: 'short' }).replace('.', '');
+                  const isSelected = selectedDate === iso;
+                  const isToday = i === 0;
+                  return (
+                    <button
+                      key={iso}
+                      type="button"
+                      className={`day-pill${isSelected ? ' dp-selected' : ''}${isToday ? ' dp-today' : ''}`}
+                      onClick={() => handleDateChange(iso)}
+                    >
+                      <span className="dp-weekday">{dayName}</span>
+                      <span className="dp-num">{dayNum}</span>
+                      <span className="dp-month">{monthStr}</span>
+                    </button>
+                  );
+                })}
+              </div>
             )}
           </div>
 

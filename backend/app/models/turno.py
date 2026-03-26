@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, DateTime, String, ForeignKey
+from sqlalchemy import Column, Integer, DateTime, String, Boolean, ForeignKey
 from sqlalchemy.orm import relationship
 from app.database.connection import Base
 
@@ -14,6 +14,12 @@ class Turno(Base):
     observaciones = Column(String(500))
     cliente_id    = Column(Integer, ForeignKey("clientes.id"), nullable=True)  # None = walk-in
     empleado_id   = Column(Integer, ForeignKey("empleados.id"), nullable=False)
+
+    # Recordatorios WhatsApp
+    reminder_pre_sent        = Column(Boolean, default=False, nullable=False)  # recordatorio previo al turno
+    reminder_pre_sent_at     = Column(DateTime, nullable=True)
+    reminder_retorno_sent    = Column(Boolean, default=False, nullable=False)  # recordatorio 20-25 días después
+    reminder_retorno_sent_at = Column(DateTime, nullable=True)
 
     # Relaciones
     cliente   = relationship("Cliente",  back_populates="turnos")

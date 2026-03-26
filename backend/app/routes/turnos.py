@@ -12,6 +12,39 @@ from app.schemas.turno import Turno, TurnoCreate, TurnoUpdate
 router = APIRouter(prefix="/turns", tags=["Turns"])
 
 
+# ── Rutas estáticas PRIMERO (antes de las paramétricas /{id}) ─────────────────
+
+@router.get("/recordatorios")
+def get_recordatorios(
+    horas_pre: int = 24,
+    dias_retorno_desde: int = 20,
+    dias_retorno_hasta: int = 25,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    return turno_service.get_recordatorios(
+        db,
+        salon_id=current_user.salon_id,
+        horas_pre=horas_pre,
+        dias_retorno_desde=dias_retorno_desde,
+        dias_retorno_hasta=dias_retorno_hasta,
+    )
+
+
+@router.get("/disponibilidad-semanal/{empleado_id}")
+def get_disponibilidad_semanal(
+    empleado_id: int,
+    fecha_inicio: DateType,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    return turno_service.get_horarios_semanales(
+        db, empleado_id, fecha_inicio, salon_id=current_user.salon_id
+    )
+
+
+# ── CRUD ──────────────────────────────────────────────────────────────────────
+
 @router.get("/", response_model=List[Turno])
 def read_turnos(
     skip: int = 0, limit: int = 100,
@@ -19,6 +52,15 @@ def read_turnos(
     current_user: Usuario = Depends(get_current_user),
 ):
     return turno_service.get_turnos(db, salon_id=current_user.salon_id, skip=skip, limit=limit)
+
+
+@router.post("/", response_model=Turno)
+def create_turno(
+    turno: TurnoCreate,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    return turno_service.create_turno(db, turno, salon_id=current_user.salon_id)
 
 
 @router.get("/{turno_id}", response_model=Turno)
@@ -31,15 +73,6 @@ def read_turno(
     if not turno:
         raise HTTPException(status_code=404, detail="Turno no encontrado")
     return turno
-
-
-@router.post("/", response_model=Turno)
-def create_turno(
-    turno: TurnoCreate,
-    db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
-):
-    return turno_service.create_turno(db, turno, salon_id=current_user.salon_id)
 
 
 @router.put("/{turno_id}", response_model=Turno)
@@ -66,13 +99,11 @@ def delete_turno(
     return {"detail": "Turno eliminado correctamente"}
 
 
-@router.get("/disponibilidad-semanal/{empleado_id}")
-def get_disponibilidad_semanal(
-    empleado_id: int,
-    fecha_inicio: DateType,
+@router.patch("/{turno_id}/reminder-sent")
+def mark_reminder_sent(
+    turno_id: int,
+    tipo: str,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    return turno_service.get_horarios_semanales(
-        db, empleado_id, fecha_inicio, salon_id=current_user.salon_id
-    )
+    return turno_service.mark_reminder_sent(db, turno_id, tipo, salon_id=current_user.salon_id)

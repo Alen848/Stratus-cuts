@@ -206,3 +206,92 @@ def get_horarios_semanales(db: Session, empleado_id: int, fecha_inicio: date, sa
             actual += timedelta(minutes=30)
         resultado[fecha_actual.isoformat()] = slots
     return resultado
+
+
+# ─── Recordatorios WhatsApp ──────────────────────────────────────────────────
+
+def get_recordatorios(
+    db: Session,
+    salon_id: int,
+    horas_pre: int = 24,
+    dias_retorno_desde: int = 20,
+    dias_retorno_hasta: int = 25,
+) -> dict:
+    """
+    Retorna dos listas:
+    - proximos: turnos pendientes/confirmados dentro de las próximas `horas_pre` horas
+                con reminder_pre_sent = False
+    - retorno:  turnos completados entre `dias_retorno_desde` y `dias_retorno_hasta` días atrás
+                con reminder_retorno_sent = False
+    """
+    ahora = datetime.now()
+
+    # ── Próximos ──────────────────────────────────────────────────────────────
+    limite = ahora + timedelta(hours=horas_pre)
+    proximos_db = db.query(Turno).options(
+        joinedload(Turno.cliente),
+        joinedload(Turno.empleado),
+        joinedload(Turno.servicios).joinedload(TurnoServicio.servicio),
+    ).filter(
+        Turno.salon_id == salon_id,
+        Turno.estado.in_(["pendiente", "confirmado"]),
+        Turno.fecha_hora >= ahora,
+        Turno.fecha_hora <= limite,
+        Turno.reminder_pre_sent == False,
+    ).order_by(Turno.fecha_hora).all()
+
+    # ── Retorno ───────────────────────────────────────────────────────────────
+    desde = ahora - timedelta(days=dias_retorno_hasta)
+    hasta = ahora - timedelta(days=dias_retorno_desde)
+    retorno_db = db.query(Turno).options(
+        joinedload(Turno.cliente),
+        joinedload(Turno.empleado),
+        joinedload(Turno.servicios).joinedload(TurnoServicio.servicio),
+    ).filter(
+        Turno.salon_id == salon_id,
+        Turno.estado == "completado",
+        Turno.fecha_hora >= desde,
+        Turno.fecha_hora <= hasta,
+        Turno.reminder_retorno_sent == False,
+    ).order_by(Turno.fecha_hora).all()
+
+    def _build(turno, tipo):
+        dias = int((ahora - turno.fecha_hora).days) if tipo == "retorno" else None
+        return {
+            "turno_id":        turno.id,
+            "tipo":            tipo,
+            "cliente_nombre":  f"{turno.cliente.nombre} {turno.cliente.apellido or ''}".strip() if turno.cliente else "Sin nombre",
+            "cliente_phone":   turno.cliente.telefono if turno.cliente else None,
+            "empleado_nombre": turno.empleado.nombre if turno.empleado else "—",
+            "fecha_hora":      turno.fecha_hora,
+            "servicios":       [ts.servicio.nombre for ts in turno.servicios if ts.servicio],
+            "dias_desde":      dias,
+        }
+
+    return {
+        "proximos": [_build(t, "pre")     for t in proximos_db],
+        "retorno":  [_build(t, "retorno") for t in retorno_db],
+    }
+
+
+def mark_reminder_sent(db: Session, turno_id: int, tipo: str, salon_id: int):
+    """Marca el recordatorio como enviado. tipo = 'pre' | 'retorno'"""
+    turno = db.query(Turno).filter(
+        Turno.id == turno_id,
+        Turno.salon_id == salon_id,
+    ).first()
+    if not turno:
+        raise HTTPException(status_code=404, detail="Turno no encontrado.")
+
+    ahora = datetime.now()
+    if tipo == "pre":
+        turno.reminder_pre_sent    = True
+        turno.reminder_pre_sent_at = ahora
+    elif tipo == "retorno":
+        turno.reminder_retorno_sent    = True
+        turno.reminder_retorno_sent_at = ahora
+    else:
+        raise HTTPException(status_code=422, detail="tipo debe ser 'pre' o 'retorno'.")
+
+    db.commit()
+    return {"ok": True}
