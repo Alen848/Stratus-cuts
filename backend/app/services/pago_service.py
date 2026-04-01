@@ -1,6 +1,9 @@
 from sqlalchemy import func, extract
 from sqlalchemy.orm import Session, joinedload
 from datetime import datetime, date, timezone, timedelta
+
+ARG_TZ = timezone(timedelta(hours=-3))
+def now_arg(): return datetime.now(ARG_TZ).replace(tzinfo=None)
 from fastapi import HTTPException
 
 from app.models.pago import Pago
@@ -62,7 +65,7 @@ def create_pago(db: Session, pago: PagoCreate, salon_id: int):
         monto=pago.monto,
         metodo_pago=pago.metodo_pago,
         observaciones=pago.observaciones,
-        fecha_pago=datetime.now()
+        fecha_pago=now_arg()
     )
     db.add(db_pago)
     turno.estado = "completado"
@@ -121,7 +124,7 @@ def get_gastos(db: Session, salon_id: int, skip: int = 0, limit: int = 100):
 
 
 def create_gasto(db: Session, gasto_data, salon_id: int):
-    fecha = gasto_data.fecha if gasto_data.fecha else datetime.now()
+    fecha = gasto_data.fecha if gasto_data.fecha else now_arg()
     check_dia_abierto(db, salon_id, fecha.date())
     db_gasto = Gasto(
         salon_id=salon_id,
@@ -237,7 +240,7 @@ def _query_turnos(db: Session, salon_id: int, *filtros) -> list:
         joinedload(Turno.servicios),
     ).filter(
         Turno.salon_id == salon_id,
-        Turno.estado.in_(["confirmado", "completado"]),
+        Turno.estado == "completado",
         *filtros,
     ).all()
 

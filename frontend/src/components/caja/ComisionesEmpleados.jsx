@@ -6,6 +6,7 @@ export default function ComisionesEmpleados({ empleados = [], fecha, onComisionR
   const [porcentajes, setPorcentajes]   = useState({});
   const [registrados, setRegistrados]   = useState({});  // emp_id → true si ya se registró
   const [loading, setLoading]           = useState({});
+  const [errorMsg, setErrorMsg]         = useState('');
 
   if (empleados.length === 0) {
     return (
@@ -43,13 +44,23 @@ export default function ComisionesEmpleados({ empleados = [], fecha, onComisionR
       setRegistrados(r => ({ ...r, [emp.empleado_id]: true }));
       if (onComisionRegistrada) onComisionRegistrada();
     } catch {
-      alert('Error al registrar la comisión como gasto.');
+      setErrorMsg('Error al registrar la comisión como gasto.');
     } finally {
       setLoading(l => ({ ...l, [emp.empleado_id]: false }));
     }
   };
 
   return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+    {errorMsg && (
+      <div style={{
+        padding: '8px 12px', borderRadius: 'var(--radius-sm)',
+        background: 'rgba(229,62,62,0.1)', border: '1px solid rgba(229,62,62,0.3)',
+        color: '#e53e3e', fontSize: '12px',
+      }}>
+        {errorMsg}
+      </div>
+    )}
     <div style={{
       background: 'var(--bg-surface)', border: '1px solid var(--border)',
       borderRadius: 'var(--radius-md)', overflow: 'hidden',
@@ -135,6 +146,7 @@ export default function ComisionesEmpleados({ empleados = [], fecha, onComisionR
           })}
         </tbody>
       </table>
+    </div>
     </div>
   );
 }

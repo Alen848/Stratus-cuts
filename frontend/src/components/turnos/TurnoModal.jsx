@@ -16,7 +16,9 @@ const TIME_SLOTS = (() => {
   return slots;
 })();
 
-const TODAY = new Date().toISOString().split('T')[0];
+// Usar fecha LOCAL, no UTC (evita que después de las 21hs ARG los slots de hoy se marquen como pasados)
+const _d = new Date();
+const TODAY = `${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,'0')}-${String(_d.getDate()).padStart(2,'0')}`;
 
 function toLocalDateStr(date) {
   return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
@@ -163,6 +165,7 @@ export default function TurnoModal({
     walkin_telefono: '', walkin_monto: '',
   });
   const [loading, setLoading] = useState(false);
+  const [validError, setValidError] = useState('');
   const isEdit = Boolean(turno);
 
   const duracionTotal = useMemo(() =>
@@ -221,10 +224,11 @@ export default function TurnoModal({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.selectedDate || !form.selectedTime) return alert('Seleccioná fecha y horario');
-    if (!form.empleado_id)                         return alert('Seleccioná un profesional');
-    if (form.servicios_ids.length === 0)           return alert('Seleccioná al menos un servicio');
-    if (modo === 'cliente' && !form.cliente_id)    return alert('Seleccioná un cliente o usá modo walk-in');
+    setValidError('');
+    if (!form.selectedDate || !form.selectedTime) { setValidError('Seleccioná fecha y horario'); return; }
+    if (!form.empleado_id)                         { setValidError('Seleccioná un profesional'); return; }
+    if (form.servicios_ids.length === 0)           { setValidError('Seleccioná al menos un servicio'); return; }
+    if (modo === 'cliente' && !form.cliente_id)    { setValidError('Seleccioná un cliente o usá modo walk-in'); return; }
 
     try {
       setLoading(true);
@@ -401,6 +405,15 @@ export default function TurnoModal({
           </div>
         </div>
 
+        {validError && (
+          <div style={{
+            padding: '8px 12px', borderRadius: 'var(--radius-sm)',
+            background: 'rgba(229,62,62,0.1)', border: '1px solid rgba(229,62,62,0.3)',
+            color: '#e53e3e', fontSize: '12px',
+          }}>
+            {validError}
+          </div>
+        )}
         <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', borderTop: '1px solid var(--border)', paddingTop: '14px' }}>
           <Button variant="ghost" onClick={onClose} type="button">Cancelar</Button>
           <Button variant="primary" type="submit" disabled={loading}>

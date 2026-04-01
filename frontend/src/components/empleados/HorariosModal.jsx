@@ -56,6 +56,7 @@ function HorarioRow({ dia, diaIdx, initialHorario, onSave, loading }) {
 export default function HorariosModal({ isOpen, onClose, empleado }) {
   const [horarios, setHorarios] = useState([]);
   const [loading, setLoading]   = useState(false);
+  const [error, setError]       = useState('');
 
   useEffect(() => {
     if (isOpen && empleado) {
@@ -88,7 +89,7 @@ export default function HorariosModal({ isOpen, onClose, empleado }) {
       }
       fetchHorarios();
     } catch (err) {
-      alert("Error al guardar horario: " + (err.response?.data?.detail || err.message));
+      setError("Error al guardar horario: " + (err.response?.data?.detail || err.message));
     } finally {
       setLoading(false);
     }
@@ -111,6 +112,15 @@ export default function HorariosModal({ isOpen, onClose, empleado }) {
           />
         ))}
       </div>
+      {error && (
+        <div style={{
+          marginTop: '12px', padding: '8px 12px', borderRadius: '4px',
+          background: 'rgba(229,62,62,0.1)', border: '1px solid rgba(229,62,62,0.3)',
+          color: '#e53e3e', fontSize: '12px',
+        }}>
+          {error}
+        </div>
+      )}
       <div style={{ marginTop: '24px', textAlign: 'right' }}>
         <Button variant="ghost" onClick={onClose}>Cerrar</Button>
       </div>

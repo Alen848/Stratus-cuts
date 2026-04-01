@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Integer, Float, String, Boolean, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from app.database.connection import Base
 
@@ -15,6 +15,7 @@ class Empleado(Base):
     email        = Column(String(100), index=True)
     especialidad = Column(String(100))
     activo       = Column(Boolean, default=True)
+    sueldo_base  = Column(Float, nullable=True)
 
     # Relaciones
     turnos = relationship("Turno", back_populates="empleado")

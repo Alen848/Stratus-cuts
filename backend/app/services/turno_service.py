@@ -224,7 +224,8 @@ def get_recordatorios(
     - retorno:  turnos completados entre `dias_retorno_desde` y `dias_retorno_hasta` días atrás
                 con reminder_retorno_sent = False
     """
-    ahora = datetime.now()
+    # Usar hora Argentina naive para comparar con los turnos guardados como naive ARG
+    ahora = datetime.now(ARG_TZ).replace(tzinfo=None)
 
     # ── Próximos ──────────────────────────────────────────────────────────────
     limite = ahora + timedelta(hours=horas_pre)
@@ -283,7 +284,7 @@ def mark_reminder_sent(db: Session, turno_id: int, tipo: str, salon_id: int):
     if not turno:
         raise HTTPException(status_code=404, detail="Turno no encontrado.")
 
-    ahora = datetime.now()
+    ahora = datetime.now(ARG_TZ).replace(tzinfo=None)
     if tipo == "pre":
         turno.reminder_pre_sent    = True
         turno.reminder_pre_sent_at = ahora

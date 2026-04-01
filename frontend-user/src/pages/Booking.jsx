@@ -90,7 +90,9 @@ export default function Booking() {
       });
       const clienteId = clienteResponse.data.id;
 
-      const fechaHoraISO = new Date(`${selectedDate}T${selectedTime}:00`).toISOString();
+      // Enviar como string naive (hora Argentina) sin convertir a UTC.
+      // El backend recibe un datetime sin timezone y lo guarda tal cual.
+      const fechaHoraISO = `${selectedDate}T${selectedTime}:00`;
 
       const turnoData = {
         fecha_hora: fechaHoraISO,
@@ -214,7 +216,8 @@ export default function Booking() {
                 {Array.from({ length: 30 }, (_, i) => {
                   const d = new Date();
                   d.setDate(d.getDate() + i);
-                  const iso = d.toISOString().split('T')[0];
+                  // Usar fecha LOCAL, no UTC (toISOString daría fecha UTC que puede diferir)
+                  const iso = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
                   const dayName = d.toLocaleDateString('es-AR', { weekday: 'short' }).replace('.', '');
                   const dayNum  = d.getDate();
                   const monthStr = d.toLocaleDateString('es-AR', { month: 'short' }).replace('.', '');

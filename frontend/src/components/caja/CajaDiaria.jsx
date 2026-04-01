@@ -7,7 +7,10 @@ import TablaIngresos from './TablaIngresos';
 import CierreModal   from './CierreModal';
 import { formatCurrency } from '../../utils/formatters';
 
-const hoy = () => new Date().toISOString().slice(0, 10);
+const hoy = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+};
 
 const SectionTitle = ({ children, action }) => (
   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
@@ -71,7 +74,7 @@ export default function CajaDiaria() {
       fetchCaja();
       setCierreModalOpen(false);
     } catch (err) {
-      alert(err.response?.data?.detail || 'No se pudo cerrar la caja');
+      setError(err.response?.data?.detail || 'No se pudo cerrar la caja');
     }
   };
 
@@ -155,7 +158,7 @@ export default function CajaDiaria() {
             <SectionTitle>
               Ingresos del día
               <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                Turnos confirmados y completados
+                Turnos completados
               </span>
             </SectionTitle>
             <TablaIngresos ingresos={data.detalle_ingresos} />

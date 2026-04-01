@@ -7,6 +7,7 @@ class EmpleadoBase(BaseModel):
     email: Optional[EmailStr] = None
     especialidad: Optional[str] = None
     activo: bool = True
+    sueldo_base: Optional[float] = None
 
 class EmpleadoCreate(EmpleadoBase):
     pass
