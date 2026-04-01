@@ -5,6 +5,7 @@ import { useEmpleados } from '../hooks/useEmpleados';
 import StatCard from '../components/ui/StatCard';
 import Avatar   from '../components/ui/Avatar';
 import { formatTime } from '../utils/formatters';
+import styles from '../styles/pages/DashboardPage.module.css';
 
 // ─── Configuración de la grilla ───────────────────────────────────────────────
 const H_START   = 9;       // hora de inicio fija
@@ -14,7 +15,7 @@ const SLOT_MIN  = 20;      // grilla cada 20 minutos
 const SLOT_PX   = HOUR_PX / (60 / SLOT_MIN); // 30 px por slot
 const TOTAL_PX  = (H_END - H_START) * HOUR_PX;
 const TIME_COL  = 60;      // ancho de la columna de horas (px)
-const EMP_COL   = 170;     // ancho mínimo por columna de empleado (px)
+const EMP_COL_DEFAULT = 170; // ancho mínimo por columna de empleado (px)
 const HEAD_H    = 52;      // alto del header de empleados (px)
 
 // Todos los marks de la grilla (h, m)
@@ -108,73 +109,49 @@ export default function DashboardPage() {
     );
   }
 
-  const gridWidth = TIME_COL + Math.max(columnas.length, 1) * EMP_COL;
+  const gridWidth = TIME_COL + Math.max(columnas.length, 1) * EMP_COL_DEFAULT;
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', gap:'24px' }}>
+    <div className={styles.container}>
 
       {/* Stats */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'16px' }}>
+      <div className={styles.statsGrid}>
         <StatCard label="Turnos hoy"       value={activosHoy}        icon="◷" accent />
         <StatCard label="Completados"      value={completadosHoy}    icon="✓" />
         <StatCard label="Sin confirmar"    value={pendientes.length} icon="◉" />
         <StatCard label="Clientes totales" value={clientes.length}   icon="◎" />
       </div>
 
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 272px', gap:'20px', alignItems:'start' }}>
+      <div className={styles.mainGrid}>
 
         {/* ── Grilla ── */}
-        <div style={{
-          background:'var(--bg-surface)', border:'1px solid var(--border)',
-          borderRadius:'var(--radius-lg)', overflow:'hidden',
-        }}>
+        <div className={styles.agendaCard}>
 
           {/* Título */}
-          <div style={{
-            padding:'16px 20px', borderBottom:'1px solid var(--border)',
-            display:'flex', alignItems:'center', justifyContent:'space-between',
-          }}>
-            <h2 style={{ fontFamily:'var(--font-display)', fontSize:'20px', fontWeight:400 }}>
-              Agenda de hoy
-            </h2>
-            <span style={{ fontSize:'11px', color:'var(--text-muted)', letterSpacing:'0.07em', textTransform:'uppercase' }}>
+          <div className={styles.cardHeader}>
+            <h2 className={styles.cardTitle}>Agenda de hoy</h2>
+            <span className={styles.cardSubtitle}>
               {new Date().toLocaleDateString('es-AR', { weekday:'long', day:'numeric', month:'long' })}
             </span>
           </div>
 
-          {/*
-            Un solo contenedor con scroll para que el header de empleados
-            y las columnas de turnos se desplacen juntos horizontalmente.
-            El header es sticky-top dentro de este contenedor.
-          */}
-          <div style={{ overflowX:'auto', overflowY:'auto', maxHeight:560 }}>
-            <div style={{ width: gridWidth, position:'relative' }}>
+          <div className={styles.scrollContainer}>
+            <div className={styles.gridWrapper} style={{ width: gridWidth }}>
 
               {/* ── Header sticky de empleados ── */}
-              <div style={{
-                position:'sticky', top:0, zIndex:10,
-                display:'flex', height:HEAD_H,
-                background:'var(--bg-elevated)',
-                borderBottom:'2px solid var(--border)',
-              }}>
-                {/* Esquina vacía alineada con la columna de horas */}
-                <div style={{ width:TIME_COL, flexShrink:0 }} />
+              <div className={styles.empHeader} style={{ height: HEAD_H }}>
+                <div style={{ width: TIME_COL, flexShrink: 0 }} />
 
                 {columnas.map(({ emp, turnos: et }) => {
                   const activos = et.filter(t => t.estado !== 'cancelado').length;
                   return (
-                    <div key={emp.id} style={{
-                      flex:1, minWidth:EMP_COL,
-                      borderLeft:'1px solid var(--border)',
-                      padding:'10px 14px',
-                      display:'flex', alignItems:'center', gap:8,
-                    }}>
+                    <div key={emp.id} className={styles.empCol} style={{ minWidth: EMP_COL_DEFAULT }}>
                       <Avatar nombre={emp.nombre} apellido={emp.apellido} size={28} />
-                      <div style={{ minWidth:0 }}>
-                        <div style={{ fontSize:'12px', fontWeight:600, color:'var(--text-primary)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                      <div style={{ minWidth: 0 }}>
+                        <div className={styles.empName}>
                           {emp.nombre} {emp.apellido}
                         </div>
-                        <div style={{ fontSize:'10px', color:'var(--text-muted)', marginTop:1 }}>
+                        <div className={styles.empSub}>
                           {activos} turno{activos !== 1 ? 's' : ''}
                         </div>
                       </div>
@@ -183,44 +160,29 @@ export default function DashboardPage() {
                 })}
 
                 {columnas.length === 0 && (
-                  <div style={{ flex:1, display:'flex', alignItems:'center', padding:'0 20px', fontSize:'12px', color:'var(--text-muted)' }}>
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', padding: '0 20px', fontSize: '12px', color: 'var(--text-muted)' }}>
                     Sin empleados registrados
                   </div>
                 )}
               </div>
 
               {/* ── Cuerpo de la grilla ── */}
-              <div style={{ display:'flex', height:TOTAL_PX }}>
+              <div className={styles.gridBody} style={{ height: TOTAL_PX }}>
 
                 {/* Columna de horas */}
-                <div style={{
-                  width:TIME_COL, flexShrink:0,
-                  position:'relative',
-                  borderRight:'1px solid var(--border)',
-                  background:'var(--bg-surface)',
-                }}>
+                <div className={styles.timeCol} style={{ width: TIME_COL }}>
                   {MARKS.map(({ h, m, isHour }) => {
                     const top = ((h - H_START) * 60 + m) / SLOT_MIN * SLOT_PX;
                     return (
-                      <div key={`${h}:${m}`} style={{
-                        position:'absolute',
+                      <div key={`${h}:${m}`} className={styles.timeMark} style={{
                         top,
-                        left:0, right:0,
-                        paddingRight:8,
-                        textAlign:'right',
                         fontSize: isHour ? '11px' : '9px',
                         color: isHour ? 'var(--text-secondary)' : 'rgba(255,255,255,0.2)',
                         fontWeight: isHour ? 500 : 400,
-                        lineHeight:1,
-                        userSelect:'none',
-                        pointerEvents:'none',
-                        // Alinear el texto justo sobre la línea correspondiente
-                        transform:'translateY(-50%)',
-                        // Evitar que el primer label quede cortado
                         paddingTop: top === 0 ? 6 : 0,
                         transform: top === 0 ? 'none' : 'translateY(-50%)',
                       }}>
-                        {String(h).padStart(2,'0')}:{String(m).padStart(2,'0')}
+                        {String(h).padStart(2, '0')}:{String(m).padStart(2, '0')}
                       </div>
                     );
                   })}
@@ -229,10 +191,10 @@ export default function DashboardPage() {
                 {/* Columnas de empleados */}
                 {columnas.map(({ emp, turnos: et }) => (
                   <div key={emp.id} style={{
-                    flex:1, minWidth:EMP_COL,
-                    borderLeft:'1px solid var(--border)',
-                    position:'relative',
-                    height:'100%',
+                    flex: 1, minWidth: EMP_COL_DEFAULT,
+                    borderLeft: '1px solid var(--border)',
+                    position: 'relative',
+                    height: '100%',
                   }}>
 
                     {/* Líneas de grilla */}
@@ -240,12 +202,12 @@ export default function DashboardPage() {
                       const top = ((h - H_START) * 60 + m) / SLOT_MIN * SLOT_PX;
                       return (
                         <div key={`${h}:${m}`} style={{
-                          position:'absolute',
-                          top, left:0, right:0, height:0,
+                          position: 'absolute',
+                          top, left: 0, right: 0, height: 0,
                           borderTop: isHour
                             ? '1px solid rgba(255,255,255,0.08)'
                             : '1px dashed rgba(255,255,255,0.03)',
-                          pointerEvents:'none',
+                          pointerEvents: 'none',
                         }} />
                       );
                     })}
@@ -253,16 +215,16 @@ export default function DashboardPage() {
                     {/* Indicador de hora actual */}
                     {nowPx !== null && (
                       <div style={{
-                        position:'absolute',
-                        top:nowPx, left:0, right:0,
-                        height:2, background:'var(--gold)',
-                        opacity:0.85, zIndex:3,
-                        pointerEvents:'none',
+                        position: 'absolute',
+                        top: nowPx, left: 0, right: 0,
+                        height: 2, background: 'var(--gold)',
+                        opacity: 0.85, zIndex: 3,
+                        pointerEvents: 'none',
                       }}>
                         <div style={{
-                          position:'absolute', left:-5, top:-4,
-                          width:10, height:10, borderRadius:'50%',
-                          background:'var(--gold)',
+                          position: 'absolute', left: -5, top: -4,
+                          width: 10, height: 10, borderRadius: '50%',
+                          background: 'var(--gold)',
                         }} />
                       </div>
                     )}
@@ -283,36 +245,36 @@ export default function DashboardPage() {
                           key={t.id}
                           title={`${nombre} · ${svcs.join(', ') || 'Sin servicio'} · ${t.estado}`}
                           style={{
-                            position:'absolute',
-                            top: top + 2, left:5, right:5,
+                            position: 'absolute',
+                            top: top + 2, left: 5, right: 5,
                             height: height - 4,
                             background: s.bg,
                             border: `1px solid ${s.border}`,
                             borderLeft: `3px solid ${s.accent}`,
-                            borderRadius:6,
-                            padding:'4px 8px',
-                            overflow:'hidden',
-                            zIndex:2,
+                            borderRadius: 6,
+                            padding: '4px 8px',
+                            overflow: 'hidden',
+                            zIndex: 2,
                           }}
                         >
-                          <div style={{ fontSize:'10px', fontWeight:700, color:s.accent, lineHeight:1.2 }}>
+                          <div style={{ fontSize: '10px', fontWeight: 700, color: s.accent, lineHeight: 1.2 }}>
                             {formatTime(t.fecha_hora)}
                             {t.duracion ? (
-                              <span style={{ fontWeight:400, opacity:0.75, marginLeft:4 }}>
+                              <span style={{ fontWeight: 400, opacity: 0.75, marginLeft: 4 }}>
                                 {t.duracion}min
                               </span>
                             ) : null}
                           </div>
                           <div style={{
-                            fontSize:'11px', fontWeight:600, color:'var(--text-primary)',
-                            marginTop:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
+                            fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)',
+                            marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                           }}>
                             {nombre}
                           </div>
                           {height >= 56 && svcs.length > 0 && (
                             <div style={{
-                              fontSize:'10px', color:'var(--text-muted)',
-                              marginTop:1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
+                              fontSize: '10px', color: 'var(--text-muted)',
+                              marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                             }}>
                               {svcs[0]}
                             </div>
@@ -327,18 +289,14 @@ export default function DashboardPage() {
           </div>
 
           {/* Leyenda */}
-          <div style={{
-            padding:'10px 20px', borderTop:'1px solid var(--border)',
-            display:'flex', gap:18, alignItems:'center',
-            background:'var(--bg-elevated)',
-          }}>
+          <div className={styles.legend}>
             {Object.entries(ESTADO_STYLE).map(([estado, s]) => (
-              <div key={estado} style={{ display:'flex', alignItems:'center', gap:5 }}>
+              <div key={estado} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                 <div style={{
-                  width:10, height:10, borderRadius:3,
-                  background:s.bg, borderLeft:`3px solid ${s.accent}`,
+                  width: 10, height: 10, borderRadius: 3,
+                  background: s.bg, borderLeft: `3px solid ${s.accent}`,
                 }} />
-                <span style={{ fontSize:'10px', color:'var(--text-muted)', textTransform:'capitalize' }}>
+                <span style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'capitalize' }}>
                   {estado}
                 </span>
               </div>
@@ -347,33 +305,19 @@ export default function DashboardPage() {
         </div>
 
         {/* ── Panel derecho ── */}
-        <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+        <div className={styles.rightPanel}>
 
           {/* Sin confirmar */}
-          <div style={{
-            background:'var(--bg-surface)', border:'1px solid var(--border)',
-            borderRadius:'var(--radius-lg)', overflow:'hidden',
-          }}>
-            <div style={{
-              padding:'14px 18px', borderBottom:'1px solid var(--border)',
-              display:'flex', alignItems:'center', justifyContent:'space-between',
-            }}>
-              <h3 style={{ fontFamily:'var(--font-display)', fontSize:'15px', fontWeight:400 }}>
-                Sin confirmar
-              </h3>
+          <div className={styles.sideCard}>
+            <div className={styles.sideCardHeader}>
+              <h3 className={styles.sideCardTitle}>Sin confirmar</h3>
               {pendientes.length > 0 && (
-                <span style={{
-                  fontSize:'11px', fontWeight:700,
-                  background:'rgba(212,175,55,0.15)', color:'var(--gold)',
-                  border:'1px solid var(--gold-border)', borderRadius:20, padding:'3px 9px',
-                }}>
-                  {pendientes.length}
-                </span>
+                <span className={styles.badge}>{pendientes.length}</span>
               )}
             </div>
             <div>
               {pendientes.length === 0 ? (
-                <p style={{ fontSize:'12px', color:'var(--text-muted)', padding:'14px 18px', textAlign:'center' }}>
+                <p style={{ fontSize: '12px', color: 'var(--text-muted)', padding: '14px 18px', textAlign: 'center' }}>
                   Todos confirmados ✓
                 </p>
               ) : (
@@ -382,18 +326,18 @@ export default function DashboardPage() {
                   const svcs = t.servicios?.map(ts => ts.servicio?.nombre).filter(Boolean) ?? [];
                   return (
                     <div key={t.id} style={{
-                      padding:'10px 18px',
-                      borderBottom: i < pendientes.length-1 ? '1px solid var(--border)' : 'none',
+                      padding: '10px 18px',
+                      borderBottom: i < pendientes.length - 1 ? '1px solid var(--border)' : 'none',
                     }}>
-                      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                        <span style={{ fontSize:'12px', fontWeight:600, color:'var(--text-primary)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>
                           {c.nombre} {c.apellido}
                         </span>
-                        <span style={{ fontSize:'11px', color:'var(--gold)', fontWeight:700 }}>
+                        <span style={{ fontSize: '11px', color: 'var(--gold)', fontWeight: 700 }}>
                           {formatTime(t.fecha_hora)}
                         </span>
                       </div>
-                      <div style={{ fontSize:'10px', color:'var(--text-muted)', marginTop:2 }}>
+                      <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: 2 }}>
                         {svcs[0] || 'Sin servicio'}
                         {t.empleado ? ` · ${t.empleado.nombre}` : ''}
                       </div>
@@ -405,18 +349,13 @@ export default function DashboardPage() {
           </div>
 
           {/* Equipo */}
-          <div style={{
-            background:'var(--bg-surface)', border:'1px solid var(--border)',
-            borderRadius:'var(--radius-lg)', overflow:'hidden',
-          }}>
-            <div style={{ padding:'14px 18px', borderBottom:'1px solid var(--border)' }}>
-              <h3 style={{ fontFamily:'var(--font-display)', fontSize:'15px', fontWeight:400 }}>
-                Equipo hoy
-              </h3>
+          <div className={styles.sideCard}>
+            <div className={styles.sideCardHeader}>
+              <h3 className={styles.sideCardTitle}>Equipo hoy</h3>
             </div>
             <div>
               {empleados.length === 0 ? (
-                <p style={{ fontSize:'12px', color:'var(--text-muted)', padding:14, textAlign:'center' }}>
+                <p style={{ fontSize: '12px', color: 'var(--text-muted)', padding: 14, textAlign: 'center' }}>
                   Sin empleados
                 </p>
               ) : (
@@ -425,20 +364,20 @@ export default function DashboardPage() {
                   const comp    = turnosHoy.filter(t => t.empleado_id === e.id && t.estado === 'completado').length;
                   return (
                     <div key={e.id} style={{
-                      display:'flex', alignItems:'center', gap:10,
-                      padding:'10px 18px', borderBottom:'1px solid var(--border)',
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '10px 18px', borderBottom: '1px solid var(--border)',
                     }}>
                       <Avatar nombre={e.nombre} apellido={e.apellido} size={30} />
-                      <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ fontSize:'12px', fontWeight:600, color:'var(--text-primary)' }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>
                           {e.nombre} {e.apellido}
                         </div>
-                        <div style={{ fontSize:'10px', color:'var(--text-muted)', marginTop:1 }}>
+                        <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: 1 }}>
                           {comp}/{activos} completado{activos !== 1 ? 's' : ''}
                         </div>
                       </div>
                       <div style={{
-                        width:8, height:8, borderRadius:'50%', flexShrink:0,
+                        width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
                         background: activos > 0 ? '#48bb78' : 'var(--text-muted)',
                         boxShadow: activos > 0 ? '0 0 7px rgba(72,187,120,0.55)' : 'none',
                       }} />

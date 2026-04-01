@@ -9,46 +9,119 @@
   left: 0;
   top: 0;
   bottom: 0;
-  z-index: 100;
+  z-index: 200;
+  transition: transform 0.3s ease, width 0.3s ease;
+}
+
+.collapsed {
+  width: 68px;
+}
+
+.collapsed .logoInner {
+  justify-content: center;
+}
+.collapsed .logoText,
+.collapsed .navLabel,
+.collapsed .footer {
+  display: none;
+}
+
+.sidebarOpen {
+  transform: translateX(0);
+}
+
+.collapseBtn {
+  position: absolute;
+  bottom: 60px;
+  right: -12px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+
+.collapseBtn:hover {
+  background: var(--gold);
+  color: white;
+  border-color: var(--gold);
+}
+
+@media (max-width: 1024px) {
+  .collapseBtn {
+    display: none;
+  }
+  .sidebar {
+    transform: translateX(-100%);
+    width: 240px; /* Force fixed width on mobile */
+  }
+  .collapsed {
+    width: 240px;
+  }
+  .collapsed .logoText,
+  .collapsed .navLabel,
+  .collapsed .footer {
+    display: block;
+  }
+  .sidebar.sidebarOpen {
+    transform: translateX(0);
+  }
 }
 
 /* ── Logo ───────────────────────────────────────────────────── */
 .logo {
-  padding: 28px 24px 24px;
+  padding: 24px;
+  height: var(--header-h);
   border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
 }
 .logoInner {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  overflow: hidden;
+  white-space: nowrap;
 }
 .logoIcon {
-  width: 36px;
-  height: 36px;
-  border-radius: 9px;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
   background: var(--gold-dim);
   border: 1px solid var(--gold-border);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 17px;
+  font-size: 16px;
   color: var(--gold);
   flex-shrink: 0;
 }
+.logoText {
+  display: flex;
+  flex-direction: column;
+}
 .logoName {
   font-family: var(--font-display);
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
   line-height: 1.1;
   color: var(--text-primary);
   letter-spacing: -0.01em;
 }
 .logoSub {
-  font-size: 10px;
+  font-size: 9px;
   color: var(--text-muted);
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  margin-top: 2px;
+  margin-top: 1px;
   font-weight: 400;
 }
 
@@ -59,6 +132,7 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+  overflow-y: auto;
 }
 .navSection {
   font-size: 10px;
@@ -71,8 +145,8 @@
 .navLink {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 9px 12px;
+  gap: 12px;
+  padding: 10px 12px;
   border-radius: var(--radius-sm);
   font-size: 13px;
   font-weight: 400;
@@ -81,6 +155,7 @@
   border: 1px solid transparent;
   transition: all 0.15s ease;
   text-decoration: none;
+  white-space: nowrap;
 }
 .navLink:hover {
   color: var(--text-primary);
@@ -101,9 +176,20 @@
 
 /* ── Footer ─────────────────────────────────────────────────── */
 .footer {
-  padding: 16px 24px;
+  padding: 16px;
   border-top: 1px solid var(--border);
   font-size: 11px;
   color: var(--text-muted);
   letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+@media (max-width: 1024px) {
+  .sidebar {
+    transform: translateX(-100%);
+  }
+  .sidebar.sidebarOpen {
+    transform: translateX(0);
+  }
 }

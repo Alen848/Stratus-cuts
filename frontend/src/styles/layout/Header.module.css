@@ -9,6 +9,48 @@
   position: sticky;
   top: 0;
   z-index: 50;
+  gap: 16px;
+}
+
+.menuButton {
+  display: none;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  transition: all 0.2s;
+}
+
+.menuButton:hover {
+  background: var(--bg-hover);
+}
+
+@media (max-width: 1024px) {
+  .header {
+    padding: 0 16px;
+  }
+  .menuButton {
+    display: flex;
+  }
+}
+
+@media (max-width: 640px) {
+  .date {
+    display: none;
+  }
+  .subtitle {
+    display: none;
+  }
+  .title {
+    font-size: 18px;
+  }
 }
 
 .titleBlock {}

@@ -48,10 +48,14 @@
 
     backend-dev.exec = "cd backend && uvicorn app.main:app --reload";
     frontend-dev.exec = "cd frontend && pnpm dev";
-		db-start.exec = "docker compose up -d ";
-  };
-
-  enterShell = ''
+		    db-start.exec = "docker compose up -d ";
+		    db-setup.exec = ''
+		      curl -X POST http://localhost:8000/auth/setup \
+		        -H "Content-Type: application/json" \
+		        -d '{"salon_nombre":"Villan","slug":"villan","username":"admin","password":"admin123"}'
+		    '';
+		  };
+		  enterShell = ''
     echo "💈 SaaS Turnera - Entorno de Desarrollo Listo"
     echo "Tira 'init' para arrancar el proyecto por primera vez."
   '';

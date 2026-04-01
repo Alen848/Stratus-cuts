@@ -10,7 +10,10 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 # echo=True solo en modo DEBUG (evita loggear queries en producción)
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 
-engine = create_engine(DATABASE_URL, echo=DEBUG)
+if DATABASE_URL.startswith("sqlite"):
+    engine = create_engine(DATABASE_URL, echo=DEBUG, connect_args={"check_same_thread": False})
+else:
+    engine = create_engine(DATABASE_URL, echo=DEBUG)
 
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 

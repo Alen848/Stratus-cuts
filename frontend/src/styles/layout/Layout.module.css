@@ -1,0 +1,49 @@
+.layout {
+  display: flex;
+  min-height: 100vh;
+  background: var(--bg-base);
+  width: 100%;
+}
+
+.content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  margin-left: var(--sidebar-w);
+  transition: margin-left 0.3s ease;
+  width: 100%;
+}
+
+.collapsed .content {
+  margin-left: 68px;
+}
+
+.main {
+  flex: 1;
+  padding: 32px;
+  max-width: 1400px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--overlay-bg);
+  backdrop-filter: blur(4px);
+  z-index: 100;
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  .content {
+    margin-left: 0;
+  }
+  .main {
+    padding: 16px;
+  }
+  .overlay {
+    display: block;
+  }
+}

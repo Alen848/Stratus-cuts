@@ -1,4 +1,5 @@
 import { useLocation } from 'react-router-dom';
+import { useApp } from '../../context/AppContext';
 import ThemeToggle from '../ui/ThemeToggle';
 import styles from '../../styles/layout/Header.module.css';
 
@@ -15,6 +16,7 @@ const PAGE_TITLES = {
 
 export default function Header() {
   const { pathname } = useLocation();
+  const { toggleSidebar } = useApp();
   const page = PAGE_TITLES[pathname] ?? { title: '', subtitle: '' };
 
   const dateStr = new Date().toLocaleDateString('es-AR', {
@@ -23,6 +25,14 @@ export default function Header() {
 
   return (
     <header className={styles.header}>
+      <button 
+        className={styles.menuButton} 
+        onClick={toggleSidebar}
+        aria-label="Toggle Menu"
+      >
+        ☰
+      </button>
+
       <div className={styles.titleBlock}>
         <h1 className={styles.title}>{page.title}</h1>
         <p className={styles.subtitle}>{page.subtitle}</p>

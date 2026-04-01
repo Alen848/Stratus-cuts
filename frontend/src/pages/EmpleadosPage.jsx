@@ -8,6 +8,7 @@ import HorariosModal from '../components/empleados/HorariosModal';
 import Avatar     from '../components/ui/Avatar';
 import Button     from '../components/ui/Button';
 import EmptyState from '../components/ui/EmptyState';
+import styles     from '../styles/pages/EmpleadosPage.module.css';
 
 /* ── Helpers de fecha ── */
 function toLocalDateStr(date) {
@@ -64,24 +65,12 @@ function VistaEquipo({ empleados, loading, turnos, onAdd, onEdit, onHorarios, on
   );
 
   return (
-    <div style={{
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-      gap: '16px',
-    }}>
+    <div className={styles.grid}>
       {empleados.map((e, i) => (
         <div
           key={e.id}
-          className="animate-fade"
-          style={{
-            background: 'var(--bg-surface)', border: '1px solid var(--border)',
-            borderRadius: 'var(--radius-lg)', padding: '24px',
-            display: 'flex', flexDirection: 'column', gap: '16px',
-            transition: 'border-color 0.2s, transform 0.2s',
-            animationDelay: `${i * 0.07}s`,
-          }}
-          onMouseEnter={ev => { ev.currentTarget.style.borderColor = 'var(--gold-border)'; ev.currentTarget.style.transform = 'translateY(-2px)'; }}
-          onMouseLeave={ev => { ev.currentTarget.style.borderColor = 'var(--border)'; ev.currentTarget.style.transform = ''; }}
+          className={`${styles.card} animate-fade`}
+          style={{ animationDelay: `${i * 0.07}s` }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             <Avatar nombre={e.nombre} apellido={e.apellido} size={48} />
@@ -108,7 +97,7 @@ function VistaEquipo({ empleados, loading, turnos, onAdd, onEdit, onHorarios, on
             )}
           </div>
 
-          <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+          <div style={{ display: 'flex', gap: '8px', marginTop: '4px', flexWrap: 'wrap' }}>
             <Button size="sm" variant="ghost" onClick={() => onEdit(e)}>Editar</Button>
             <Button size="sm" variant="ghost" onClick={() => onHorarios(e)}>📅 Horarios</Button>
             <Button size="sm" variant="danger" onClick={() => onDelete(e.id)}>✕</Button>
@@ -138,7 +127,6 @@ function VistaEquipo({ empleados, loading, turnos, onAdd, onEdit, onHorarios, on
 /* ════════════════════════════════════════════
    Vista: Sueldos
 ════════════════════════════════════════════ */
-/* ── Persistencia de sueldos pagados en localStorage ── */
 const SUELDOS_KEY = 'turnera_sueldos_pagados';
 
 function getSueldosPagados() {
@@ -163,14 +151,12 @@ function VistaSueldos({ empleados, loading, editEmpleado }) {
   const [mes,  setMes]  = useState(now.getMonth() + 1);
   const [anio, setAnio] = useState(now.getFullYear());
 
-  // Monto personalizado por empleado (override del sueldo_base para este pago)
   const [montos,       setMontos]       = useState({});
   const [editandoBase, setEditandoBase] = useState(null);
   const [editBaseVal,  setEditBaseVal]  = useState('');
   const [loadingReg,   setLoadingReg]   = useState({});
   const [registrados,  setRegistrados]  = useState({});
 
-  // Recarga desde localStorage cada vez que cambia el período o los empleados
   useEffect(() => {
     const result = {};
     empleados.forEach(e => {
@@ -249,11 +235,7 @@ function VistaSueldos({ empleados, loading, editEmpleado }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
       {/* Selector de período */}
-      <div style={{
-        background: 'var(--bg-elevated)', border: '1px solid var(--border)',
-        borderRadius: 'var(--radius)', padding: '16px 20px',
-        display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap',
-      }}>
+      <div className={styles.periodSelector}>
         <span style={{ fontSize: '12px', color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
           Período
         </span>
@@ -273,7 +255,7 @@ function VistaSueldos({ empleados, loading, editEmpleado }) {
             style={{ ...inputStyle, width: '82px' }}
           />
         </div>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
+        <div className={styles.periodActions}>
           {[
             {
               label: 'Este mes',
@@ -297,16 +279,9 @@ function VistaSueldos({ empleados, loading, editEmpleado }) {
       </div>
 
       {/* Tabla */}
-      <div style={{
-        background: 'var(--bg-surface)', border: '1px solid var(--border)',
-        borderRadius: 'var(--radius-lg)', overflow: 'hidden',
-      }}>
+      <div className={styles.tableWrapper}>
         {/* Header */}
-        <div style={{
-          display: 'grid', gridTemplateColumns: '2fr 170px 170px 180px',
-          padding: '10px 20px', background: 'var(--bg-elevated)',
-          borderBottom: '1px solid var(--border)', gap: '12px',
-        }}>
+        <div className={`${styles.tableHeader} ${styles.sueldosGrid}`}>
           {['Profesional', 'Sueldo base', 'A pagar este mes', ''].map(h => (
             <span key={h} style={{
               fontSize: '11px', fontWeight: 500, color: 'var(--text-muted)',
@@ -325,16 +300,7 @@ function VistaSueldos({ empleados, loading, editEmpleado }) {
           const montoAPagar  = getMonto(emp);
 
           return (
-            <div
-              key={emp.id}
-              style={{
-                display: 'grid', gridTemplateColumns: '2fr 170px 170px 180px',
-                padding: '14px 20px', borderBottom: '1px solid var(--border)',
-                alignItems: 'center', gap: '12px', transition: 'background 0.15s',
-              }}
-              onMouseEnter={ev => ev.currentTarget.style.background = 'var(--bg-elevated)'}
-              onMouseLeave={ev => ev.currentTarget.style.background = 'transparent'}
-            >
+            <div key={emp.id} className={`${styles.tableRow} ${styles.sueldosGrid}`}>
               {/* Empleado */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <Avatar nombre={emp.nombre} apellido={emp.apellido} size={32} />
@@ -433,11 +399,7 @@ function VistaSueldos({ empleados, loading, editEmpleado }) {
 
         {/* Totales */}
         {empleados.length > 0 && (
-          <div style={{
-            display: 'grid', gridTemplateColumns: '2fr 170px 170px 180px',
-            padding: '14px 20px', background: 'var(--bg-elevated)',
-            borderTop: '1px solid var(--border-strong)', gap: '12px', alignItems: 'center',
-          }}>
+          <div className={`${styles.tableRow} ${styles.sueldosGrid}`} style={{ background: 'var(--bg-elevated)', borderTop: '1px solid var(--border-strong)', borderBottom: 'none' }}>
             <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
               Total período
             </span>
@@ -472,8 +434,8 @@ function VistaComisiones({ empleados, turnos, loading }) {
   const [comisiones, setComisiones] = useState(loadComisiones());
   const [editandoId, setEditandoId] = useState(null);
   const [editVal, setEditVal]       = useState('');
-  const [registrados, setRegistrados] = useState({});  // emp_id → true si ya registró en este período
-  const [loadingReg, setLoadingReg]   = useState({});
+  const [registrados, setRegistrados] = useState({});
+  const [loadingReg,   setLoadingReg]   = useState({});
 
   const handleEditComision = (id, actual) => {
     setEditandoId(id);
@@ -485,11 +447,9 @@ function VistaComisiones({ empleados, turnos, loading }) {
     saveComision(id, val);
     setComisiones(prev => ({ ...prev, [id]: val }));
     setEditandoId(null);
-    // Resetear estado "registrado" si cambia el porcentaje
     setRegistrados(r => ({ ...r, [id]: false }));
   };
 
-  // Turnos confirmados y completados en el rango (consistente con la caja)
   const turnosFiltrados = useMemo(() => {
     return turnos.filter(t => {
       if (!['confirmado', 'completado'].includes(t.estado)) return false;
@@ -498,7 +458,6 @@ function VistaComisiones({ empleados, turnos, loading }) {
     });
   }, [turnos, desde, hasta]);
 
-  // Resumen por empleado
   const resumen = useMemo(() => {
     return empleados.map(e => {
       const misTurnos = turnosFiltrados.filter(t => t.empleado_id === e.id);
@@ -515,7 +474,6 @@ function VistaComisiones({ empleados, turnos, loading }) {
     comision:  resumen.reduce((s, r) => s + r.comision, 0),
   }), [resumen]);
 
-  // Registrar la comisión de un empleado como gasto en la caja
   const registrarComoGasto = async ({ empleado: e, comision, pct, facturado }) => {
     if (comision <= 0) return;
     try {
@@ -524,7 +482,7 @@ function VistaComisiones({ empleados, turnos, loading }) {
         descripcion:   `Comisión ${e.nombre}${e.apellido ? ' ' + e.apellido : ''} (${pct}%)`,
         monto:          Math.round(comision),
         categoria:     'sueldos',
-        fecha:          hasta,   // se registra en la fecha final del período
+        fecha:          hasta,
         observaciones: `Período ${desde} → ${hasta} · Facturado: $${facturado.toLocaleString('es-AR')}`,
       });
       setRegistrados(r => ({ ...r, [e.id]: true }));
@@ -551,11 +509,7 @@ function VistaComisiones({ empleados, turnos, loading }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
       {/* Filtro de rango */}
-      <div style={{
-        background: 'var(--bg-elevated)', border: '1px solid var(--border)',
-        borderRadius: 'var(--radius)', padding: '16px 20px',
-        display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap',
-      }}>
+      <div className={styles.periodSelector}>
         <span style={{ fontSize: '12px', color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
           Período
         </span>
@@ -564,7 +518,7 @@ function VistaComisiones({ empleados, turnos, loading }) {
           <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>hasta</span>
           <input type="date" value={hasta} onChange={e => { setHasta(e.target.value); setRegistrados({}); }} style={inputStyle} />
         </div>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
+        <div className={styles.periodActions}>
           {[
             { label: 'Este mes', fn: () => { setDesde(primerDiaMes()); setHasta(hoy()); setRegistrados({}); } },
             { label: 'Hoy',      fn: () => { setDesde(hoy()); setHasta(hoy()); setRegistrados({}); } },
@@ -579,18 +533,9 @@ function VistaComisiones({ empleados, turnos, loading }) {
       </div>
 
       {/* Tabla */}
-      <div style={{
-        background: 'var(--bg-surface)', border: '1px solid var(--border)',
-        borderRadius: 'var(--radius-lg)', overflow: 'hidden',
-      }}>
+      <div className={styles.tableWrapper}>
         {/* Header */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '2fr 80px 120px 140px 120px 180px',
-          padding: '10px 20px',
-          background: 'var(--bg-elevated)',
-          borderBottom: '1px solid var(--border)', gap: '12px',
-        }}>
+        <div className={`${styles.tableHeader} ${styles.comisionesGrid}`}>
           {['Profesional', 'Turnos', 'Facturado', 'Comisión %', 'A cobrar', ''].map(h => (
             <span key={h} style={{
               fontSize: '11px', fontWeight: 500,
@@ -610,19 +555,7 @@ function VistaComisiones({ empleados, turnos, loading }) {
           const cargando     = loadingReg[e.id];
 
           return (
-            <div
-              key={e.id}
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '2fr 80px 120px 140px 120px 180px',
-                padding: '14px 20px',
-                borderBottom: '1px solid var(--border)',
-                alignItems: 'center', gap: '12px',
-                transition: 'background 0.15s',
-              }}
-              onMouseEnter={ev => ev.currentTarget.style.background = 'var(--bg-elevated)'}
-              onMouseLeave={ev => ev.currentTarget.style.background = 'transparent'}
-            >
+            <div key={e.id} className={`${styles.tableRow} ${styles.comisionesGrid}`}>
               {/* Empleado */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <Avatar nombre={e.nombre} apellido={e.apellido} size={32} />
@@ -722,14 +655,7 @@ function VistaComisiones({ empleados, turnos, loading }) {
 
         {/* Totales */}
         {resumen.length > 0 && (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '2fr 80px 120px 140px 120px 180px',
-            padding: '14px 20px',
-            background: 'var(--bg-elevated)',
-            borderTop: '1px solid var(--border-strong)',
-            gap: '12px', alignItems: 'center',
-          }}>
+          <div className={`${styles.tableRow} ${styles.comisionesGrid}`} style={{ background: 'var(--bg-elevated)', borderTop: '1px solid var(--border-strong)', borderBottom: 'none' }}>
             <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
               Total período
             </span>
@@ -800,28 +726,14 @@ export default function EmpleadosPage() {
     }
   };
 
-  const tabStyle = (active) => ({
-    padding: '7px 18px', borderRadius: '6px',
-    fontSize: '13px', fontFamily: 'var(--font-body)',
-    fontWeight: active ? 500 : 400, cursor: 'pointer',
-    border: 'none', transition: 'all 0.15s',
-    background: active ? 'var(--bg-surface)' : 'transparent',
-    color: active ? 'var(--text-primary)' : 'var(--text-muted)',
-    boxShadow: active ? '0 1px 4px rgba(0,0,0,0.2)' : 'none',
-  });
-
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+    <div className={styles.container}>
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{
-          display: 'flex', gap: '4px',
-          background: 'var(--bg-elevated)', border: '1px solid var(--border)',
-          borderRadius: '8px', padding: '4px',
-        }}>
-          <button style={tabStyle(vista === 'equipo')}      onClick={() => setVista('equipo')}>Equipo</button>
-          <button style={tabStyle(vista === 'sueldos')}     onClick={() => setVista('sueldos')}>Sueldos</button>
-          <button style={tabStyle(vista === 'comisiones')}  onClick={() => setVista('comisiones')}>Comisiones</button>
+      <div className={styles.topBar}>
+        <div className={styles.tabs}>
+          <button className={`${styles.tab} ${vista === 'equipo' ? styles.tabActive : ''}`}      onClick={() => setVista('equipo')}>Equipo</button>
+          <button className={`${styles.tab} ${vista === 'sueldos' ? styles.tabActive : ''}`}     onClick={() => setVista('sueldos')}>Sueldos</button>
+          <button className={`${styles.tab} ${vista === 'comisiones' ? styles.tabActive : ''}`}  onClick={() => setVista('comisiones')}>Comisiones</button>
         </div>
 
         {vista === 'equipo' && (

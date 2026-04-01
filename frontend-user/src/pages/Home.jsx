@@ -309,6 +309,46 @@ const STYLES = `
   }
 
   .budget-btn:hover { background: #7dbdd8; transform: translateY(-1px); }
+
+  @media (max-width: 768px) {
+    .hero {
+      padding: 4rem 1.5rem 3rem;
+    }
+    .main-layout {
+      padding: 0 1.5rem 6rem;
+    }
+    .budget-bar {
+      padding: 1rem 1.25rem;
+      gap: 1rem;
+    }
+    .budget-detail {
+      display: none;
+    }
+    .budget-total-amount {
+      font-size: 1.3rem;
+    }
+    .budget-btn {
+      padding: 0.7rem 1.25rem;
+      font-size: 0.7rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .hero-title {
+      font-size: 2.2rem;
+    }
+    .budget-left {
+      display: none;
+    }
+    .budget-bar {
+      justify-content: space-between;
+    }
+    .budget-right {
+      width: 100%;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+  }
 `;
 
 export default function Home() {
