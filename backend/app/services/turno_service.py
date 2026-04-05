@@ -113,8 +113,14 @@ def update_turno(db: Session, turno_id: int, turno_update: TurnoUpdate, salon_id
     if not db_turno:
         return None
 
-    check_dia_abierto(db, salon_id, db_turno.fecha_hora.date())
     update_data = turno_update.dict(exclude_unset=True)
+
+    # Si el día está cerrado, solo permitimos cambiar el estado a 'cancelado'
+    # y nada más. Si se intenta cambiar otra cosa, check_dia_abierto lanzará error.
+    solo_cancelando = len(update_data) == 1 and update_data.get("estado") == "cancelado"
+    
+    if not solo_cancelando:
+        check_dia_abierto(db, salon_id, db_turno.fecha_hora.date())
 
     if "fecha_hora" in update_data and update_data["fecha_hora"]:
         nueva_fecha = to_argentina_naive(update_data["fecha_hora"])
@@ -150,7 +156,7 @@ def delete_turno(db: Session, turno_id: int, salon_id: int):
         Turno.salon_id == salon_id,
     ).first()
     if db_turno:
-        check_dia_abierto(db, salon_id, db_turno.fecha_hora.date())
+        # check_dia_abierto(db, salon_id, db_turno.fecha_hora.date())  # Se quita para permitir eliminación siempre
         db.delete(db_turno)
         db.commit()
     return db_turno

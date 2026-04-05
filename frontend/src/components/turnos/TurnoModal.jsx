@@ -379,7 +379,7 @@ export default function TurnoModal({
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div>
               <label style={{ ...labelSt, display: 'block', marginBottom: '6px' }}>Fecha</label>
-              <input type="date" value={form.selectedDate} min={TODAY}
+              <input type="date" value={form.selectedDate}
                 onChange={e => { set('selectedDate', e.target.value); set('selectedTime', ''); }}
                 style={{ ...inputSt, width: '100%' }} required />
             </div>

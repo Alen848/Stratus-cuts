@@ -21,6 +21,8 @@ class CierreCaja(Base):
     
     # Ingreso Manual
     efectivo_real          = Column(Float,   nullable=False)
+    transferencia_real     = Column(Float,   default=0.0)
+    tarjeta_real           = Column(Float,   default=0.0)
     
     # Resultado
     diferencia             = Column(Float,   default=0.0) # real - teorico

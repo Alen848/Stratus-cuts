@@ -10,6 +10,8 @@ class CierreCajaBase(BaseModel):
     total_debito:           float = 0.0
     total_gastos:           float = 0.0
     efectivo_real:          float
+    transferencia_real:     float = 0.0
+    tarjeta_real:           float = 0.0
     diferencia:             float = 0.0
     observaciones:          Optional[str] = None
 

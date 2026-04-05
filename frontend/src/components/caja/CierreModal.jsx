@@ -4,9 +4,11 @@ import Input  from '../ui/Input';
 import Button from '../ui/Button';
 
 export default function CierreModal({ isOpen, onClose, onSubmit, resumen, fecha }) {
-  const [efectivoReal, setEfectivoReal]   = useState('');
-  const [observaciones, setObservaciones] = useState('');
-  const [loading, setLoading]             = useState(false);
+  const [efectivoReal, setEfectivoReal]           = useState('');
+  const [transferenciaReal, setTransferenciaReal] = useState('');
+  const [tarjetaReal, setTarjetaReal]             = useState('');
+  const [observaciones, setObservaciones]         = useState('');
+  const [loading, setLoading]                     = useState(false);
 
   // Totales calculados a partir del resumen
   const saldoAnterior = resumen?.saldo_anterior || 0;
@@ -33,18 +35,24 @@ export default function CierreModal({ isOpen, onClose, onSubmit, resumen, fecha 
   // LOGICA: Saldo Anterior + Ingresos Efectivo (incluye sin método definido) - Gastos
   const teoricoEfectivo = saldoAnterior + ingresosEfectivo - totalGastos;
   
-  const diferencia = (parseFloat(efectivoReal) || 0) - teoricoEfectivo;
+  const difEfectivo      = (parseFloat(efectivoReal)      || 0) - teoricoEfectivo;
+  const difTransferencia = (parseFloat(transferenciaReal) || 0) - totalTransferencia;
+  const difTarjeta       = (parseFloat(tarjetaReal)       || 0) - totalDebito;
+
+  const totalDiferencia  = difEfectivo + difTransferencia + difTarjeta;
 
   useEffect(() => {
     if (isOpen) {
       setEfectivoReal('');
+      setTransferenciaReal('');
+      setTarjetaReal('');
       setObservaciones('');
     }
   }, [isOpen]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (efectivoReal === '') return;
+    if (efectivoReal === '' || transferenciaReal === '' || tarjetaReal === '') return;
     
     try {
       setLoading(true);
@@ -56,7 +64,9 @@ export default function CierreModal({ isOpen, onClose, onSubmit, resumen, fecha 
         total_debito:           totalDebito,
         total_gastos:           totalGastos,
         efectivo_real:          parseFloat(efectivoReal),
-        diferencia:             diferencia,
+        transferencia_real:     parseFloat(transferenciaReal),
+        tarjeta_real:           parseFloat(tarjetaReal),
+        diferencia:             totalDiferencia,
         observaciones:          observaciones
       });
     } finally {
@@ -93,39 +103,69 @@ export default function CierreModal({ isOpen, onClose, onSubmit, resumen, fecha 
             marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--border)',
             display: 'flex', justifyContent: 'space-between', fontSize: '15px', fontWeight: 700 
           }}>
-            <span>Total Teórico en Caja:</span>
+            <span>Efectivo Teórico:</span>
             <span style={{ color: 'var(--gold)' }}>$ {teoricoEfectivo.toLocaleString()}</span>
+          </div>
+
+          <div style={{ marginTop: '8px', display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+            <span>Transf. Teóricas:</span>
+            <span style={{ color: 'var(--text-primary)' }}>$ {totalTransferencia.toLocaleString()}</span>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+            <span>Tarjetas Teóricas:</span>
+            <span style={{ color: 'var(--text-primary)' }}>$ {totalDebito.toLocaleString()}</span>
           </div>
           
           <div style={{ marginTop: '12px', opacity: 0.6, fontSize: '11px', fontStyle: 'italic' }}>
-            * No incluye Transferencias ($ {totalTransferencia.toLocaleString()}) ni Débito ($ {totalDebito.toLocaleString()}) ya que no afectan al efectivo físico. Los ingresos sin método de pago se tratan como efectivo.
+            * Los ingresos sin método de pago se tratan como efectivo.
           </div>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <Input 
-            label="Efectivo Real en Caja" 
+            label="Efectivo Real" 
             type="number" 
             step="0.01"
             value={efectivoReal} 
             onChange={e => setEfectivoReal(e.target.value)}
-            placeholder="Monto contado físicamente..."
+            placeholder="Efectivo contado..."
             required
             autoFocus
           />
 
+          <Input 
+            label="Transferencias Real" 
+            type="number" 
+            step="0.01"
+            value={transferenciaReal} 
+            onChange={e => setTransferenciaReal(e.target.value)}
+            placeholder="Según Homebanking..."
+            required
+          />
+
+          <Input 
+            label="Tarjetas Real" 
+            type="number" 
+            step="0.01"
+            value={tarjetaReal} 
+            onChange={e => setTarjetaReal(e.target.value)}
+            placeholder="Según Lote POS..."
+            required
+          />
+
           <div style={{ 
             padding: '12px', borderRadius: 'var(--radius-sm)', 
-            background: diferencia === 0 ? 'var(--bg-elevated)' : (diferencia > 0 ? 'rgba(72, 187, 120, 0.1)' : 'rgba(229, 62, 62, 0.1)'),
-            border: '1px solid ' + (diferencia === 0 ? 'var(--border)' : (diferencia > 0 ? '#48bb78' : '#e53e3e')),
+            background: totalDiferencia === 0 ? 'var(--bg-elevated)' : (totalDiferencia > 0 ? 'rgba(72, 187, 120, 0.1)' : 'rgba(229, 62, 62, 0.1)'),
+            border: '1px solid ' + (totalDiferencia === 0 ? 'var(--border)' : (totalDiferencia > 0 ? '#48bb78' : '#e53e3e')),
             display: 'flex', justifyContent: 'space-between', alignItems: 'center'
           }}>
-            <span style={{ fontSize: '13px', fontWeight: 500 }}>Diferencia:</span>
+            <span style={{ fontSize: '13px', fontWeight: 500 }}>Diferencia Total:</span>
             <span style={{ 
               fontWeight: 700, 
-              color: diferencia === 0 ? 'var(--text-primary)' : (diferencia > 0 ? '#48bb78' : '#e53e3e') 
+              color: totalDiferencia === 0 ? 'var(--text-primary)' : (totalDiferencia > 0 ? '#48bb78' : '#e53e3e') 
             }}>
-              {diferencia > 0 ? '+' : ''} $ {diferencia.toLocaleString()}
+              {totalDiferencia > 0 ? '+' : ''} $ {totalDiferencia.toLocaleString()}
             </span>
           </div>
         </div>

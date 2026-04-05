@@ -190,6 +190,8 @@ def create_cierre_caja(db: Session, cierre: CierreCajaCreate, salon_id: int):
             total_debito=cierre.total_debito,
             total_gastos=cierre.total_gastos,
             efectivo_real=cierre.efectivo_real,
+            transferencia_real=cierre.transferencia_real,
+            tarjeta_real=cierre.tarjeta_real,
             diferencia=cierre.diferencia,
             observaciones=cierre.observaciones,
         )
