@@ -134,19 +134,16 @@
   gap: 2px;
   overflow-y: auto;
 }
-.navSection {
-  font-size: 10px;
-  color: var(--text-muted);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  padding: 0 12px 10px;
-  font-weight: 600;
+.navDivider {
+  height: 1px;
+  background: var(--border);
+  margin: 6px 12px 8px;
 }
 .navLink {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
+  gap: 11px;
+  padding: 9px 12px;
   border-radius: var(--radius-sm);
   font-size: 13px;
   font-weight: 400;
@@ -162,7 +159,7 @@
   background: var(--bg-elevated);
 }
 .navLinkActive {
-  font-weight: 600;
+  font-weight: 500;
   color: var(--gold-light);
   background: var(--gold-dim);
   border-color: var(--gold-border);

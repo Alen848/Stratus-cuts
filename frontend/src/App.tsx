@@ -15,6 +15,7 @@ import ServiciosPage     from './pages/ServiciosPage';
 import CajaPage          from './pages/CajaPage';
 import AnalisisPage          from './pages/AnalisisPage';
 import RecordatoriosPage     from './pages/RecordatoriosPage';
+import ConfiguracionPage    from './pages/ConfiguracionPage';
 import './styles/globals.css';
 
 function PrivateRoutes() {
@@ -33,6 +34,7 @@ function PrivateRoutes() {
           <Route path="caja"        element={<CajaPage />}       />
           <Route path="analisis"        element={<AnalisisPage />}        />
           <Route path="recordatorios"   element={<RecordatoriosPage />}   />
+          <Route path="configuracion"   element={<ConfiguracionPage />}   />
         </Route>
       </Routes>
     </AppProvider>

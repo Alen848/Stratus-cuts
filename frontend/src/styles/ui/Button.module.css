@@ -25,11 +25,11 @@
 .primary {
   background: var(--gold);
   color: #ffffff;
-  box-shadow: 0 2px 12px rgba(77, 144, 240, 0.35);
+  box-shadow: 0 1px 8px rgba(77, 144, 240, 0.25);
 }
 .primary:hover:not(:disabled) {
   background: var(--gold-light);
-  box-shadow: 0 4px 18px rgba(77, 144, 240, 0.5);
+  box-shadow: 0 2px 14px rgba(77, 144, 240, 0.38);
 }
 
 .secondary {

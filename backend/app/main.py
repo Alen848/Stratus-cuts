@@ -6,7 +6,7 @@ from app.database.connection import Base, engine
 from app.models import (
     salon, cliente, empleado, servicio, turno,
     turno_servicio, pago, gasto, cierre_caja,
-    horario_empleado, bloqueo_agenda, usuario,
+    horario_empleado, horario_salon, config_salon, bloqueo_agenda, usuario,
 )
 
 from app.routes.auth            import router as auth_router
@@ -16,6 +16,8 @@ from app.routes.servicios       import router as servicios_router
 from app.routes.turnos          import router as turns_router
 from app.routes.pagos           import pagos_router, gastos_router, caja_router
 from app.routes.horarios_empleado import router as horarios_empleado_router
+from app.routes.horarios_salon    import router as horarios_salon_router
+from app.routes.config_salon      import router as config_salon_router
 from app.routes.bloqueos_agenda import router as bloqueos_agenda_router
 from app.routes.usuarios        import router as usuarios_router
 from app.routes.public          import router as public_router
@@ -54,6 +56,8 @@ app.include_router(pagos_router)
 app.include_router(gastos_router)
 app.include_router(caja_router)
 app.include_router(horarios_empleado_router)
+app.include_router(horarios_salon_router)
+app.include_router(config_salon_router)
 app.include_router(bloqueos_agenda_router)
 app.include_router(usuarios_router)
 

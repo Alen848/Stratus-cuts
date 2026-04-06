@@ -74,6 +74,18 @@ export const caja = {
   cerrar:    (data)      => api.post('/caja/cerrar', data),
 };
 
+// ─── Horario del salón  →  /horarios-salon ───────────────────────────────────
+export const horariosSalon = {
+  getAll: ()       => api.get('/horarios-salon/'),
+  update: (data)   => api.put('/horarios-salon/', data),
+};
+
+// ─── Configuración del salón  →  /config-salon ───────────────────────────────
+export const configSalon = {
+  get:    ()       => api.get('/config-salon/'),
+  update: (data)   => api.put('/config-salon/', data),
+};
+
 // ─── Comisiones (helper local, no requiere endpoint dedicado) ─────────────────
 // Calcula la comisión de un empleado a partir de los datos de caja.
 // porcentaje: número entre 0 y 100 (ej: 30 para 30%)

@@ -4,14 +4,15 @@ import ThemeToggle from '../ui/ThemeToggle';
 import styles from '../../styles/layout/Header.module.css';
 
 const PAGE_TITLES = {
-  '/':          { title: 'Dashboard',  subtitle: 'Resumen general del negocio'  },
-  '/turnos':    { title: 'Turnos',     subtitle: 'Gestión de citas y reservas'  },
-  '/clientes':  { title: 'Clientes',   subtitle: 'Base de datos de clientes'    },
-  '/empleados': { title: 'Empleados',  subtitle: 'Equipo de profesionales'      },
-  '/servicios': { title: 'Servicios',  subtitle: 'Catálogo de servicios'        },
-  '/caja':      { title: 'Caja',       subtitle: 'Ingresos, gastos y ganancias' },
-  '/analisis':       { title: 'Análisis',       subtitle: 'Estadísticas del negocio'         },
-  '/recordatorios':  { title: 'Recordatorios', subtitle: 'Avisos por WhatsApp a clientes'   },
+  '/':              { title: 'Dashboard',     subtitle: 'Resumen del día'                 },
+  '/turnos':        { title: 'Turnos',        subtitle: 'Gestión de citas y reservas'     },
+  '/clientes':      { title: 'Clientes',      subtitle: 'Base de datos de clientes'       },
+  '/empleados':     { title: 'Empleados',     subtitle: 'Equipo de profesionales'         },
+  '/servicios':     { title: 'Servicios',     subtitle: 'Catálogo de servicios'           },
+  '/caja':          { title: 'Caja',          subtitle: 'Ingresos, gastos y cierre'       },
+  '/analisis':      { title: 'Análisis',      subtitle: 'Estadísticas del negocio'        },
+  '/recordatorios': { title: 'Recordatorios', subtitle: 'Avisos por WhatsApp a clientes'  },
+  '/configuracion': { title: 'Configuración', subtitle: 'Ajustes del salón'               },
 };
 
 export default function Header() {

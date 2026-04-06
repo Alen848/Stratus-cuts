@@ -22,18 +22,17 @@
 }
 
 .header {
-  padding: 20px 24px;
+  padding: 18px 24px;
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: var(--bg-elevated);
 }
 
 .title {
   font-family: var(--font-display);
-  font-size: 20px;
-  font-weight: 600;
+  font-size: 17px;
+  font-weight: 500;
   color: var(--text-primary);
   letter-spacing: -0.01em;
 }

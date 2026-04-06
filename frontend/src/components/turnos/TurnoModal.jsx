@@ -1,20 +1,38 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import Modal  from '../ui/Modal';
 import Input  from '../ui/Input';
 import Button from '../ui/Button';
-import { pagos as pagosApi } from '../../api/api';
+import { pagos as pagosApi, horariosSalon as horariosSalonApi } from '../../api/api';
 
 const ESTADOS = ['pendiente', 'confirmado', 'completado', 'cancelado'];
 const METODOS = ['efectivo', 'débito', 'transferencia'];
 
-const TIME_SLOTS = (() => {
+// Fallback: slots de 09:00 a 20:00 cuando no hay config de salón
+const FALLBACK_TIME_SLOTS = (() => {
   const slots = [];
-  for (let h = 10; h <= 20; h++) {
+  for (let h = 9; h <= 20; h++) {
     slots.push(`${String(h).padStart(2, '0')}:00`);
     if (h < 20) slots.push(`${String(h).padStart(2, '0')}:30`);
   }
   return slots;
 })();
+
+
+function buildSlotsFromHorario(horario) {
+  if (!horario || !horario.activo) return [];
+  const [hA, mA] = horario.hora_apertura.slice(0, 5).split(':').map(Number);
+  const [hC, mC] = horario.hora_cierre.slice(0, 5).split(':').map(Number);
+  const slots = [];
+  let totalMin = hA * 60 + mA;
+  const endMin  = hC * 60 + mC;
+  while (totalMin < endMin) {
+    const h = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    slots.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
+    totalMin += 30;
+  }
+  return slots;
+}
 
 // Usar fecha LOCAL, no UTC (evita que después de las 21hs ARG los slots de hoy se marquen como pasados)
 const _d = new Date();
@@ -32,6 +50,120 @@ function turnoLocalDate(fechaHora) {
   return toLocalDateStr(d);
 }
 
+// ── Combobox de clientes ──────────────────────────────────────────────────────
+function ClienteCombobox({ clientes, value, onChange }) {
+  const [query, setQuery]     = useState('');
+  const [open,  setOpen]      = useState(false);
+  const wrapperRef            = useRef(null);
+
+  // Sincronizar input al valor seleccionado externo (ej: al editar turno)
+  useEffect(() => {
+    if (value) {
+      const c = clientes.find(c => c.id === Number(value));
+      if (c) setQuery(`${c.nombre} ${c.apellido || ''}`.trim());
+    } else {
+      setQuery('');
+    }
+  }, [value, clientes]);
+
+  // Cerrar al hacer click fuera
+  useEffect(() => {
+    const handler = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const filtered = useMemo(() => {
+    if (!query.trim()) return clientes.slice(0, 50);
+    const q = query.toLowerCase();
+    return clientes
+      .filter(c => `${c.nombre} ${c.apellido || ''}`.toLowerCase().includes(q))
+      .slice(0, 50);
+  }, [query, clientes]);
+
+  const handleSelect = (c) => {
+    setQuery(`${c.nombre} ${c.apellido || ''}`.trim());
+    onChange(c.id);
+    setOpen(false);
+  };
+
+  const handleInputChange = (e) => {
+    setQuery(e.target.value);
+    onChange('');   // limpiar selección al escribir
+    setOpen(true);
+  };
+
+  const handleClear = () => {
+    setQuery('');
+    onChange('');
+    setOpen(false);
+  };
+
+  return (
+    <div ref={wrapperRef} style={{ position: 'relative' }}>
+      <label style={{ ...labelSt, display: 'block', marginBottom: '6px' }}>Cliente</label>
+      <div style={{ position: 'relative' }}>
+        <input
+          type="text"
+          value={query}
+          onChange={handleInputChange}
+          onFocus={() => setOpen(true)}
+          placeholder="Buscar por nombre o apellido..."
+          autoComplete="off"
+          style={{ ...inputSt, paddingRight: '28px' }}
+        />
+        {query && (
+          <button type="button" onClick={handleClear} style={{
+            position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)',
+            background: 'none', border: 'none', cursor: 'pointer',
+            color: 'var(--text-muted)', fontSize: '14px', lineHeight: 1, padding: 0,
+          }}>×</button>
+        )}
+      </div>
+      {open && filtered.length > 0 && (
+        <div style={{
+          position: 'absolute', zIndex: 200, top: 'calc(100% + 4px)', left: 0, right: 0,
+          background: 'var(--bg-surface)', border: '1px solid var(--border-strong)',
+          borderRadius: 'var(--radius-sm)', boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
+          maxHeight: '180px', overflowY: 'auto',
+        }}>
+          {filtered.map(c => (
+            <button key={c.id} type="button" onMouseDown={() => handleSelect(c)} style={{
+              display: 'block', width: '100%', textAlign: 'left',
+              padding: '8px 12px', background: 'none', border: 'none',
+              color: 'var(--text-primary)', fontSize: '13px', cursor: 'pointer',
+              fontFamily: 'var(--font-body)',
+              borderBottom: '1px solid var(--border)',
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-elevated)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'none'}
+            >
+              {c.nombre} {c.apellido || ''}
+              {c.telefono && (
+                <span style={{ marginLeft: '8px', fontSize: '11px', color: 'var(--text-muted)' }}>
+                  {c.telefono}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+      {open && query.trim() && filtered.length === 0 && (
+        <div style={{
+          position: 'absolute', zIndex: 200, top: 'calc(100% + 4px)', left: 0, right: 0,
+          background: 'var(--bg-surface)', border: '1px solid var(--border-strong)',
+          borderRadius: 'var(--radius-sm)', padding: '10px 12px',
+          color: 'var(--text-muted)', fontSize: '12px',
+        }}>
+          Sin resultados para "{query}"
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Toggle modo ───────────────────────────────────────────────────────────────
 function ModoToggle({ modo, onChange }) {
   return (
@@ -40,7 +172,7 @@ function ModoToggle({ modo, onChange }) {
       border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
       padding: '3px', gap: '2px',
     }}>
-      {[['cliente', 'Con cliente'], ['walkin', 'Sin reserva (walk-in)']].map(([val, label]) => (
+      {[['cliente', 'Con cliente'], ['walkin', 'Cliente sin turno']].map(([val, label]) => (
         <button key={val} type="button" onClick={() => onChange(val)} style={{
           flex: 1, padding: '7px 0', fontSize: '12px', fontFamily: 'var(--font-body)',
           fontWeight: modo === val ? 600 : 400, cursor: 'pointer',
@@ -55,7 +187,10 @@ function ModoToggle({ modo, onChange }) {
 }
 
 // ── Grilla de slots ───────────────────────────────────────────────────────────
-function SlotGrid({ selectedDate, selectedTime, onSelect, turnosDelDia, duracionTotal, turnoEditandoId }) {
+// ignorarOcupados=true para walk-in: puede coincidir con turnos ya existentes
+// y puede seleccionar horas pasadas (para registrar clientes que ya pasaron).
+// En ambos modos se respetan los horarios del salón (diaCerrado y slotsProp).
+function SlotGrid({ selectedDate, selectedTime, onSelect, turnosDelDia, duracionTotal, turnoEditandoId, ignorarOcupados = false, diaCerrado = false, slots: slotsProp }) {
   if (!selectedDate) {
     return (
       <div style={{
@@ -68,7 +203,22 @@ function SlotGrid({ selectedDate, selectedTime, onSelect, turnosDelDia, duracion
     );
   }
 
+  if (diaCerrado) {
+    return (
+      <div style={{
+        padding: '20px', background: 'var(--bg-elevated)', border: '1px dashed var(--border)',
+        borderRadius: 'var(--radius-sm)', textAlign: 'center',
+        color: 'var(--text-muted)', fontSize: '12px',
+      }}>
+        El salón está cerrado ese día
+      </div>
+    );
+  }
+
+  const slots = slotsProp || FALLBACK_TIME_SLOTS;
+
   const isOccupied = (slotTime) => {
+    if (ignorarOcupados) return false;
     const slotStart = new Date(`${selectedDate}T${slotTime}:00`);
     const slotEnd   = new Date(slotStart.getTime() + duracionTotal * 60 * 1000);
     return turnosDelDia.some(t => {
@@ -82,6 +232,7 @@ function SlotGrid({ selectedDate, selectedTime, onSelect, turnosDelDia, duracion
   };
 
   const isPast = (slotTime) => {
+    if (ignorarOcupados) return false; // walk-in puede registrar horas pasadas
     if (selectedDate > TODAY) return false;
     if (selectedDate < TODAY) return true;
     return new Date(`${selectedDate}T${slotTime}:00`) <= new Date();
@@ -90,7 +241,7 @@ function SlotGrid({ selectedDate, selectedTime, onSelect, turnosDelDia, duracion
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '4px' }}>
-        {TIME_SLOTS.map(slot => {
+        {slots.map(slot => {
           const occupied = isOccupied(slot);
           const past     = isPast(slot);
           const selected = selectedTime === slot;
@@ -164,8 +315,9 @@ export default function TurnoModal({
     observaciones: '',
     walkin_telefono: '', walkin_monto: '',
   });
-  const [loading, setLoading] = useState(false);
-  const [validError, setValidError] = useState('');
+  const [loading, setLoading]         = useState(false);
+  const [validError, setValidError]   = useState('');
+  const [horariosSalon, setHorariosSalon] = useState([]);
   const isEdit = Boolean(turno);
 
   const duracionTotal = useMemo(() =>
@@ -183,6 +335,26 @@ export default function TurnoModal({
       ? delDia.filter(t => t.empleado_id === Number(form.empleado_id))
       : delDia;
   }, [turnos, form.selectedDate, form.empleado_id]);
+
+  // Horario del salón para el día seleccionado (0=Lun … 6=Dom via weekday())
+  const { slotsDelDia, diaCerrado } = useMemo(() => {
+    if (!form.selectedDate) return { slotsDelDia: FALLBACK_TIME_SLOTS, diaCerrado: false };
+    const d = new Date(form.selectedDate + 'T00:00:00');
+    // JS getDay(): 0=Dom,1=Lun...6=Sab  →  weekday(): 0=Lun...6=Dom
+    const weekday = (d.getDay() + 6) % 7;
+    const horario = horariosSalon.find(h => h.dia_semana === weekday);
+    if (!horario) return { slotsDelDia: FALLBACK_TIME_SLOTS, diaCerrado: false };
+    if (!horario.activo) return { slotsDelDia: [], diaCerrado: true };
+    return { slotsDelDia: buildSlotsFromHorario(horario), diaCerrado: false };
+  }, [form.selectedDate, horariosSalon]);
+
+  // Cargar horarios del salón una sola vez cuando se abre el modal
+  useEffect(() => {
+    if (!isOpen || horariosSalon.length > 0) return;
+    horariosSalonApi.getAll()
+      .then(res => setHorariosSalon(res.data || []))
+      .catch(() => {});
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -228,7 +400,7 @@ export default function TurnoModal({
     if (!form.selectedDate || !form.selectedTime) { setValidError('Seleccioná fecha y horario'); return; }
     if (!form.empleado_id)                         { setValidError('Seleccioná un profesional'); return; }
     if (form.servicios_ids.length === 0)           { setValidError('Seleccioná al menos un servicio'); return; }
-    if (modo === 'cliente' && !form.cliente_id)    { setValidError('Seleccioná un cliente o usá modo walk-in'); return; }
+    if (modo === 'cliente' && !form.cliente_id)    { setValidError('Seleccioná un cliente o usá el modo "Cliente sin turno"'); return; }
 
     try {
       setLoading(true);
@@ -299,11 +471,11 @@ export default function TurnoModal({
             </Input>
 
             {modo === 'cliente' && (
-              <Input label="Cliente" as="select" value={form.cliente_id}
-                onChange={e => set('cliente_id', e.target.value)} required>
-                <option value="">Seleccionar...</option>
-                {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre} {c.apellido || ''}</option>)}
-              </Input>
+              <ClienteCombobox
+                clientes={clientes}
+                value={form.cliente_id}
+                onChange={(id) => set('cliente_id', id)}
+              />
             )}
 
             {modo === 'walkin' && (
@@ -313,7 +485,7 @@ export default function TurnoModal({
                 display: 'flex', flexDirection: 'column', gap: '10px',
               }}>
                 <span style={{ fontSize: '11px', color: 'var(--gold)', fontWeight: 500, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                  Walk-in
+                  Cliente sin turno
                 </span>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                   <div>
@@ -400,6 +572,9 @@ export default function TurnoModal({
                 turnosDelDia={turnosDelDia}
                 duracionTotal={duracionTotal}
                 turnoEditandoId={turno?.id}
+                ignorarOcupados={modo === 'walkin'}
+                diaCerrado={diaCerrado}
+                slots={slotsDelDia}
               />
             </div>
           </div>

@@ -86,6 +86,7 @@
    ════════════════════════════════════════════════════════════════ */
 :root {
   --radius-sm:    6px;
+  --radius:       8px;
   --radius-md:    10px;
   --radius-lg:    16px;
 
@@ -93,7 +94,13 @@
   --font-body:    'Inter', system-ui, sans-serif;
 
   --sidebar-w:    240px;
-  --header-h:     64px;
+  --header-h:     58px;
+
+  /* Aliases semánticos para colores de estado */
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger:  var(--danger);
+  --color-info:    var(--info);
 }
 
 /* ════════════════════════════════════════════════════════════════

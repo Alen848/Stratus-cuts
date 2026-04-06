@@ -238,7 +238,7 @@ export default function DashboardPage() {
                       const svcs   = t.servicios?.map(ts => ts.servicio?.nombre).filter(Boolean) ?? [];
                       const nombre = c.nombre
                         ? `${c.nombre}${c.apellido ? ' '+c.apellido : ''}`.trim()
-                        : 'Walk-in';
+                        : 'Sin turno';
 
                       return (
                         <div

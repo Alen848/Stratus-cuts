@@ -3,14 +3,16 @@ import { useApp } from '../../context/AppContext';
 import styles from '../../styles/layout/SideBar.module.css';
 
 const NAV_ITEMS = [
-  { to: '/',          icon: '◈', label: 'Dashboard'  },
-  { to: '/turnos',    icon: '◷', label: 'Turnos'     },
-  { to: '/clientes',  icon: '◎', label: 'Clientes'   },
-  { to: '/empleados', icon: '◉', label: 'Empleados'  },
-  { to: '/servicios', icon: '◆', label: 'Servicios'  },
+  { to: '/',              icon: '◈', label: 'Dashboard'     },
+  { to: '/turnos',        icon: '◷', label: 'Turnos'        },
+  { to: '/clientes',      icon: '◎', label: 'Clientes'      },
+  { to: '/empleados',     icon: '◉', label: 'Empleados'     },
+  { to: '/servicios',     icon: '◆', label: 'Servicios'     },
   { to: '/caja',          icon: '◈', label: 'Caja'          },
   { to: '/analisis',      icon: '◑', label: 'Análisis'      },
   { to: '/recordatorios', icon: '◎', label: 'Recordatorios' },
+  null,
+  { to: '/configuracion', icon: '◇', label: 'Configuración' },
 ];
 
 export default function Sidebar() {
@@ -18,8 +20,8 @@ export default function Sidebar() {
 
   return (
     <aside className={`
-      ${styles.sidebar} 
-      ${isSidebarOpen ? styles.sidebarOpen : ''} 
+      ${styles.sidebar}
+      ${isSidebarOpen ? styles.sidebarOpen : ''}
       ${isSidebarCollapsed ? styles.collapsed : ''}
     `}>
 
@@ -34,22 +36,25 @@ export default function Sidebar() {
       </div>
 
       <nav className={styles.nav}>
-        <div className={styles.navSection}>{isSidebarCollapsed ? '···' : 'Navegación'}</div>
-        {NAV_ITEMS.map(({ to, icon, label }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={to === '/'}
-            onClick={closeSidebar}
-            title={isSidebarCollapsed ? label : ''}
-            className={({ isActive }) =>
-              `${styles.navLink} ${isActive ? styles.navLinkActive : ''}`
-            }
-          >
-            <span className={styles.navIcon}>{icon}</span>
-            <span className={styles.navLabel}>{label}</span>
-          </NavLink>
-        ))}
+        {NAV_ITEMS.map((item, i) =>
+          item === null ? (
+            <div key={`divider-${i}`} className={styles.navDivider} />
+          ) : (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.to === '/'}
+              onClick={closeSidebar}
+              title={isSidebarCollapsed ? item.label : ''}
+              className={({ isActive }) =>
+                `${styles.navLink} ${isActive ? styles.navLinkActive : ''}`
+              }
+            >
+              <span className={styles.navIcon}>{item.icon}</span>
+              <span className={styles.navLabel}>{item.label}</span>
+            </NavLink>
+          )
+        )}
       </nav>
 
       <button className={styles.collapseBtn} onClick={toggleCollapse}>

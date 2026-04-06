@@ -1,8 +1,9 @@
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 from app.models import Turno, TurnoServicio, Servicio, HorarioEmpleado
+from app.services.horario_salon_service import get_horarios as get_salon_horarios
 from app.schemas.turno import TurnoCreate, TurnoUpdate
-from datetime import timedelta, date, datetime, time, timezone
+from datetime import timedelta, date, datetime, timezone
 from fastapi import HTTPException
 from app.services.pago_service import check_dia_abierto
 
@@ -35,10 +36,28 @@ def get_turnos(db: Session, salon_id: int, skip: int = 0, limit: int = 100):
     ).filter(Turno.salon_id == salon_id).offset(skip).limit(limit).all()
 
 
+def _check_horario_salon(db: Session, salon_id: int, fecha_hora: datetime):
+    """Valida que el turno esté dentro del horario del salón configurado."""
+    dia_semana = fecha_hora.weekday()  # 0=Lunes...6=Domingo
+    salon_horarios = {h.dia_semana: h for h in get_salon_horarios(db, salon_id)}
+    horario = salon_horarios.get(dia_semana)
+    if horario is None:
+        return  # No debería ocurrir con get_salon_horarios, pero por seguridad
+    if not horario.activo:
+        raise HTTPException(status_code=400, detail="El salón está cerrado ese día.")
+    hora_turno = fecha_hora.time()
+    if hora_turno < horario.hora_apertura or hora_turno >= horario.hora_cierre:
+        raise HTTPException(
+            status_code=400,
+            detail=f"El turno cae fuera del horario del salón ({horario.hora_apertura.strftime('%H:%M')} – {horario.hora_cierre.strftime('%H:%M')}).",
+        )
+
+
 def create_turno(db: Session, turno: TurnoCreate, salon_id: int):
     # 1. Verificar si el día ya está cerrado
     nuevo_inicio = to_argentina_naive(turno.fecha_hora)
     check_dia_abierto(db, salon_id, nuevo_inicio.date())
+    _check_horario_salon(db, salon_id, nuevo_inicio)
 
     # 2. Obtener servicios y calcular duración
     servicios_db = db.query(Servicio).filter(
@@ -125,6 +144,7 @@ def update_turno(db: Session, turno_id: int, turno_update: TurnoUpdate, salon_id
     if "fecha_hora" in update_data and update_data["fecha_hora"]:
         nueva_fecha = to_argentina_naive(update_data["fecha_hora"])
         check_dia_abierto(db, salon_id, nueva_fecha.date())
+        _check_horario_salon(db, salon_id, nueva_fecha)
         update_data["fecha_hora"] = nueva_fecha
 
     if "servicios_ids" in update_data:
@@ -171,18 +191,44 @@ def get_horarios_semanales(db: Session, empleado_id: int, fecha_inicio: date, sa
     ).all()
     config_dias = {h.dia_semana: h for h in horarios_laborales}
 
+    # Horarios del salón (con defaults si no hay configuración guardada)
+    salon_dias = {h.dia_semana: h for h in get_salon_horarios(db, salon_id)}
+
     for i in range(7):
         fecha_actual = fecha_inicio + timedelta(days=i)
         dia_semana   = fecha_actual.weekday()
 
-        if dia_semana not in config_dias:
+        # Si el salón tiene configurado ese día como cerrado → sin slots
+        salon_dia = salon_dias.get(dia_semana)
+        if salon_dia is not None and not salon_dia.activo:
             resultado[fecha_actual.isoformat()] = []
             continue
 
-        config = config_dias[dia_semana]
+        # Determinar el rango horario efectivo:
+        # - Si el empleado tiene config propia → intersectar con salón
+        # - Si no tiene config → usar el horario del salón directamente
+        if dia_semana in config_dias:
+            config = config_dias[dia_semana]
+            hora_inicio_efectiva = config.hora_inicio
+            hora_fin_efectiva    = config.hora_fin
+            if salon_dia is not None:
+                hora_inicio_efectiva = max(hora_inicio_efectiva, salon_dia.hora_apertura)
+                hora_fin_efectiva    = min(hora_fin_efectiva,    salon_dia.hora_cierre)
+        elif salon_dia is not None:
+            # Sin horario propio → heredar del salón
+            hora_inicio_efectiva = salon_dia.hora_apertura
+            hora_fin_efectiva    = salon_dia.hora_cierre
+        else:
+            resultado[fecha_actual.isoformat()] = []
+            continue
+
+        if hora_inicio_efectiva >= hora_fin_efectiva:
+            resultado[fecha_actual.isoformat()] = []
+            continue
+
         slots  = []
-        actual = datetime.combine(fecha_actual, config.hora_inicio)
-        fin    = datetime.combine(fecha_actual, config.hora_fin)
+        actual = datetime.combine(fecha_actual, hora_inicio_efectiva)
+        fin    = datetime.combine(fecha_actual, hora_fin_efectiva)
 
         turnos_dia = db.query(Turno).filter(
             Turno.salon_id == salon_id,

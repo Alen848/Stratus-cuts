@@ -6,6 +6,8 @@ from .turno import Turno
 from .turno_servicio import TurnoServicio
 from .pago import Pago
 from .horario_empleado import HorarioEmpleado
+from .horario_salon import HorarioSalon
+from .config_salon import ConfigSalon
 from .bloqueo_agenda import BloqueoAgenda
 from .usuario import Usuario
 from .gasto import Gasto

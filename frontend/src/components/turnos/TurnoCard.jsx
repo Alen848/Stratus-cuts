@@ -34,7 +34,7 @@ export default function TurnoCard({ turno, onEdit, onDelete }) {
         )}
         <div>
           <div className={`${styles.clientName} ${isWalkin ? styles.walkinName : ''}`}>
-            {isWalkin ? 'Walk-in' : `${cliente.nombre} ${cliente.apellido || ''}`}
+            {isWalkin ? 'Sin turno' : `${cliente.nombre} ${cliente.apellido || ''}`}
           </div>
           <div className={styles.clientInfo}>
             {isWalkin
@@ -60,7 +60,7 @@ export default function TurnoCard({ turno, onEdit, onDelete }) {
           <Badge variant={estadoColor(turno.estado)}>
             {turno.estado?.charAt(0).toUpperCase() + turno.estado?.slice(1)}
           </Badge>
-          {isWalkin && <Badge variant="warning">Walk-in</Badge>}
+          {isWalkin && <Badge variant="warning">Sin turno</Badge>}
         </div>
         {servicios.length > 0 && (
           <div className={styles.serviceList}>
