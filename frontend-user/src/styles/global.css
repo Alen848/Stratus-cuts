@@ -1,25 +1,34 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=Inter:wght@300;400;500&display=swap');
 
 :root {
-  --bg:           #080c14;
-  --bg-2:         #0d1220;
-  --border:       rgba(255, 255, 255, 0.1);
-  --border-hover: rgba(95, 168, 200, 0.35);
-  --accent:       #5fa8c8;
-  --accent-light: #7dbdd8;
-  --accent-glow:  rgba(95, 168, 200, 0.35);
-  --gold:         #d4c9b0;
-  --text:         #eeeae3;
-  --text-primary: #eeeae3;
-  --muted:        rgba(255, 255, 255, 0.7);
-  --text-muted:   rgba(255, 255, 255, 0.7);
-  --text-faint:   rgba(255, 255, 255, 0.5);
-  --card:         #0d1220;
-  --success:      #34d399;
-  --font-serif:   'DM Serif Display', serif;
-  --font-sans:    'DM Sans', sans-serif;
-  --font-display: 'DM Serif Display', serif;
-  --font-body:    'DM Sans', sans-serif;
+  /* ── Fondos ── */
+  --bg:           #0c0c0b;
+  --bg-surface:   #161614;
+  --bg-card:      #1c1c1a;
+
+  /* ── Acento: crema neutro — sofisticado, sin temperatura ── */
+  --accent:       #c6bfb6;
+  --accent-hi:    #dbd4cb;
+  --accent-dim:   rgba(198,191,182,0.1);
+  --accent-rgb:   198,191,182;
+
+  /* ── Bordes ── */
+  --border:       rgba(255,255,255,0.06);
+  --border-md:    rgba(255,255,255,0.1);
+  --border-accent:rgba(198,191,182,0.18);
+
+  /* ── Texto ── */
+  --text:         #ece8e2;
+  --text-muted:   rgba(236,232,226,0.48);
+  --text-faint:   rgba(236,232,226,0.26);
+
+  /* ── Semánticos ── */
+  --success:      #7ab89a;
+  --danger:       rgba(220,90,90,0.85);
+
+  /* ── Tipografía ── */
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-body:    'Inter', system-ui, sans-serif;
 }
 
 *, *::before, *::after {
@@ -30,14 +39,13 @@
 
 html {
   scroll-behavior: smooth;
-  font-size: 18px;
 }
 
 body {
-  background: var(--bg);
-  color: var(--text-primary);
-  font-family: var(--font-sans);
-  font-size: 1rem;
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 16px;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -49,16 +57,11 @@ body {
   min-height: 100vh;
 }
 
-/* 
-  IMPORTANTE: la animación de main NO puede usar transform.
-  Cualquier transform en un ancestro rompe position:fixed en los hijos.
-  Solo usamos opacity para el fade-in de página.
-*/
 @keyframes pageEnter {
   from { opacity: 0; }
   to   { opacity: 1; }
 }
 
 main {
-  animation: pageEnter 0.4s ease forwards;
+  animation: pageEnter 0.35s ease forwards;
 }

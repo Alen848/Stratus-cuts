@@ -1,8 +1,29 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 
+const API_URL  = import.meta.env.VITE_API_URL  || '';
+const SALON_SLUG = import.meta.env.VITE_SALON_SLUG || '';
+
 const STYLES = `
-  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=Inter:wght@300;400;500&display=swap');
+
+  /* ── Línea de color en la parte superior de la página ── */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(198,191,182,0.45) 25%,
+      rgba(198,191,182,0.7) 50%,
+      rgba(198,191,182,0.45) 75%,
+      transparent 100%
+    );
+    z-index: 200;
+    pointer-events: none;
+  }
 
   .navbar {
     position: fixed;
@@ -11,175 +32,130 @@ const STYLES = `
     height: 68px;
     display: flex;
     align-items: center;
-    justify-content: space-between;
     padding: 0 2.5rem;
-    background: rgba(8, 12, 20, 0.88);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    border-bottom: 1px solid rgba(255,255,255,0.06);
-    transition: background 0.3s ease, box-shadow 0.3s ease;
+    background: rgba(12,12,11,0.92);
+    backdrop-filter: blur(32px);
+    -webkit-backdrop-filter: blur(32px);
+    border-bottom: 1px solid rgba(255,255,255,0.055);
+    transition: background 0.3s, border-color 0.3s;
   }
 
   .navbar.scrolled {
-    background: rgba(8, 12, 20, 0.98);
-    box-shadow: 0 1px 32px rgba(0,0,0,0.45);
-    border-bottom-color: rgba(95,168,200,0.12);
+    background: rgba(12,12,11,0.98);
+    border-bottom-color: rgba(198,191,182,0.1);
   }
 
-  /* Línea fina de acento arriba */
-  .navbar::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 1px;
-    background: linear-gradient(
-      90deg,
-      transparent 0%,
-      rgba(95,168,200,0.5) 30%,
-      rgba(95,168,200,0.5) 70%,
-      transparent 100%
-    );
-    pointer-events: none;
-  }
-
-  /* ── Marca ── */
+  /* ── Layout de 3 zonas ── */
   .navbar-brand {
-    display: flex;
-    align-items: center;
-    gap: 0.85rem;
     text-decoration: none;
-    transition: opacity 0.2s;
-    flex-shrink: 0;
-  }
-
-  .navbar-brand:hover { opacity: 0.82; }
-
-  .brand-monogram {
-    width: 38px;
-    height: 38px;
-    border-radius: 8px;
-    border: 1px solid rgba(95,168,200,0.4);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: 'DM Serif Display', serif;
-    font-size: 1rem;
-    font-weight: 400;
-    color: #5fa8c8;
-    flex-shrink: 0;
-    letter-spacing: 0.02em;
-    transition: border-color 0.25s, box-shadow 0.25s, background 0.25s;
-  }
-
-  .navbar-brand:hover .brand-monogram {
-    border-color: rgba(95,168,200,0.7);
-    box-shadow: 0 0 18px rgba(95,168,200,0.18);
-    background: rgba(95,168,200,0.06);
-  }
-
-  .brand-text {
     display: flex;
     flex-direction: column;
-    gap: 0.1rem;
+    gap: 2px;
+    transition: opacity 0.2s;
+    flex-shrink: 0;
+    min-width: 0;
   }
+  .navbar-brand:hover { opacity: 0.72; }
 
   .brand-name {
-    font-family: 'DM Serif Display', serif;
-    font-size: 1.15rem;
+    font-family: 'Playfair Display', serif;
+    font-size: 1.45rem;
     font-weight: 400;
-    color: #eeeae3;
+    color: #ece8e2;
     letter-spacing: 0.02em;
-    line-height: 1;
+    line-height: 1.1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 240px;
   }
 
   .brand-tag {
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.62rem;
-    font-weight: 300;
-    letter-spacing: 0.2em;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.5rem;
+    font-weight: 400;
+    letter-spacing: 0.3em;
     text-transform: uppercase;
-    color: rgba(95,168,200,0.7);
+    color: rgba(198,191,182,0.45);
     line-height: 1;
   }
 
-  /* ── Links centrales (absoluto para centrado real) ── */
+  /* Zona central — centrado absoluto real */
   .navbar-center {
     display: flex;
     align-items: center;
-    gap: 0.2rem;
+    gap: 0.15rem;
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
   }
 
   .nav-section-link {
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.78rem;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.72rem;
     font-weight: 400;
-    letter-spacing: 0.13em;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: rgba(255,255,255,0.7);
+    color: rgba(236,232,226,0.42);
     text-decoration: none;
-    padding: 0.42rem 1rem;
+    padding: 0.4rem 0.9rem;
     border-radius: 4px;
-    transition: color 0.2s, background 0.2s, transform 0.2s;
+    transition: color 0.18s, background 0.18s;
     white-space: nowrap;
   }
-
   .nav-section-link:hover {
-    color: rgba(255,255,255,1);
-    background: rgba(255,255,255,0.08);
-    transform: translateY(-1px);
+    color: rgba(236,232,226,0.82);
+    background: rgba(255,255,255,0.05);
   }
 
-  /* ── Derecha ── */
+  .nav-sep {
+    width: 1px; height: 10px;
+    background: rgba(255,255,255,0.08);
+    flex-shrink: 0;
+  }
+
+  /* Zona derecha */
   .navbar-right {
     display: flex;
     align-items: center;
-    gap: 1.5rem;
+    gap: 1rem;
+    margin-left: auto;
     flex-shrink: 0;
   }
 
   .nav-link-plain {
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.78rem;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.72rem;
     font-weight: 400;
-    letter-spacing: 0.13em;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
-    color: rgba(255,255,255,0.7);
+    color: rgba(236,232,226,0.42);
     text-decoration: none;
-    transition: color 0.2s, transform 0.2s;
+    transition: color 0.18s;
   }
-
-  .nav-link-plain:hover {
-    color: rgba(255,255,255,1);
-    transform: translateY(-1px);
-  }
+  .nav-link-plain:hover { color: rgba(236,232,226,0.8); }
 
   .nav-cta {
     display: inline-flex;
     align-items: center;
     gap: 0.45rem;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.74rem;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.7rem;
     font-weight: 500;
-    letter-spacing: 0.16em;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: #080c14;
-    background: #5fa8c8;
+    color: #0c0c0b;
+    background: #c6bfb6;
     text-decoration: none;
-    padding: 0.65rem 1.5rem;
-    border-radius: 4px;
-    transition: background 0.25s, transform 0.2s, box-shadow 0.25s;
+    padding: 0.6rem 1.35rem;
+    border-radius: 3px;
+    transition: background 0.2s, transform 0.18s;
     white-space: nowrap;
   }
-
   .nav-cta:hover {
-    background: #7dbdd8;
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(95,168,200,0.4);
+    background: #dbd4cb;
+    transform: translateY(-1px);
   }
-
   .nav-cta svg { flex-shrink: 0; }
 
   /* ── Responsive ── */
@@ -188,17 +164,18 @@ const STYLES = `
     .navbar-center { display: none; }
     .brand-tag { display: none; }
   }
-
   @media (max-width: 480px) {
-    .brand-text { display: none; }
     .navbar { padding: 0 1.25rem; }
+    .brand-name { font-size: 1.25rem; max-width: 160px; }
+    .nav-link-plain { display: none; }
   }
 `;
 
 const Navbar = () => {
-  const location = useLocation();
-  const isHome = location.pathname === '/';
+  const location  = useLocation();
+  const isHome    = location.pathname === '/';
   const [scrolled, setScrolled] = useState(false);
+  const [salonNombre, setSalonNombre] = useState('');
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -206,36 +183,41 @@ const Navbar = () => {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
+  useEffect(() => {
+    if (!SALON_SLUG || !API_URL) return;
+    fetch(`${API_URL}/public/${SALON_SLUG}/info`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.nombre) setSalonNombre(d.nombre); })
+      .catch(() => {});
+  }, []);
+
+  const displayName = salonNombre || 'Peluquería';
+
   return (
     <>
       <style>{STYLES}</style>
       <nav className={`navbar${scrolled ? ' scrolled' : ''}`}>
 
-        {/* Marca */}
         <Link to="/" className="navbar-brand">
-          <span className="brand-monogram">TV</span>
-          <div className="brand-text">
-            <span className="brand-name">Turnera Villan</span>
-            <span className="brand-tag">Peluquería profesional</span>
-          </div>
+          <span className="brand-name">{displayName}</span>
+          <span className="brand-tag">Reservas online · Stratus</span>
         </Link>
 
-        {/* Links centrales — solo en Home */}
         {isHome && (
           <div className="navbar-center">
             <a href="#servicios" className="nav-section-link">Servicios</a>
+            <span className="nav-sep" />
             <a href="#guia" className="nav-section-link">Guía de estilo</a>
           </div>
         )}
 
-        {/* Derecha */}
         <div className="navbar-right">
           {!isHome && (
             <Link to="/" className="nav-link-plain">Inicio</Link>
           )}
           <Link to="/booking" className="nav-cta">
-            Reservar turno
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+            Reservar
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <line x1="7" y1="17" x2="17" y2="7"/>
               <polyline points="7 7 17 7 17 17"/>

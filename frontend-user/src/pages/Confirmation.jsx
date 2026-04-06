@@ -25,11 +25,10 @@ const STYLES = `
   }
 
   .conf-icon {
-    width: 72px;
-    height: 72px;
+    width: 72px; height: 72px;
     border-radius: 50%;
-    background: rgba(52,211,153,0.1);
-    border: 1px solid rgba(52,211,153,0.3);
+    background: rgba(198,191,182,0.08);
+    border: 1px solid rgba(198,191,182,0.22);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -44,40 +43,40 @@ const STYLES = `
 
   .conf-title {
     font-family: 'DM Serif Display', serif;
-    font-size: 2.4rem;
+    font-size: 2.3rem;
     font-weight: 400;
-    color: #eeeae3;
+    color: #f0ece3;
     margin-bottom: 0.5rem;
-    letter-spacing: 0.02em;
+    letter-spacing: 0.01em;
   }
 
   .conf-subtitle {
-    color: rgba(255,255,255,0.7);
-    font-size: 0.95rem;
+    color: rgba(240,236,227,0.55);
+    font-size: 0.9rem;
     font-weight: 300;
-    line-height: 1.6;
+    line-height: 1.7;
   }
 
   .conf-card {
     width: 100%;
-    background: #0d1220;
-    border: 1px solid rgba(255,255,255,0.07);
-    border-radius: 12px;
+    background: rgba(26,22,16,0.7);
+    border: 1px solid rgba(201,171,132,0.1);
+    border-radius: 8px;
     overflow: hidden;
     animation: fadeIn 0.5s ease 0.3s both;
   }
 
   .conf-card-header {
-    padding: 1rem 1.75rem;
-    background: rgba(95,168,200,0.07);
-    border-bottom: 1px solid rgba(255,255,255,0.06);
+    padding: 0.9rem 1.6rem;
+    background: rgba(201,171,132,0.06);
+    border-bottom: 1px solid rgba(201,171,132,0.08);
   }
 
   .conf-card-header-label {
-    font-size: 0.7rem;
-    letter-spacing: 0.14em;
+    font-size: 0.65rem;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
-    color: #5fa8c8;
+    color: rgba(201,171,132,0.75);
     font-weight: 400;
   }
 
@@ -85,50 +84,48 @@ const STYLES = `
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    padding: 1rem 1.75rem;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
+    padding: 0.95rem 1.6rem;
+    border-bottom: 1px solid rgba(201,171,132,0.06);
     gap: 1rem;
   }
-
   .conf-row:last-child { border-bottom: none; }
 
   .conf-row-label {
-    font-size: 0.8rem;
-    color: rgba(255,255,255,0.6);
-    letter-spacing: 0.08em;
+    font-size: 0.72rem;
+    color: rgba(240,236,227,0.42);
+    letter-spacing: 0.1em;
     text-transform: uppercase;
     white-space: nowrap;
-    padding-top: 1px;
+    padding-top: 2px;
     font-weight: 300;
   }
 
   .conf-row-value {
-    font-size: 1rem;
-    color: #eeeae3;
+    font-size: 0.95rem;
+    color: #f0ece3;
     text-align: right;
-    line-height: 1.4;
+    line-height: 1.45;
     font-weight: 300;
   }
 
   .conf-cta {
     display: inline-block;
-    padding: 0.85rem 2.2rem;
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 8px;
-    color: rgba(255,255,255,0.5);
+    padding: 0.8rem 2rem;
+    border: 1px solid rgba(201,171,132,0.15);
+    border-radius: 4px;
+    color: rgba(240,236,227,0.42);
     text-decoration: none;
     font-family: 'DM Sans', sans-serif;
-    font-size: 0.8rem;
-    letter-spacing: 0.12em;
+    font-size: 0.72rem;
+    letter-spacing: 0.16em;
     text-transform: uppercase;
     transition: border-color 0.2s, color 0.2s;
     animation: fadeIn 0.5s ease 0.45s both;
     font-weight: 400;
   }
-
   .conf-cta:hover {
-    border-color: #5fa8c8;
-    color: #eeeae3;
+    border-color: rgba(201,171,132,0.45);
+    color: #f0ece3;
   }
 
   .conf-empty {
@@ -140,18 +137,16 @@ const STYLES = `
     gap: 1.5rem;
     font-family: 'DM Sans', sans-serif;
   }
-
   .conf-empty p {
-    color: rgba(255,255,255,0.35);
-    font-size: 0.9rem;
+    color: rgba(240,236,227,0.32);
+    font-size: 0.88rem;
     font-weight: 300;
   }
-
   .conf-empty a {
-    color: #5fa8c8;
+    color: #c9ab84;
     text-decoration: none;
-    font-size: 0.8rem;
-    letter-spacing: 0.1em;
+    font-size: 0.75rem;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
     font-weight: 400;
   }
@@ -197,7 +192,7 @@ const Confirmation = () => {
 
         <div className="conf-icon">
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none"
-            stroke="#34d399" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            stroke="#c6bfb6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="20 6 9 17 4 12" />
           </svg>
         </div>

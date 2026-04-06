@@ -310,7 +310,7 @@ export default function Booking() {
             {selectedDate && selectedTime && (
               <div className="selected-time-display">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                  stroke="#5fa8c8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  stroke="#c6bfb6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="10" />
                   <polyline points="12 6 12 12 16 14" />
                 </svg>

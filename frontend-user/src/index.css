@@ -10,9 +10,9 @@ html {
 }
 
 body {
-  background: #080c14;
-  color: #eeeae3;
-  font-family: 'DM Sans', sans-serif;
+  background: #0c0c0b;
+  color: #ece8e2;
+  font-family: 'Inter', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

@@ -26,6 +26,12 @@ def _get_salon(slug: str, db: Session) -> Salon:
     return salon
 
 
+@router.get("/{slug}/info")
+def public_info(slug: str, db: Session = Depends(get_db)):
+    salon = _get_salon(slug, db)
+    return {"nombre": salon.nombre, "slug": salon.slug}
+
+
 @router.get("/{slug}/empleados", response_model=List[Empleado])
 def public_empleados(slug: str, db: Session = Depends(get_db)):
     salon = _get_salon(slug, db)
