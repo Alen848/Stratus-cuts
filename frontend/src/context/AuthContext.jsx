@@ -10,11 +10,25 @@ export function AuthProvider({ children }) {
   });
 
   const login = useCallback(async (username, password) => {
+    // Obtener el slug del subdominio (ej: salon1.tudominio.com -> salon1)
+    const host = window.location.hostname;
+    let slug = '';
+    
+    if (host === 'localhost' || host === '127.0.0.1') {
+      // Para desarrollo local, puedes usar un parámetro en la URL ?salon=slug
+      // o hardcodear uno temporalmente
+      slug = new URLSearchParams(window.location.search).get('salon') || 'salon1';
+    } else {
+      // En producción, tomamos la primera parte del dominio
+      slug = host.split('.')[0];
+    }
+
     const form = new URLSearchParams();
     form.append('username', username);
     form.append('password', password);
 
-    const res = await api.post('/auth/login', form, {
+    // Enviamos el slug como parámetro de consulta
+    const res = await api.post(`/auth/login?slug=${slug}`, form, {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     });
 

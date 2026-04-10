@@ -28,6 +28,7 @@ Base.metadata.create_all(bind=engine)
 app = FastAPI(title="Turnera Peluquería API", version="2.0.0")
 
 # Configuración CORS
+# En producción, permitimos cualquier subdominio del dominio principal
 origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
@@ -35,8 +36,10 @@ origins = [
     "http://127.0.0.1:5174",
 ]
 
+# Puedes agregar tu dominio real aquí. Ej: "https://*.tudominio.com"
 app.add_middleware(
     CORSMiddleware,
+    allow_origin_regex="https?://.*\.tudominio\.com", # REEMPLAZAR con tu dominio real
     allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],

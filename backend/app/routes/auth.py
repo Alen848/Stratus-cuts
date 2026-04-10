@@ -21,16 +21,31 @@ class SetupPayload(BaseModel):
 
 @router.post("/login")
 def login(
+    slug: str,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
 ):
-    user = db.query(Usuario).filter(Usuario.username == form_data.username).first()
+    # Buscar el salón por el slug
+    salon = db.query(Salon).filter(Salon.slug == slug, Salon.activo == True).first()
+    if not salon:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="El salón especificado no existe o no está activo",
+        )
+
+    # Buscar el usuario dentro de ese salón específicamente
+    user = db.query(Usuario).filter(
+        Usuario.username == form_data.username,
+        Usuario.salon_id == salon.id
+    ).first()
+
     if not user or not verify_password(form_data.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Usuario o contraseña incorrectos",
+            detail="Usuario o contraseña incorrectos para este salón",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    
     token = create_access_token({
         "sub": str(user.id),
         "salon_id": user.salon_id,

@@ -3,7 +3,12 @@ import bcrypt
 from datetime import datetime, timedelta, timezone
 from jose import jwt, JWTError
 
-SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-change-in-production")
+# En producción, esta variable debe estar configurada en el entorno (ej. en Hostinger)
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    # Solo permitir un valor por defecto en desarrollo si no es producción real
+    SECRET_KEY = "dev-secret-unsafe-change-me"
+
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 días
 
