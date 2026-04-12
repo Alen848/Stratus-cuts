@@ -237,8 +237,9 @@ def get_horarios_semanales(db: Session, empleado_id: int, fecha_inicio: date, sa
             func.date(Turno.fecha_hora) == fecha_actual,
         ).all()
 
-        while actual + timedelta(minutes=30) <= fin:
-            slot_fin = actual + timedelta(minutes=30)
+        INTERVALO = 15
+        while actual + timedelta(minutes=INTERVALO) <= fin:
+            slot_fin = actual + timedelta(minutes=INTERVALO)
             turno_existente = None
             for t in turnos_dia:
                 t_inicio = to_argentina_naive(t.fecha_hora)
@@ -255,7 +256,7 @@ def get_horarios_semanales(db: Session, empleado_id: int, fecha_inicio: date, sa
                 "profesional": turno_existente.empleado.nombre if turno_existente else None,
                 "servicio":    ", ".join([ts.servicio.nombre for ts in turno_existente.servicios]) if turno_existente else None,
             })
-            actual += timedelta(minutes=30)
+            actual += timedelta(minutes=INTERVALO)
         resultado[fecha_actual.isoformat()] = slots
     return resultado
 

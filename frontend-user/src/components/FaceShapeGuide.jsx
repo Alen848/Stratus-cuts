@@ -4,7 +4,7 @@ import { useState } from 'react';
    SVG esquemático — cabeza frontal con contorno
    resaltado según forma de cara (estilo imagen)
 ───────────────────────────────────────────── */
-const SchematicHead = ({ shape, size = 120, accent = '#5fa8c8' }) => {
+const SchematicHead = ({ shape, size = 120, accent = '#c9a96e' }) => {
   const W = 100, H = 130;
 
   // Rasgos internos comunes: ojos, nariz, boca, orejas, cuello
@@ -167,7 +167,7 @@ const STYLES = `
     font-weight: 500;
     letter-spacing: 0.22em;
     text-transform: uppercase;
-    color: #5fa8c8;
+    color: #c9a96e;
     margin-bottom: 1.1rem;
   }
 
@@ -176,7 +176,7 @@ const STYLES = `
     display: inline-block;
     width: 18px;
     height: 1px;
-    background: #5fa8c8;
+    background: #c9a96e;
     opacity: 0.5;
   }
 
@@ -189,7 +189,7 @@ const STYLES = `
     margin-bottom: 0.75rem;
   }
 
-  .fsg-title em { font-style: italic; color: #5fa8c8; }
+  .fsg-title em { font-style: italic; color: #c9a96e; }
 
   .fsg-subtitle {
     font-size: 0.95rem;
@@ -243,7 +243,7 @@ const STYLES = `
   }
 
   .fsg-shape-btn:hover .fsg-shape-label { color: rgba(255,255,255,0.85); }
-  .fsg-shape-btn.active .fsg-shape-label { color: #5fa8c8; }
+  .fsg-shape-btn.active .fsg-shape-label { color: #c9a96e; }
 
   /* ── Result ── */
   .fsg-result {
@@ -322,7 +322,7 @@ const STYLES = `
     font-size: 0.6rem;
     font-weight: 500;
     letter-spacing: 0.12em;
-    color: #5fa8c8;
+    color: #c9a96e;
     margin-bottom: 0.5rem;
     display: block;
   }
@@ -423,7 +423,7 @@ export default function FaceShapeGuide() {
               className={`fsg-shape-btn ${active === f.id ? 'active' : ''}`}
               onClick={() => setActive(active === f.id ? null : f.id)}
             >
-              <SchematicHead shape={f.id} size={62} accent={active === f.id ? '#5fa8c8' : '#666e80'} />
+              <SchematicHead shape={f.id} size={62} accent={active === f.id ? '#c9a96e' : 'rgba(201,169,110,0.28)'} />
               <span className="fsg-shape-label">{f.nombre}</span>
             </button>
           ))}
@@ -437,7 +437,7 @@ export default function FaceShapeGuide() {
             {/* Intro */}
             <div className="fsg-intro">
               <div className="fsg-intro-img">
-                <SchematicHead shape={shape.id} size={90} accent="#5fa8c8" />
+                <SchematicHead shape={shape.id} size={90} accent="#c9a96e" />
               </div>
               <div className="fsg-intro-body">
                 <h3 className="fsg-shape-name">Cara {shape.nombre}</h3>

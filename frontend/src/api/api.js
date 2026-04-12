@@ -68,9 +68,10 @@ export const gastos = {
 
 // ─── Caja  →  /caja ──────────────────────────────────────────────────────────
 export const caja = {
-  diaria:    (fecha)     => api.get('/caja/diaria',  { params: { fecha } }),
-  mensual:   (anio, mes) => api.get('/caja/mensual', { params: { anio, mes } }),
-  getCierre: (fecha)     => api.get('/caja/cierre',   { params: { fecha } }),
+  diaria:    (fecha)     => api.get('/caja/diaria',    { params: { fecha } }),
+  mensual:   (anio, mes) => api.get('/caja/mensual',   { params: { anio, mes } }),
+  getCierre: (fecha)     => api.get('/caja/cierre',    { params: { fecha } }),
+  historial: (anio, mes) => api.get('/caja/historial', { params: { anio, mes } }),
   cerrar:    (data)      => api.post('/caja/cerrar', data),
 };
 

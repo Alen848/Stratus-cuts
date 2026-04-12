@@ -160,6 +160,17 @@ def get_cierre(
     return pago_service.get_cierre_caja(db, salon_id=current_user.salon_id, fecha=fecha)
 
 
+@caja_router.get("/historial", response_model=List[CierreCaja])
+def historial_cierres(
+    anio: int, mes: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    if not (1 <= mes <= 12):
+        raise HTTPException(status_code=400, detail="El mes debe estar entre 1 y 12.")
+    return pago_service.get_historial_cierres(db, salon_id=current_user.salon_id, anio=anio, mes=mes)
+
+
 @caja_router.post("/cerrar", response_model=CierreCaja)
 def cerrar_caja(
     cierre: CierreCajaCreate,

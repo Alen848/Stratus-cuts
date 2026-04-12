@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import CajaDiaria  from '../components/caja/CajaDiaria';
-import CajaMensual from '../components/caja/CajaMensual';
+import CajaDiaria      from '../components/caja/CajaDiaria';
+import CajaMensual     from '../components/caja/CajaMensual';
+import HistorialCierres from '../components/caja/HistorialCierres';
 
 const TABS = [
-  { key: 'diaria',  label: 'Caja diaria'  },
-  { key: 'mensual', label: 'Caja mensual' },
+  { key: 'diaria',    label: 'Caja diaria'   },
+  { key: 'mensual',   label: 'Análisis mes'  },
+  { key: 'historial', label: 'Historial'     },
 ];
 
 export default function CajaPage() {
@@ -13,7 +15,6 @@ export default function CajaPage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
-      {/* Tabs */}
       <div style={{
         display: 'flex', gap: '4px',
         background: 'var(--bg-surface)',
@@ -44,9 +45,9 @@ export default function CajaPage() {
         ))}
       </div>
 
-      {/* Contenido */}
-      {tab === 'diaria'  && <CajaDiaria />}
-      {tab === 'mensual' && <CajaMensual />}
+      {tab === 'diaria'    && <CajaDiaria />}
+      {tab === 'mensual'   && <CajaMensual />}
+      {tab === 'historial' && <HistorialCierres />}
     </div>
   );
 }

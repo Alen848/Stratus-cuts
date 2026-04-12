@@ -28,6 +28,24 @@ def get_current_user(
         raise exc
 
     user = db.query(Usuario).filter(Usuario.id == int(user_id)).first()
-    if not user:
+    if not user or user.activo == False:
         raise exc
     return user
+
+
+def require_superadmin(current_user: Usuario = Depends(get_current_user)) -> Usuario:
+    if current_user.rol != "superadmin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acceso restringido a superadmin.",
+        )
+    return current_user
+
+
+def require_admin(current_user: Usuario = Depends(get_current_user)) -> Usuario:
+    if current_user.rol not in ("admin", "superadmin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acceso restringido a administradores.",
+        )
+    return current_user

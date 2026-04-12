@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { caja, gastos as gastosApi } from '../../api/api';
 import ResumenCards  from './ResumenCards';
+import ResumenCierre from './ResumenCierre';
 import GastoModal    from './GastoModal';
 import TablaGastos   from './TablaGastos';
 import TablaIngresos from './TablaIngresos';
@@ -105,31 +106,7 @@ export default function CajaDiaria() {
           </button>
         </div>
 
-        {estaCerrado ? (
-          <div style={{ 
-            display: 'flex', alignItems: 'center', gap: '10px',
-            padding: '8px 16px', borderRadius: 'var(--radius-sm)',
-            background: 'rgba(72, 187, 120, 0.1)', border: '1px solid #48bb78',
-            color: '#48bb78', fontSize: '13px', fontWeight: 600
-          }}>
-            <span style={{ fontSize: '18px' }}>✓</span>
-            <span>CAJA CERRADA</span>
-            {cierre && (
-              <div style={{ 
-                display: 'flex', flexDirection: 'column', gap: '2px',
-                fontSize: '11px', opacity: 0.9, marginLeft: '12px', 
-                borderLeft: '1px solid #48bb78', paddingLeft: '12px' 
-              }}>
-                <div>Efectivo: {formatCurrency(cierre.efectivo_real)}</div>
-                <div>Transf: {formatCurrency(cierre.transferencia_real)}</div>
-                <div>Tarjetas: {formatCurrency(cierre.tarjeta_real)}</div>
-                <div style={{ fontWeight: 700, marginTop: '2px', borderTop: '1px solid rgba(72,187,120,0.3)', paddingTop: '2px' }}>
-                  Dif. Total: {formatCurrency(cierre.diferencia)}
-                </div>
-              </div>
-            )}
-          </div>
-        ) : (
+        {estaCerrado ? null : (
           <button 
             onClick={() => setCierreModalOpen(true)}
             style={{
@@ -161,6 +138,10 @@ export default function CajaDiaria() {
             gananciaNeta={data.ganancia_neta}
             cantidadTurnos={data.cantidad_turnos}
           />
+
+          {estaCerrado && cierre && (
+            <ResumenCierre cierre={cierre} />
+          )}
 
           {/* Ingresos */}
           <div>

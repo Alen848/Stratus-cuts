@@ -2,6 +2,58 @@ import { useState, useEffect } from 'react';
 import Modal  from '../ui/Modal';
 import Input  from '../ui/Input';
 import Button from '../ui/Button';
+import { formatCurrency } from '../../utils/formatters';
+
+function FilaMetodo({ label, teorico, real, setReal, dif }) {
+  return (
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: '110px 1fr 1fr 80px',
+      gap: '8px',
+      alignItems: 'center',
+      padding: '8px 0',
+      borderBottom: '1px solid var(--border)',
+    }}>
+      <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>{label}</span>
+      <span style={{ fontSize: '13px', color: 'var(--text-muted)', textAlign: 'right' }}>
+        {formatCurrency(teorico)}
+      </span>
+      <input
+        type="number"
+        step="0.01"
+        min="0"
+        value={real}
+        onChange={e => setReal(e.target.value)}
+        placeholder="0"
+        required
+        style={{
+          padding: '6px 10px',
+          borderRadius: 'var(--radius-sm)',
+          border: '1px solid var(--border-strong)',
+          background: 'var(--bg-elevated)',
+          color: 'var(--text-primary)',
+          fontSize: '13px',
+          width: '100%',
+          fontFamily: 'var(--font-body)',
+        }}
+      />
+      <span style={{
+        fontSize: '12px',
+        fontWeight: 600,
+        textAlign: 'right',
+        color: real === ''
+          ? 'var(--text-muted)'
+          : dif === 0
+            ? 'var(--text-muted)'
+            : dif > 0
+              ? 'var(--color-success, #4caf7d)'
+              : 'var(--color-danger, #e53e3e)',
+      }}>
+        {real === '' ? '—' : dif === 0 ? '✓' : `${dif > 0 ? '+' : ''}${formatCurrency(dif)}`}
+      </span>
+    </div>
+  );
+}
 
 export default function CierreModal({ isOpen, onClose, onSubmit, resumen, fecha }) {
   const [efectivoReal, setEfectivoReal]           = useState('');
@@ -10,16 +62,11 @@ export default function CierreModal({ isOpen, onClose, onSubmit, resumen, fecha 
   const [observaciones, setObservaciones]         = useState('');
   const [loading, setLoading]                     = useState(false);
 
-  // Totales calculados a partir del resumen
-  const saldoAnterior = resumen?.saldo_anterior || 0;
-
-  const detalleIngresos = resumen?.detalle_ingresos || [];
+  const saldoAnterior    = resumen?.saldo_anterior || 0;
+  const detalleIngresos  = resumen?.detalle_ingresos || [];
 
   const ingresosEfectivo = detalleIngresos
-    .filter(i => {
-      const m = i.metodo_pago?.toLowerCase();
-      return m === 'efectivo' || !m || m === 'no especificado';
-    })
+    .filter(i => { const m = i.metodo_pago?.toLowerCase(); return m === 'efectivo' || !m || m === 'no especificado'; })
     .reduce((acc, curr) => acc + curr.monto, 0);
 
   const totalTransferencia = detalleIngresos
@@ -30,15 +77,12 @@ export default function CierreModal({ isOpen, onClose, onSubmit, resumen, fecha 
     .filter(i => ['débito', 'debito', 'tarjeta'].includes(i.metodo_pago?.toLowerCase()))
     .reduce((acc, curr) => acc + curr.monto, 0);
 
-  const totalGastos = resumen?.total_gastos || 0;
+  const totalGastos      = resumen?.total_gastos || 0;
+  const teoricoEfectivo  = saldoAnterior + ingresosEfectivo - totalGastos;
 
-  // LOGICA: Saldo Anterior + Ingresos Efectivo (incluye sin método definido) - Gastos
-  const teoricoEfectivo = saldoAnterior + ingresosEfectivo - totalGastos;
-  
   const difEfectivo      = (parseFloat(efectivoReal)      || 0) - teoricoEfectivo;
   const difTransferencia = (parseFloat(transferenciaReal) || 0) - totalTransferencia;
   const difTarjeta       = (parseFloat(tarjetaReal)       || 0) - totalDebito;
-
   const totalDiferencia  = difEfectivo + difTransferencia + difTarjeta;
 
   useEffect(() => {
@@ -53,7 +97,6 @@ export default function CierreModal({ isOpen, onClose, onSubmit, resumen, fecha 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (efectivoReal === '' || transferenciaReal === '' || tarjetaReal === '') return;
-    
     try {
       setLoading(true);
       await onSubmit({
@@ -67,7 +110,7 @@ export default function CierreModal({ isOpen, onClose, onSubmit, resumen, fecha 
         transferencia_real:     parseFloat(transferenciaReal),
         tarjeta_real:           parseFloat(tarjetaReal),
         diferencia:             totalDiferencia,
-        observaciones:          observaciones
+        observaciones,
       });
     } finally {
       setLoading(false);
@@ -75,115 +118,139 @@ export default function CierreModal({ isOpen, onClose, onSubmit, resumen, fecha 
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Cierre de Caja" width={480}>
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-        
-        <div style={{ 
-          background: 'var(--bg-elevated)', border: '1px solid var(--border-strong)', 
-          padding: '16px', borderRadius: 'var(--radius-sm)', display: 'flex', flexDirection: 'column', gap: '8px'
-        }}>
-          <h4 style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '4px' }}>Cálculo Teórico</h4>
-          
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-            <span>(+) Saldo inicial (ayer):</span>
-            <span style={{ color: 'var(--text-primary)' }}>$ {saldoAnterior.toLocaleString()}</span>
-          </div>
+    <Modal isOpen={isOpen} onClose={onClose} title="Cerrar caja" width={520}>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-            <span>(+) Ventas en Efectivo:</span>
-            <span style={{ color: 'var(--color-success, #4caf7d)' }}>+ $ {ingresosEfectivo.toLocaleString()}</span>
-          </div>
-          
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-            <span>(-) Gastos en Efectivo:</span>
-            <span style={{ color: 'var(--color-danger, #e53e3e)' }}>- $ {totalGastos.toLocaleString()}</span>
-          </div>
-
-          <div style={{ 
-            marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--border)',
-            display: 'flex', justifyContent: 'space-between', fontSize: '15px', fontWeight: 700 
+        {/* Encabezados de la tabla */}
+        <div>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '110px 1fr 1fr 80px',
+            gap: '8px',
+            padding: '6px 0',
+            borderBottom: '2px solid var(--border-strong)',
+            marginBottom: '2px',
           }}>
-            <span>Efectivo Teórico:</span>
-            <span style={{ color: 'var(--gold)' }}>$ {teoricoEfectivo.toLocaleString()}</span>
+            {['Método', 'Teórico', 'Real contado', 'Diferencia'].map(h => (
+              <span key={h} style={{
+                fontSize: '10px',
+                fontWeight: 500,
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                color: 'var(--text-muted)',
+                textAlign: h === 'Teórico' || h === 'Diferencia' ? 'right' : 'left',
+              }}>
+                {h}
+              </span>
+            ))}
           </div>
 
-          <div style={{ marginTop: '8px', display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-            <span>Transf. Teóricas:</span>
-            <span style={{ color: 'var(--text-primary)' }}>$ {totalTransferencia.toLocaleString()}</span>
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-            <span>Tarjetas Teóricas:</span>
-            <span style={{ color: 'var(--text-primary)' }}>$ {totalDebito.toLocaleString()}</span>
-          </div>
-          
-          <div style={{ marginTop: '12px', opacity: 0.6, fontSize: '11px', fontStyle: 'italic' }}>
-            * Los ingresos sin método de pago se tratan como efectivo.
-          </div>
+          <FilaMetodo
+            label="Efectivo"
+            teorico={teoricoEfectivo}
+            real={efectivoReal}
+            setReal={setEfectivoReal}
+            dif={difEfectivo}
+          />
+          <FilaMetodo
+            label="Tarjeta / Posnet"
+            teorico={totalDebito}
+            real={tarjetaReal}
+            setReal={setTarjetaReal}
+            dif={difTarjeta}
+          />
+          <FilaMetodo
+            label="Transferencia"
+            teorico={totalTransferencia}
+            real={transferenciaReal}
+            setReal={setTransferenciaReal}
+            dif={difTransferencia}
+          />
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <Input 
-            label="Efectivo Real" 
-            type="number" 
-            step="0.01"
-            value={efectivoReal} 
-            onChange={e => setEfectivoReal(e.target.value)}
-            placeholder="Efectivo contado..."
-            required
-            autoFocus
-          />
-
-          <Input 
-            label="Transferencias Real" 
-            type="number" 
-            step="0.01"
-            value={transferenciaReal} 
-            onChange={e => setTransferenciaReal(e.target.value)}
-            placeholder="Según Homebanking..."
-            required
-          />
-
-          <Input 
-            label="Tarjetas Real" 
-            type="number" 
-            step="0.01"
-            value={tarjetaReal} 
-            onChange={e => setTarjetaReal(e.target.value)}
-            placeholder="Según Lote POS..."
-            required
-          />
-
-          <div style={{ 
-            padding: '12px', borderRadius: 'var(--radius-sm)', 
-            background: totalDiferencia === 0 ? 'var(--bg-elevated)' : (totalDiferencia > 0 ? 'rgba(72, 187, 120, 0.1)' : 'rgba(229, 62, 62, 0.1)'),
-            border: '1px solid ' + (totalDiferencia === 0 ? 'var(--border)' : (totalDiferencia > 0 ? '#48bb78' : '#e53e3e')),
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+        {/* Resumen de gastos + diferencia total */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '8px',
+        }}>
+          <div style={{
+            padding: '10px 14px',
+            background: 'var(--bg-card)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-sm)',
+            display: 'flex', flexDirection: 'column', gap: '2px',
           }}>
-            <span style={{ fontSize: '13px', fontWeight: 500 }}>Diferencia Total:</span>
-            <span style={{ 
-              fontWeight: 700, 
-              color: totalDiferencia === 0 ? 'var(--text-primary)' : (totalDiferencia > 0 ? '#48bb78' : '#e53e3e') 
+            <span style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)' }}>
+              Gastos del día
+            </span>
+            <span style={{ fontSize: '16px', fontFamily: 'var(--font-display)', color: 'var(--color-danger, #e53e3e)' }}>
+              {formatCurrency(totalGastos)}
+            </span>
+          </div>
+
+          <div style={{
+            padding: '10px 14px',
+            background: totalDiferencia === 0
+              ? 'var(--bg-card)'
+              : totalDiferencia > 0
+                ? 'rgba(72,187,120,0.08)'
+                : 'rgba(229,62,62,0.08)',
+            border: '1px solid ' + (totalDiferencia === 0
+              ? 'var(--border)'
+              : totalDiferencia > 0
+                ? 'rgba(72,187,120,0.35)'
+                : 'rgba(229,62,62,0.35)'),
+            borderRadius: 'var(--radius-sm)',
+            display: 'flex', flexDirection: 'column', gap: '2px',
+          }}>
+            <span style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)' }}>
+              Diferencia total
+            </span>
+            <span style={{
+              fontSize: '16px',
+              fontFamily: 'var(--font-display)',
+              fontWeight: 600,
+              color: totalDiferencia === 0
+                ? 'var(--text-muted)'
+                : totalDiferencia > 0
+                  ? 'var(--color-success, #4caf7d)'
+                  : 'var(--color-danger, #e53e3e)',
             }}>
-              {totalDiferencia > 0 ? '+' : ''} $ {totalDiferencia.toLocaleString()}
+              {totalDiferencia === 0
+                ? 'Sin diferencia'
+                : `${totalDiferencia > 0 ? '+' : ''}${formatCurrency(totalDiferencia)}`}
             </span>
           </div>
         </div>
 
-        <Input 
-          label="Observaciones" 
-          as="textarea" 
-          value={observaciones} 
-          onChange={e => setObservaciones(e.target.value)} 
+        {/* Saldo anterior — nota pequeña */}
+        {saldoAnterior > 0 && (
+          <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: 0 }}>
+            * El teórico de efectivo incluye el saldo anterior de {formatCurrency(saldoAnterior)}.
+          </p>
+        )}
+
+        {/* Observaciones */}
+        <Input
+          label="Observaciones (opcional)"
+          as="textarea"
+          value={observaciones}
+          onChange={e => setObservaciones(e.target.value)}
           placeholder="Notas sobre el cierre..."
         />
 
-        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '8px' }}>
+        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
           <Button variant="ghost" onClick={onClose} type="button">Cancelar</Button>
-          <Button variant="primary" type="submit" disabled={loading || efectivoReal === ''}>
-            {loading ? 'Cerrando...' : 'Confirmar Cierre'}
+          <Button
+            variant="primary"
+            type="submit"
+            disabled={loading || efectivoReal === '' || transferenciaReal === '' || tarjetaReal === ''}
+          >
+            {loading ? 'Cerrando...' : 'Confirmar cierre'}
           </Button>
         </div>
+
       </form>
     </Modal>
   );

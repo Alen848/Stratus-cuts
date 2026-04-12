@@ -1,4 +1,5 @@
-/* index.css — reset mínimo, sin Tailwind */
+@import url('https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,500;1,6..96,400&family=Jost:wght@300;400;500;600&display=swap');
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -10,9 +11,10 @@ html {
 }
 
 body {
-  background: #0c0c0b;
-  color: #ece8e2;
-  font-family: 'Inter', sans-serif;
+  background: #080808;
+  color: #f2ede6;
+  font-family: 'Jost', system-ui, sans-serif;
+  font-weight: 300;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

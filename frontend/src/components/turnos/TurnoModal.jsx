@@ -7,12 +7,13 @@ import { pagos as pagosApi, horariosSalon as horariosSalonApi } from '../../api/
 const ESTADOS = ['pendiente', 'confirmado', 'completado', 'cancelado'];
 const METODOS = ['efectivo', 'débito', 'transferencia'];
 
-// Fallback: slots de 09:00 a 20:00 cuando no hay config de salón
+// Fallback: slots de 09:00 a 20:00 cada 15 min cuando no hay config de salón
 const FALLBACK_TIME_SLOTS = (() => {
   const slots = [];
-  for (let h = 9; h <= 20; h++) {
-    slots.push(`${String(h).padStart(2, '0')}:00`);
-    if (h < 20) slots.push(`${String(h).padStart(2, '0')}:30`);
+  for (let min = 9 * 60; min < 20 * 60; min += 15) {
+    const h = Math.floor(min / 60);
+    const m = min % 60;
+    slots.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
   }
   return slots;
 })();
@@ -29,7 +30,7 @@ function buildSlotsFromHorario(horario) {
     const h = Math.floor(totalMin / 60);
     const m = totalMin % 60;
     slots.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
-    totalMin += 30;
+    totalMin += 15;
   }
   return slots;
 }
@@ -318,6 +319,7 @@ export default function TurnoModal({
   const [loading, setLoading]         = useState(false);
   const [validError, setValidError]   = useState('');
   const [horariosSalon, setHorariosSalon] = useState([]);
+  const [duracionManual, setDuracionManual] = useState(null); // null = usar duración calculada
   const isEdit = Boolean(turno);
 
   const duracionTotal = useMemo(() =>
@@ -358,6 +360,7 @@ export default function TurnoModal({
 
   useEffect(() => {
     if (!isOpen) return;
+    setDuracionManual(null);
     if (turno) {
       const raw = turno.fecha_hora?.split('+')[0] || '';
       const [datePart, timePart] = raw.split('T');
@@ -413,11 +416,12 @@ export default function TurnoModal({
         if (extras.length) observaciones = [form.observaciones, ...extras].filter(Boolean).join(' | ');
       }
 
+      const duracionFinal = duracionManual ?? duracionTotal;
       const payload = {
         fecha_hora:    `${form.selectedDate}T${form.selectedTime}:00`,
         empleado_id:   Number(form.empleado_id),
         servicios_ids: form.servicios_ids.map(Number),
-        duracion:      duracionTotal,
+        duracion:      duracionFinal,
         estado:        form.estado,
         metodo_pago:   form.metodo_pago || null,
         observaciones,
@@ -510,9 +514,36 @@ export default function TurnoModal({
 
             {/* Servicios */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>
-                Servicios · {duracionTotal} min
-              </label>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <label style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                  Servicios
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <button type="button"
+                    onClick={() => setDuracionManual(m => Math.max(15, (m ?? duracionTotal) - 15))}
+                    style={{ ...btnDurSt }}
+                    title="−15 min"
+                  >−15</button>
+                  <span style={{
+                    fontSize: '12px', fontWeight: 600, minWidth: '52px', textAlign: 'center',
+                    color: duracionManual !== null ? 'var(--gold)' : 'var(--text-secondary)',
+                  }}>
+                    {duracionManual ?? duracionTotal} min
+                  </span>
+                  <button type="button"
+                    onClick={() => setDuracionManual(m => (m ?? duracionTotal) + 15)}
+                    style={{ ...btnDurSt }}
+                    title="+15 min"
+                  >+15</button>
+                  {duracionManual !== null && (
+                    <button type="button"
+                      onClick={() => setDuracionManual(null)}
+                      style={{ ...btnDurSt, color: 'var(--text-muted)', fontSize: '10px' }}
+                      title="Restablecer duración"
+                    >↺</button>
+                  )}
+                </div>
+              </div>
               <div style={{
                 display: 'flex', flexWrap: 'wrap', gap: '5px', padding: '8px',
                 background: 'var(--bg-elevated)', border: '1px solid var(--border)',
@@ -607,3 +638,9 @@ const inputSt = {
   fontSize: '13px', fontFamily: 'var(--font-body)', colorScheme: 'dark',
 };
 const labelSt = { fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500 };
+const btnDurSt = {
+  padding: '2px 7px', fontSize: '11px', fontFamily: 'var(--font-body)',
+  borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-strong)',
+  background: 'var(--bg-elevated)', color: 'var(--text-secondary)',
+  cursor: 'pointer', lineHeight: '18px',
+};

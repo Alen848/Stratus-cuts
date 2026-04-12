@@ -7,6 +7,7 @@ from app.models import (
     salon, cliente, empleado, servicio, turno,
     turno_servicio, pago, gasto, cierre_caja,
     horario_empleado, horario_salon, config_salon, bloqueo_agenda, usuario,
+    pago_salon,
 )
 
 from app.routes.auth            import router as auth_router
@@ -21,6 +22,8 @@ from app.routes.config_salon      import router as config_salon_router
 from app.routes.bloqueos_agenda import router as bloqueos_agenda_router
 from app.routes.usuarios        import router as usuarios_router
 from app.routes.public          import router as public_router
+from app.routes.superadmin      import router as superadmin_router
+from app.routes.pagos_superadmin import router as pagos_superadmin_router
 
 # Crear tablas en la base de datos (si no existen)
 Base.metadata.create_all(bind=engine)
@@ -34,6 +37,8 @@ origins = [
     "http://127.0.0.1:5173",
     "http://localhost:5174",
     "http://127.0.0.1:5174",
+    "http://localhost:5175",
+    "http://127.0.0.1:5175",
 ]
 
 # Puedes agregar tu dominio real aquí. Ej: "https://*.tudominio.com"
@@ -63,6 +68,8 @@ app.include_router(horarios_salon_router)
 app.include_router(config_salon_router)
 app.include_router(bloqueos_agenda_router)
 app.include_router(usuarios_router)
+app.include_router(superadmin_router)
+app.include_router(pagos_superadmin_router)
 
 
 @app.get("/")

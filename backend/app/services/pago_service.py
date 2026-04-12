@@ -1,4 +1,4 @@
-from sqlalchemy import func, extract
+from sqlalchemy import func, extract, and_
 from sqlalchemy.orm import Session, joinedload
 from datetime import datetime, date, timezone, timedelta
 
@@ -169,6 +169,14 @@ def get_cierre_caja(db: Session, salon_id: int, fecha: date):
         CierreCaja.salon_id == salon_id,
         CierreCaja.fecha == fecha,
     ).first()
+
+
+def get_historial_cierres(db: Session, salon_id: int, anio: int, mes: int):
+    return db.query(CierreCaja).filter(
+        CierreCaja.salon_id == salon_id,
+        extract('year',  CierreCaja.fecha) == anio,
+        extract('month', CierreCaja.fecha) == mes,
+    ).order_by(CierreCaja.fecha.desc()).all()
 
 
 def get_ultimo_saldo_real(db: Session, salon_id: int, fecha: date) -> float:

@@ -7,83 +7,87 @@ const STYLES = `
   .home {
     min-height: 100vh;
     background: transparent;
-    padding-top: 72px;
-    font-family: 'Inter', sans-serif;
+    padding-top: 70px;
+    font-family: 'Jost', sans-serif;
   }
 
-  /* ── Hero ── */
+  /* ══════════════════════════════════════
+     HERO
+  ══════════════════════════════════════ */
   .hero {
-    padding: 5.5rem 2rem 4.5rem;
-    max-width: 920px;
+    padding: 7rem 2rem 6rem;
+    max-width: 1040px;
     margin: 0 auto;
-    border-bottom: 1px solid rgba(255,255,255,0.055);
+    border-bottom: 1px solid rgba(255,255,255,0.045);
     position: relative;
     overflow: hidden;
   }
 
-  /* Glow de fondo en el hero */
-  .hero::after {
+  /* Glow ambiental sutil */
+  .hero::before {
     content: '';
     position: absolute;
-    top: -120px; right: -200px;
-    width: 600px; height: 500px;
-    background: radial-gradient(ellipse at center, rgba(198,191,182,0.04) 0%, transparent 65%);
+    top: -80px; right: -160px;
+    width: 700px; height: 600px;
+    background: radial-gradient(ellipse at center, rgba(201,169,110,0.035) 0%, transparent 65%);
     pointer-events: none;
   }
 
   .hero-eyebrow {
     display: inline-flex;
     align-items: center;
-    gap: 0.7rem;
-    font-size: 0.68rem;
+    gap: 0.75rem;
+    font-family: 'Jost', sans-serif;
+    font-size: 0.62rem;
     font-weight: 500;
-    letter-spacing: 0.28em;
+    letter-spacing: 0.32em;
     text-transform: uppercase;
-    color: #c6bfb6;
-    margin-bottom: 1.75rem;
+    color: #c9a96e;
+    margin-bottom: 2rem;
     opacity: 0;
-    animation: heroFade 0.6s ease 0.05s forwards;
+    animation: heroFade 0.5s ease 0.05s forwards;
   }
   .hero-eyebrow::before {
     content: '';
     display: inline-block;
-    width: 24px; height: 1px;
-    background: #c6bfb6;
-    opacity: 0.5;
+    width: 28px; height: 1px;
+    background: #c9a96e;
+    opacity: 0.45;
   }
 
   .hero-title {
-    font-family: 'Playfair Display', serif;
-    font-size: clamp(3.2rem, 7vw, 5.5rem);
+    font-family: 'Bodoni Moda', serif;
+    font-size: clamp(3.8rem, 8vw, 6.5rem);
     font-weight: 400;
-    color: #ece8e2;
-    line-height: 1.04;
-    letter-spacing: -0.025em;
+    color: #f2ede6;
+    line-height: 1.02;
+    letter-spacing: -0.02em;
     opacity: 0;
     animation: heroFade 0.6s ease 0.15s forwards;
   }
   .hero-title em {
     font-style: italic;
-    color: #c6bfb6;
+    color: #c9a96e;
   }
 
   .hero-sub {
+    font-family: 'Jost', sans-serif;
     font-size: 1.05rem;
     font-weight: 300;
-    color: rgba(236,232,226,0.44);
-    line-height: 1.85;
-    max-width: 420px;
-    margin-top: 1.5rem;
+    color: rgba(242,237,230,0.4);
+    line-height: 1.9;
+    max-width: 400px;
+    margin-top: 1.75rem;
     opacity: 0;
     animation: heroFade 0.6s ease 0.28s forwards;
   }
 
-  /* ── Feature list ── */
+  /* ── Features horizontales ── */
   .hero-features {
     display: flex;
-    flex-direction: column;
-    gap: 0.85rem;
-    margin-top: 2.5rem;
+    flex-wrap: wrap;
+    gap: 1.5rem 2.5rem;
+    margin-top: 3rem;
     opacity: 0;
     animation: heroFade 0.6s ease 0.42s forwards;
   }
@@ -91,16 +95,19 @@ const STYLES = `
   .hero-feature {
     display: flex;
     align-items: center;
-    gap: 0.9rem;
-    font-size: 1rem;
+    gap: 0.65rem;
+    font-family: 'Jost', sans-serif;
+    font-size: 0.78rem;
     font-weight: 400;
-    color: rgba(236,232,226,0.65);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(242,237,230,0.72);
   }
 
   .hf-icon {
-    width: 22px; height: 22px; min-width: 22px;
-    background: rgba(198,191,182,0.1);
-    border: 1px solid rgba(198,191,182,0.22);
+    width: 20px; height: 20px; min-width: 20px;
+    background: rgba(201,169,110,0.08);
+    border: 1px solid rgba(201,169,110,0.2);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -108,8 +115,8 @@ const STYLES = `
     flex-shrink: 0;
   }
   .hf-icon svg {
-    width: 10px; height: 10px;
-    stroke: #c6bfb6;
+    width: 9px; height: 9px;
+    stroke: #c9a96e;
     fill: none;
     stroke-width: 2.5;
     stroke-linecap: round;
@@ -117,112 +124,120 @@ const STYLES = `
   }
 
   @keyframes heroFade {
-    from { opacity: 0; transform: translateY(14px); }
+    from { opacity: 0; transform: translateY(18px); }
     to   { opacity: 1; transform: translateY(0); }
   }
 
-  /* ── Servicios ── */
+  /* ══════════════════════════════════════
+     SERVICIOS
+  ══════════════════════════════════════ */
   .main-layout {
-    max-width: 920px;
+    max-width: 1040px;
     margin: 0 auto;
-    padding: 0 2rem 8rem;
+    padding: 0 2rem 10rem;
   }
 
   .section-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 2.5rem 0 0;
-    margin-bottom: 0.25rem;
+    padding: 3rem 0 0;
+    margin-bottom: 0.2rem;
   }
 
   .section-label {
-    font-size: 0.68rem;
+    font-family: 'Jost', sans-serif;
+    font-size: 0.62rem;
     font-weight: 500;
-    letter-spacing: 0.22em;
+    letter-spacing: 0.28em;
     text-transform: uppercase;
-    color: rgba(198,191,182,0.55);
+    color: rgba(201,169,110,0.55);
   }
 
   .section-count {
-    font-size: 0.72rem;
-    font-weight: 400;
-    color: rgba(236,232,226,0.22);
+    font-family: 'Jost', sans-serif;
+    font-size: 0.68rem;
+    font-weight: 300;
+    color: rgba(242,237,230,0.48);
+    letter-spacing: 0.06em;
   }
 
-  /* Línea separadora bajo el header de sección */
   .section-divider {
     height: 1px;
-    background: linear-gradient(90deg, rgba(198,191,182,0.2) 0%, rgba(198,191,182,0.06) 60%, transparent 100%);
+    background: linear-gradient(90deg, rgba(201,169,110,0.25) 0%, rgba(201,169,110,0.07) 55%, transparent 100%);
     margin-bottom: 0;
   }
 
+  /* ── Lista de servicios ── */
   .service-list { list-style: none; }
 
   .service-item {
     display: flex;
     align-items: center;
-    gap: 1.25rem;
-    padding: 1.35rem 0.75rem;
-    border-bottom: 1px solid rgba(255,255,255,0.045);
-    border-left: 3px solid transparent;
+    gap: 1.5rem;
+    padding: 1.5rem 0.5rem;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    border-left: 2px solid transparent;
     cursor: pointer;
-    margin-left: -0.75rem;
-    transition: background 0.2s, border-left-color 0.2s;
-    border-radius: 0 4px 4px 0;
+    transition: background 0.22s ease, border-left-color 0.22s ease;
   }
 
   .service-item:hover {
-    background: rgba(198,191,182,0.04);
-    border-left-color: rgba(198,191,182,0.35);
+    background: rgba(201,169,110,0.04);
+    border-left-color: rgba(201,169,110,0.3);
   }
-  .service-item:hover .service-item-name { color: #ece8e2; }
+  .service-item:hover .service-item-name { color: #f2ede6; }
   .service-item:hover .check-box:not(.checked) {
-    border-color: rgba(198,191,182,0.45);
+    border-color: rgba(201,169,110,0.4);
   }
   .service-item.selected-item {
-    background: rgba(198,191,182,0.06);
-    border-left-color: #c6bfb6;
+    background: rgba(201,169,110,0.05);
+    border-left-color: #c9a96e;
   }
 
+  /* Checkbox */
   .check-box {
-    width: 22px; height: 22px; min-width: 22px;
-    border: 1px solid rgba(198,191,182,0.2);
+    width: 20px; height: 20px; min-width: 20px;
+    border: 1px solid rgba(201,169,110,0.18);
     border-radius: 4px;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: border-color 0.18s, background 0.18s;
+    transition: border-color 0.18s ease, background 0.18s ease;
+    flex-shrink: 0;
   }
   .check-box.checked {
-    background: rgba(198,191,182,0.9);
-    border-color: rgba(198,191,182,0.9);
+    background: #c9a96e;
+    border-color: #c9a96e;
   }
 
   .check-icon {
-    width: 11px; height: 11px;
-    stroke: #0c0c0b;
+    width: 10px; height: 10px;
+    stroke: #080808;
     stroke-width: 2.5;
     fill: none;
     opacity: 0;
-    transition: opacity 0.15s;
+    transition: opacity 0.15s ease;
   }
   .check-box.checked .check-icon { opacity: 1; }
 
   .service-item-info { flex: 1; min-width: 0; }
 
   .service-item-name {
-    font-size: 1rem;
+    font-family: 'Jost', sans-serif;
+    font-size: 1.15rem;
     font-weight: 400;
-    color: rgba(236,232,226,0.7);
-    transition: color 0.18s;
+    color: #f2ede6;
+    transition: color 0.18s ease;
+    letter-spacing: 0.01em;
   }
 
   .service-item-desc {
-    font-size: 0.82rem;
+    font-family: 'Jost', sans-serif;
+    font-size: 0.84rem;
     font-weight: 300;
-    color: rgba(236,232,226,0.28);
-    margin-top: 0.22rem;
+    color: rgba(242,237,230,0.55);
+    margin-top: 0.2rem;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -232,64 +247,70 @@ const STYLES = `
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    gap: 0.22rem;
+    gap: 0.2rem;
     flex-shrink: 0;
   }
 
   .service-item-price {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.2rem;
-    color: #c6bfb6;
+    font-family: 'Bodoni Moda', serif;
+    font-size: 1.35rem;
+    color: #c9a96e;
+    line-height: 1;
   }
 
   .service-item-duration {
-    font-size: 0.72rem;
-    font-weight: 400;
-    color: rgba(236,232,226,0.25);
-    letter-spacing: 0.02em;
+    font-family: 'Jost', sans-serif;
+    font-size: 0.68rem;
+    font-weight: 300;
+    color: rgba(242,237,230,0.52);
+    letter-spacing: 0.06em;
   }
 
   .state-msg {
-    padding: 3.5rem 0;
+    padding: 4rem 0;
     text-align: center;
-    font-size: 0.9rem;
+    font-family: 'Jost', sans-serif;
+    font-size: 0.88rem;
     font-weight: 300;
-    color: rgba(236,232,226,0.22);
+    color: rgba(242,237,230,0.5);
+    letter-spacing: 0.04em;
   }
 
-  /* ── Budget bar ── */
+  /* ══════════════════════════════════════
+     BUDGET BAR
+  ══════════════════════════════════════ */
   .budget-bar {
     position: fixed;
     bottom: 0; left: 0; right: 0;
-    background: rgba(12,12,11,0.97);
-    border-top: 1px solid rgba(198,191,182,0.22);
-    backdrop-filter: blur(28px);
-    -webkit-backdrop-filter: blur(28px);
-    padding: 1.1rem 2.5rem;
+    background: rgba(8,8,8,0.97);
+    border-top: 1px solid rgba(201,169,110,0.18);
+    backdrop-filter: blur(32px) saturate(1.5);
+    -webkit-backdrop-filter: blur(32px) saturate(1.5);
+    padding: 1.15rem 2.5rem;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 1.5rem;
     z-index: 200;
-    transform: translateY(calc(100% + 1px));
-    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
   }
-  .budget-bar.visible { transform: translateY(0); }
 
-  .budget-left { display: flex; flex-direction: column; gap: 0.15rem; }
+  .budget-left { display: flex; flex-direction: column; gap: 0.12rem; }
 
   .budget-label {
-    font-size: 0.65rem;
+    font-family: 'Jost', sans-serif;
+    font-size: 0.6rem;
     font-weight: 500;
-    letter-spacing: 0.18em;
+    letter-spacing: 0.22em;
     text-transform: uppercase;
-    color: rgba(198,191,182,0.6);
+    color: #c9a96e;
   }
 
   .budget-detail {
+    font-family: 'Jost', sans-serif;
     font-size: 0.82rem;
     font-weight: 300;
-    color: rgba(236,232,226,0.45);
+    color: rgba(242,237,230,0.78);
     max-width: 380px;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -306,54 +327,56 @@ const STYLES = `
   .budget-total { text-align: right; }
 
   .budget-total-label {
-    font-size: 0.62rem;
-    letter-spacing: 0.14em;
+    font-family: 'Jost', sans-serif;
+    font-size: 0.58rem;
+    letter-spacing: 0.16em;
     text-transform: uppercase;
-    color: rgba(236,232,226,0.28);
+    color: rgba(242,237,230,0.62);
     font-weight: 400;
   }
 
   .budget-total-amount {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.8rem;
-    color: #ece8e2;
+    font-family: 'Bodoni Moda', serif;
+    font-size: 1.95rem;
+    color: #f2ede6;
     line-height: 1;
     margin-top: 0.05rem;
   }
 
   .budget-btn {
-    padding: 0.8rem 2rem;
-    background: var(--accent, #c6bfb6);
+    padding: 0.82rem 2.1rem;
+    background: #c9a96e;
     border: none;
     border-radius: 3px;
-    color: #0c0c0b;
-    font-family: 'Inter', sans-serif;
-    font-size: 0.75rem;
+    color: #080808;
+    font-family: 'Jost', sans-serif;
+    font-size: 0.7rem;
     font-weight: 500;
-    letter-spacing: 0.16em;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
     cursor: pointer;
-    transition: background 0.2s, transform 0.18s;
+    transition: background 0.2s ease, transform 0.18s ease;
     white-space: nowrap;
   }
   .budget-btn:hover {
-    background: #dbd4cb;
+    background: #dbbf8a;
     transform: translateY(-1px);
   }
 
+  /* ── Responsive ── */
   @media (max-width: 768px) {
-    .hero { padding: 4rem 1.5rem 3rem; }
-    .main-layout { padding: 0 1.5rem 6rem; }
+    .hero { padding: 5rem 1.5rem 4rem; }
+    .main-layout { padding: 0 1.5rem 7rem; }
     .budget-bar { padding: 1rem 1.25rem; gap: 1rem; }
     .budget-detail { display: none; }
-    .budget-total-amount { font-size: 1.5rem; }
-    .budget-btn { padding: 0.72rem 1.35rem; }
+    .budget-total-amount { font-size: 1.6rem; }
+    .budget-btn { padding: 0.72rem 1.4rem; }
   }
 
   @media (max-width: 480px) {
-    .hero-title { font-size: 2.5rem; }
-    .hero-features { gap: 0.6rem; }
-    .hero-feature { font-size: 0.88rem; }
+    .hero-title { font-size: 3.2rem; }
+    .hero-features { gap: 1rem 1.5rem; }
+    .hero-feature { font-size: 0.72rem; }
     .budget-left { display: none; }
     .budget-bar { justify-content: space-between; }
     .budget-right { width: 100%; justify-content: space-between; gap: 1rem; }
@@ -382,7 +405,7 @@ export default function Home() {
     );
   };
 
-  const totalPrecio = selected.reduce((sum, s) => sum + Number(s.precio), 0);
+  const totalPrecio   = selected.reduce((sum, s) => sum + Number(s.precio), 0);
   const totalDuracion = selected.reduce((sum, s) => sum + s.duracion_minutos, 0);
 
   const handleReservar = () => {
@@ -417,7 +440,7 @@ export default function Home() {
           </div>
         </div>
 
-        <div id="servicios" className="main-layout" style={{scrollMarginTop: "72px"}}>
+        <div id="servicios" className="main-layout" style={{ scrollMarginTop: '70px' }}>
           <div className="section-head">
             <span className="section-label">Servicios disponibles</span>
             {!loading && !error && (
@@ -427,15 +450,19 @@ export default function Home() {
           <div className="section-divider" />
 
           {loading && <p className="state-msg">Cargando...</p>}
-          {error && <p className="state-msg" style={{color:'rgba(220,100,100,0.6)'}}>{error}</p>}
+          {error   && <p className="state-msg" style={{ color: 'rgba(220,100,100,0.6)' }}>{error}</p>}
 
           {!loading && !error && (
             <ul className="service-list">
               {servicios.map(service => {
                 const isChecked = !!selected.find(s => s.id === service.id);
                 return (
-                  <li key={service.id} className={`service-item${isChecked ? ' selected-item' : ''}`} onClick={() => toggle(service)}>
-                    <div className={`check-box ${isChecked ? 'checked' : ''}`}>
+                  <li
+                    key={service.id}
+                    className={`service-item${isChecked ? ' selected-item' : ''}`}
+                    onClick={() => toggle(service)}
+                  >
+                    <div className={`check-box${isChecked ? ' checked' : ''}`}>
                       <svg viewBox="0 0 12 12" className="check-icon">
                         <polyline points="2 6 5 9 10 3" />
                       </svg>
@@ -457,11 +484,18 @@ export default function Home() {
           )}
         </div>
 
-        <div id="guia" style={{scrollMarginTop: "68px"}}><FaceShapeGuide /></div>
+        <div id="guia" style={{ scrollMarginTop: '70px' }}>
+          <FaceShapeGuide />
+        </div>
       </div>
 
-      {/* Budget bar fuera del .home para que position:fixed funcione correctamente */}
-      <div className={`budget-bar ${selected.length > 0 ? 'visible' : ''}`}>
+      <div
+        className="budget-bar"
+        style={selected.length > 0
+          ? { transform: 'translateY(0)', opacity: 1, pointerEvents: 'auto' }
+          : { transform: 'translateY(110%)', opacity: 0, pointerEvents: 'none' }
+        }
+      >
         <div className="budget-left">
           <span className="budget-label">
             {selected.length} {selected.length === 1 ? 'servicio seleccionado' : 'servicios seleccionados'}

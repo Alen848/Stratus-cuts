@@ -1,27 +1,27 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 
-const API_URL  = import.meta.env.VITE_API_URL  || '';
+const API_URL    = import.meta.env.VITE_API_URL    || '';
 const SALON_SLUG = import.meta.env.VITE_SALON_SLUG || '';
 
 const STYLES = `
-  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=Inter:wght@300;400;500&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,500;1,6..96,400&family=Jost:wght@300;400;500;600&display=swap');
 
-  /* ── Línea de color en la parte superior de la página ── */
+  /* ── Línea superior dorada ── */
   body::before {
     content: '';
     position: fixed;
     top: 0; left: 0; right: 0;
-    height: 2px;
+    height: 1px;
     background: linear-gradient(
       90deg,
       transparent 0%,
-      rgba(198,191,182,0.45) 25%,
-      rgba(198,191,182,0.7) 50%,
-      rgba(198,191,182,0.45) 75%,
+      rgba(201,169,110,0.35) 20%,
+      rgba(201,169,110,0.6) 50%,
+      rgba(201,169,110,0.35) 80%,
       transparent 100%
     );
-    z-index: 200;
+    z-index: 500;
     pointer-events: none;
   }
 
@@ -29,131 +29,130 @@ const STYLES = `
     position: fixed;
     top: 0; left: 0; right: 0;
     z-index: 100;
-    height: 68px;
+    height: 70px;
     display: flex;
     align-items: center;
     padding: 0 2.5rem;
-    background: rgba(12,12,11,0.92);
-    backdrop-filter: blur(32px);
-    -webkit-backdrop-filter: blur(32px);
-    border-bottom: 1px solid rgba(255,255,255,0.055);
-    transition: background 0.3s, border-color 0.3s;
+    background: rgba(8,8,8,0.92);
+    backdrop-filter: blur(40px) saturate(1.4);
+    -webkit-backdrop-filter: blur(40px) saturate(1.4);
+    border-bottom: 1px solid rgba(255,255,255,0.045);
+    transition: background 0.35s ease, border-color 0.35s ease;
   }
 
   .navbar.scrolled {
-    background: rgba(12,12,11,0.98);
-    border-bottom-color: rgba(198,191,182,0.1);
+    background: rgba(8,8,8,0.98);
+    border-bottom-color: rgba(201,169,110,0.1);
   }
 
-  /* ── Layout de 3 zonas ── */
+  /* ── Brand ── */
   .navbar-brand {
     text-decoration: none;
     display: flex;
     flex-direction: column;
-    gap: 2px;
-    transition: opacity 0.2s;
+    gap: 3px;
+    transition: opacity 0.2s ease;
     flex-shrink: 0;
-    min-width: 0;
   }
-  .navbar-brand:hover { opacity: 0.72; }
+  .navbar-brand:hover { opacity: 0.7; }
 
   .brand-name {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.45rem;
+    font-family: 'Bodoni Moda', serif;
+    font-size: 1.5rem;
     font-weight: 400;
-    color: #ece8e2;
-    letter-spacing: 0.02em;
-    line-height: 1.1;
+    color: #f2ede6;
+    letter-spacing: 0.01em;
+    line-height: 1;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 240px;
+    max-width: 260px;
   }
 
   .brand-tag {
-    font-family: 'Inter', sans-serif;
-    font-size: 0.5rem;
+    font-family: 'Jost', sans-serif;
+    font-size: 0.46rem;
     font-weight: 400;
-    letter-spacing: 0.3em;
+    letter-spacing: 0.32em;
     text-transform: uppercase;
-    color: rgba(198,191,182,0.45);
+    color: rgba(201,169,110,0.38);
     line-height: 1;
   }
 
-  /* Zona central — centrado absoluto real */
+  /* ── Centro ── */
   .navbar-center {
     display: flex;
     align-items: center;
-    gap: 0.15rem;
+    gap: 0.1rem;
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
   }
 
   .nav-section-link {
-    font-family: 'Inter', sans-serif;
-    font-size: 0.72rem;
+    font-family: 'Jost', sans-serif;
+    font-size: 0.68rem;
     font-weight: 400;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.16em;
     text-transform: uppercase;
-    color: rgba(236,232,226,0.42);
+    color: rgba(242,237,230,0.38);
     text-decoration: none;
-    padding: 0.4rem 0.9rem;
+    padding: 0.45rem 1rem;
     border-radius: 4px;
-    transition: color 0.18s, background 0.18s;
+    transition: color 0.2s ease, background 0.2s ease;
     white-space: nowrap;
   }
   .nav-section-link:hover {
-    color: rgba(236,232,226,0.82);
-    background: rgba(255,255,255,0.05);
+    color: rgba(242,237,230,0.82);
+    background: rgba(255,255,255,0.04);
   }
 
   .nav-sep {
     width: 1px; height: 10px;
-    background: rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.07);
     flex-shrink: 0;
   }
 
-  /* Zona derecha */
+  /* ── Derecha ── */
   .navbar-right {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 1.25rem;
     margin-left: auto;
     flex-shrink: 0;
   }
 
   .nav-link-plain {
-    font-family: 'Inter', sans-serif;
-    font-size: 0.72rem;
+    font-family: 'Jost', sans-serif;
+    font-size: 0.68rem;
     font-weight: 400;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: rgba(236,232,226,0.42);
+    color: rgba(242,237,230,0.38);
     text-decoration: none;
-    transition: color 0.18s;
+    transition: color 0.2s ease;
   }
-  .nav-link-plain:hover { color: rgba(236,232,226,0.8); }
+  .nav-link-plain:hover { color: rgba(242,237,230,0.78); }
 
   .nav-cta {
     display: inline-flex;
     align-items: center;
-    gap: 0.45rem;
-    font-family: 'Inter', sans-serif;
-    font-size: 0.7rem;
+    gap: 0.5rem;
+    font-family: 'Jost', sans-serif;
+    font-size: 0.66rem;
     font-weight: 500;
-    letter-spacing: 0.14em;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
-    color: #0c0c0b;
-    background: #c6bfb6;
+    color: #080808;
+    background: #c9a96e;
     text-decoration: none;
-    padding: 0.6rem 1.35rem;
+    padding: 0.62rem 1.4rem;
     border-radius: 3px;
-    transition: background 0.2s, transform 0.18s;
+    transition: background 0.2s ease, transform 0.18s ease;
     white-space: nowrap;
   }
   .nav-cta:hover {
-    background: #dbd4cb;
+    background: #dbbf8a;
     transform: translateY(-1px);
   }
   .nav-cta svg { flex-shrink: 0; }
@@ -166,14 +165,14 @@ const STYLES = `
   }
   @media (max-width: 480px) {
     .navbar { padding: 0 1.25rem; }
-    .brand-name { font-size: 1.25rem; max-width: 160px; }
+    .brand-name { font-size: 1.3rem; max-width: 170px; }
     .nav-link-plain { display: none; }
   }
 `;
 
 const Navbar = () => {
-  const location  = useLocation();
-  const isHome    = location.pathname === '/';
+  const location   = useLocation();
+  const isHome     = location.pathname === '/';
   const [scrolled, setScrolled] = useState(false);
   const [salonNombre, setSalonNombre] = useState('');
 
@@ -217,7 +216,7 @@ const Navbar = () => {
           )}
           <Link to="/booking" className="nav-cta">
             Reservar
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <line x1="7" y1="17" x2="17" y2="7"/>
               <polyline points="7 7 17 7 17 17"/>
