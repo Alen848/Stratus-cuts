@@ -23,7 +23,8 @@ class CierreCaja(Base):
     efectivo_real          = Column(Float,   nullable=False)
     transferencia_real     = Column(Float,   default=0.0)
     tarjeta_real           = Column(Float,   default=0.0)
-    
+    fondo_caja             = Column(Float,   default=0.0)  # efectivo que queda para dar cambio mañana
+
     # Resultado
     diferencia             = Column(Float,   default=0.0) # real - teorico
     observaciones          = Column(String(500))

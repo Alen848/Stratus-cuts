@@ -59,6 +59,7 @@ export default function CierreModal({ isOpen, onClose, onSubmit, resumen, fecha 
   const [efectivoReal, setEfectivoReal]           = useState('');
   const [transferenciaReal, setTransferenciaReal] = useState('');
   const [tarjetaReal, setTarjetaReal]             = useState('');
+  const [fondoCaja, setFondoCaja]                 = useState('');
   const [observaciones, setObservaciones]         = useState('');
   const [loading, setLoading]                     = useState(false);
 
@@ -85,11 +86,14 @@ export default function CierreModal({ isOpen, onClose, onSubmit, resumen, fecha 
   const difTarjeta       = (parseFloat(tarjetaReal)       || 0) - totalDebito;
   const totalDiferencia  = difEfectivo + difTransferencia + difTarjeta;
 
+  const fondoVal = parseFloat(fondoCaja) || 0;
+
   useEffect(() => {
     if (isOpen) {
       setEfectivoReal('');
       setTransferenciaReal('');
       setTarjetaReal('');
+      setFondoCaja('');
       setObservaciones('');
     }
   }, [isOpen]);
@@ -109,6 +113,7 @@ export default function CierreModal({ isOpen, onClose, onSubmit, resumen, fecha 
         efectivo_real:          parseFloat(efectivoReal),
         transferencia_real:     parseFloat(transferenciaReal),
         tarjeta_real:           parseFloat(tarjetaReal),
+        fondo_caja:             fondoVal,
         diferencia:             totalDiferencia,
         observaciones,
       });
@@ -165,6 +170,45 @@ export default function CierreModal({ isOpen, onClose, onSubmit, resumen, fecha 
             real={transferenciaReal}
             setReal={setTransferenciaReal}
             dif={difTransferencia}
+          />
+        </div>
+
+        {/* Fondo de caja */}
+        <div style={{
+          padding: '12px 14px',
+          background: 'var(--bg-card)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-sm)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+        }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '2px' }}>
+              Fondo de caja para mañana
+            </div>
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+              Efectivo que dejás en la caja para dar vueltos
+            </div>
+          </div>
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            value={fondoCaja}
+            onChange={e => setFondoCaja(e.target.value)}
+            placeholder="0"
+            style={{
+              width: '110px',
+              padding: '6px 10px',
+              borderRadius: 'var(--radius-sm)',
+              border: '1px solid var(--border-strong)',
+              background: 'var(--bg-elevated)',
+              color: 'var(--text-primary)',
+              fontSize: '13px',
+              fontFamily: 'var(--font-body)',
+              textAlign: 'right',
+            }}
           />
         </div>
 
@@ -227,7 +271,7 @@ export default function CierreModal({ isOpen, onClose, onSubmit, resumen, fecha 
         {/* Saldo anterior — nota pequeña */}
         {saldoAnterior > 0 && (
           <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: 0 }}>
-            * El teórico de efectivo incluye el saldo anterior de {formatCurrency(saldoAnterior)}.
+            * El teórico de efectivo incluye el fondo de {formatCurrency(saldoAnterior)} dejado ayer.
           </p>
         )}
 

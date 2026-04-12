@@ -184,7 +184,9 @@ def get_ultimo_saldo_real(db: Session, salon_id: int, fecha: date) -> float:
         CierreCaja.salon_id == salon_id,
         CierreCaja.fecha < fecha,
     ).order_by(CierreCaja.fecha.desc()).first()
-    return ultimo_cierre.efectivo_real if ultimo_cierre else 0.0
+    if not ultimo_cierre:
+        return 0.0
+    return ultimo_cierre.fondo_caja or 0.0
 
 
 def create_cierre_caja(db: Session, cierre: CierreCajaCreate, salon_id: int):
@@ -200,6 +202,7 @@ def create_cierre_caja(db: Session, cierre: CierreCajaCreate, salon_id: int):
             efectivo_real=cierre.efectivo_real,
             transferencia_real=cierre.transferencia_real,
             tarjeta_real=cierre.tarjeta_real,
+            fondo_caja=cierre.fondo_caja,
             diferencia=cierre.diferencia,
             observaciones=cierre.observaciones,
         )
