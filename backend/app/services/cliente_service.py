@@ -18,7 +18,6 @@ def get_clientes(db: Session, salon_id: int, skip: int = 0, limit: int = 100):
 
 
 def create_cliente(db: Session, cliente: ClienteCreate, salon_id: int):
-    # Si viene email, buscar si ya existe en este salón
     if cliente.email:
         existing = db.query(Cliente).filter(
             Cliente.salon_id == salon_id,
@@ -27,7 +26,6 @@ def create_cliente(db: Session, cliente: ClienteCreate, salon_id: int):
         if existing:
             return existing
 
-    # Si viene teléfono, buscar si ya existe en este salón
     if cliente.telefono:
         existing = db.query(Cliente).filter(
             Cliente.salon_id == salon_id,
@@ -55,12 +53,27 @@ def update_cliente(db: Session, cliente_id: int, cliente: ClienteUpdate, salon_i
 
 def delete_cliente(db: Session, cliente_id: int, salon_id: int):
     from app.models.turno import Turno
+
     db_cliente = get_cliente(db, cliente_id, salon_id)
     if not db_cliente:
         return None
-    tiene_turnos = db.query(Turno).filter(Turno.cliente_id == cliente_id).first()
-    if tiene_turnos:
-        raise HTTPException(status_code=400, detail="No se puede eliminar un cliente que tiene turnos asociados")
+
+    # Bloquear solo si tiene turnos activos o futuros
+    turno_activo = db.query(Turno).filter(
+        Turno.cliente_id == cliente_id,
+        Turno.estado.in_(["pendiente", "confirmado"]),
+    ).first()
+    if turno_activo:
+        raise HTTPException(
+            status_code=400,
+            detail="El cliente tiene turnos pendientes o confirmados. Cancelalos antes de eliminar el cliente.",
+        )
+
+    # Desasociar turnos pasados/cancelados para preservar el historial
+    db.query(Turno).filter(Turno.cliente_id == cliente_id).update(
+        {"cliente_id": None}, synchronize_session=False
+    )
+
     db.delete(db_cliente)
     db.commit()
     return db_cliente

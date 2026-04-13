@@ -35,10 +35,6 @@ function buildSlotsFromHorario(horario) {
   return slots;
 }
 
-// Usar fecha LOCAL, no UTC (evita que después de las 21hs ARG los slots de hoy se marquen como pasados)
-const _d = new Date();
-const TODAY = `${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,'0')}-${String(_d.getDate()).padStart(2,'0')}`;
-
 function toLocalDateStr(date) {
   return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
 }
@@ -234,8 +230,9 @@ function SlotGrid({ selectedDate, selectedTime, onSelect, turnosDelDia, duracion
 
   const isPast = (slotTime) => {
     if (ignorarOcupados) return false; // walk-in puede registrar horas pasadas
-    if (selectedDate > TODAY) return false;
-    if (selectedDate < TODAY) return true;
+    const today = toLocalDateStr(new Date());
+    if (selectedDate > today) return false;
+    if (selectedDate < today) return true;
     return new Date(`${selectedDate}T${slotTime}:00`) <= new Date();
   };
 

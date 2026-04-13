@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from fastapi import HTTPException
 from app.models.servicio import Servicio
 from app.schemas.servicio import ServicioCreate, ServicioUpdate
 
@@ -36,9 +37,19 @@ def update_servicio(db: Session, servicio_id: int, servicio: ServicioUpdate, sal
 
 
 def delete_servicio(db: Session, servicio_id: int, salon_id: int):
+    from app.models.turno_servicio import TurnoServicio
+
     db_servicio = get_servicio(db, servicio_id, salon_id)
     if not db_servicio:
         return None
+
+    usado = db.query(TurnoServicio).filter(TurnoServicio.servicio_id == servicio_id).first()
+    if usado:
+        raise HTTPException(
+            status_code=400,
+            detail="No se puede eliminar un servicio que ya fue usado en turnos. Desactivalo en su lugar.",
+        )
+
     db.delete(db_servicio)
     db.commit()
     return db_servicio

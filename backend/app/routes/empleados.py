@@ -50,6 +50,4 @@ def delete_empleado(
     deleted = empleado_service.delete_empleado(db, empleado_id, salon_id=current_user.salon_id)
     if deleted is None:
         raise HTTPException(status_code=404, detail="Profesional no encontrado")
-    if deleted == "tiene_turnos":
-        raise HTTPException(status_code=400, detail="No se puede eliminar un profesional que tiene turnos asociados")
     return deleted

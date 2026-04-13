@@ -61,13 +61,13 @@ function calcNowPx() {
   return (mins / SLOT_MIN) * SLOT_PX;
 }
 
-const todayStr = toLocalDateStr(new Date());
-
 // ─── Componente principal ─────────────────────────────────────────────────────
 export default function DashboardPage() {
   const { turnos,   loading: lT } = useTurnos();
   const { clientes, loading: lC } = useClientes();
   const { empleados,loading: lE } = useEmpleados();
+
+  const todayStr = toLocalDateStr(new Date());
 
   const [nowPx, setNowPx] = useState(calcNowPx);
   useEffect(() => {

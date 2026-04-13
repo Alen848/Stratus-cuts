@@ -66,7 +66,7 @@ def login(
         if user.salon_id != salon.id:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Usuario o contraseña incorrectos para este salón",
+                detail="Usuario o contraseña incorrectos",
                 headers={"WWW-Authenticate": "Bearer"},
             )
 

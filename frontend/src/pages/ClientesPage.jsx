@@ -26,19 +26,30 @@ export default function ClientesPage() {
   const openEdit   = (c) => { setEditingCliente(c);  setModalOpen(true); };
 
   const handleSubmit = async (data) => {
-    if (editingCliente) {
-      await editCliente(editingCliente.id, data);
-      notify('Cliente actualizado');
-    } else {
-      await addCliente(data);
-      notify('Cliente creado');
+    try {
+      if (editingCliente) {
+        await editCliente(editingCliente.id, data);
+        notify('Cliente actualizado');
+      } else {
+        await addCliente(data);
+        notify('Cliente creado');
+      }
+    } catch (e) {
+      const msg = e?.response?.data?.detail || 'Error al guardar el cliente';
+      notify(msg, 'error');
+      throw e; // propagar para que ClienteModal no cierre el modal
     }
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm('¿Eliminar este cliente?')) return;
-    await removeCliente(id);
-    notify('Cliente eliminado');
+    try {
+      await removeCliente(id);
+      notify('Cliente eliminado');
+    } catch (e) {
+      const msg = e?.response?.data?.detail || 'No se pudo eliminar el cliente';
+      notify(msg, 'error');
+    }
   };
 
   return (

@@ -37,13 +37,38 @@ def update_empleado(db: Session, empleado_id: int, empleado: EmpleadoUpdate, sal
 
 
 def delete_empleado(db: Session, empleado_id: int, salon_id: int):
+    from app.models.turno import Turno
+    from app.models.horario_empleado import HorarioEmpleado
+    from app.models.bloqueo_agenda import BloqueoAgenda
+
     db_empleado = get_empleado(db, empleado_id, salon_id)
     if not db_empleado:
         return None
-    from app.models.turno import Turno
-    tiene_turnos = db.query(Turno).filter(Turno.empleado_id == empleado_id).first()
-    if tiene_turnos:
-        return "tiene_turnos"
+
+    # Bloquear si tiene turnos activos o futuros
+    turno_activo = db.query(Turno).filter(
+        Turno.empleado_id == empleado_id,
+        Turno.estado.in_(["pendiente", "confirmado"]),
+    ).first()
+    if turno_activo:
+        raise HTTPException(
+            status_code=400,
+            detail="El profesional tiene turnos pendientes o confirmados. Cancelalos antes de eliminar.",
+        )
+
+    # Desasociar turnos históricos
+    db.query(Turno).filter(Turno.empleado_id == empleado_id).update(
+        {"empleado_id": None}, synchronize_session=False
+    )
+
+    # Eliminar horarios y bloqueos asociados
+    db.query(HorarioEmpleado).filter(HorarioEmpleado.empleado_id == empleado_id).delete(
+        synchronize_session=False
+    )
+    db.query(BloqueoAgenda).filter(BloqueoAgenda.empleado_id == empleado_id).delete(
+        synchronize_session=False
+    )
+
     db.delete(db_empleado)
     db.commit()
     return db_empleado

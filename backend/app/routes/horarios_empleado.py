@@ -17,7 +17,9 @@ def read_horarios(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    return horario_empleado_service.get_horarios_by_empleado(db, empleado_id)
+    return horario_empleado_service.get_horarios_by_empleado(
+        db, empleado_id, salon_id=current_user.salon_id
+    )
 
 
 @router.post("/", response_model=HorarioEmpleado)
@@ -26,7 +28,9 @@ def create_horario(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    return horario_empleado_service.create_or_update_horario(db, horario)
+    return horario_empleado_service.create_or_update_horario(
+        db, horario, salon_id=current_user.salon_id
+    )
 
 
 @router.delete("/{horario_id}")
@@ -35,7 +39,9 @@ def delete_horario(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    deleted = horario_empleado_service.delete_horario(db, horario_id)
+    deleted = horario_empleado_service.delete_horario(
+        db, horario_id, salon_id=current_user.salon_id
+    )
     if not deleted:
         raise HTTPException(status_code=404, detail="Horario no encontrado")
     return {"message": "Horario eliminado"}

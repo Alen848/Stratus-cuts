@@ -132,7 +132,7 @@ def update_turno(db: Session, turno_id: int, turno_update: TurnoUpdate, salon_id
     if not db_turno:
         return None
 
-    update_data = turno_update.dict(exclude_unset=True)
+    update_data = turno_update.model_dump(exclude_unset=True)
 
     # Si el día está cerrado, solo permitimos cambiar el estado a 'cancelado'
     # y nada más. Si se intenta cambiar otra cosa, check_dia_abierto lanzará error.
@@ -146,6 +146,31 @@ def update_turno(db: Session, turno_id: int, turno_update: TurnoUpdate, salon_id
         check_dia_abierto(db, salon_id, nueva_fecha.date())
         _check_horario_salon(db, salon_id, nueva_fecha)
         update_data["fecha_hora"] = nueva_fecha
+
+    # Verificar conflictos de horario si cambia fecha_hora o empleado_id
+    if "fecha_hora" in update_data or "empleado_id" in update_data:
+        fecha_final    = update_data.get("fecha_hora", to_argentina_naive(db_turno.fecha_hora))
+        empleado_final = update_data.get("empleado_id", db_turno.empleado_id)
+        duracion_final = db_turno.duracion
+        fin_final      = fecha_final + timedelta(minutes=duracion_final)
+        dia_final      = fecha_final.date()
+
+        turnos_empleado = db.query(Turno).filter(
+            Turno.salon_id == salon_id,
+            Turno.empleado_id == empleado_final,
+            Turno.estado != "cancelado",
+            Turno.id != turno_id,
+            func.date(Turno.fecha_hora) == dia_final,
+        ).all()
+
+        for t in turnos_empleado:
+            t_inicio = to_argentina_naive(t.fecha_hora)
+            t_fin    = t_inicio + timedelta(minutes=t.duracion)
+            if fecha_final < t_fin and fin_final > t_inicio:
+                raise HTTPException(
+                    status_code=400,
+                    detail="El profesional ya tiene un turno en ese horario.",
+                )
 
     if "servicios_ids" in update_data:
         db.query(TurnoServicio).filter(TurnoServicio.turno_id == turno_id).delete()
@@ -171,12 +196,20 @@ def update_turno(db: Session, turno_id: int, turno_update: TurnoUpdate, salon_id
 
 
 def delete_turno(db: Session, turno_id: int, salon_id: int):
+    from app.models.pago import Pago
+
     db_turno = db.query(Turno).filter(
         Turno.id == turno_id,
         Turno.salon_id == salon_id,
     ).first()
     if db_turno:
-        # check_dia_abierto(db, salon_id, db_turno.fecha_hora.date())  # Se quita para permitir eliminación siempre
+        # Eliminar registros hijos antes de borrar el turno
+        db.query(TurnoServicio).filter(TurnoServicio.turno_id == turno_id).delete(
+            synchronize_session=False
+        )
+        db.query(Pago).filter(Pago.turno_id == turno_id).delete(
+            synchronize_session=False
+        )
         db.delete(db_turno)
         db.commit()
     return db_turno

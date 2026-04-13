@@ -33,6 +33,7 @@ export function useClientes() {
   };
 
   const removeCliente = async (id) => {
+    // Primero confirmar que el backend aceptó el borrado, luego actualizar el estado local
     await clientesApi.deleteCliente(id);
     setClientes((prev) => prev.filter((c) => c.id !== id));
   };
