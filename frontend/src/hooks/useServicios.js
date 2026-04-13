@@ -26,5 +26,16 @@ export function useServicios() {
     return res.data;
   };
 
-  return { servicios, loading, error, refetch: fetchServicios, addServicio };
+  const editServicio = async (id, data) => {
+    const res = await serviciosApi.updateServicio(id, data);
+    setServicios((prev) => prev.map((s) => (s.id === id ? res.data : s)));
+    return res.data;
+  };
+
+  const removeServicio = async (id) => {
+    await serviciosApi.deleteServicio(id);
+    setServicios((prev) => prev.filter((s) => s.id !== id));
+  };
+
+  return { servicios, loading, error, refetch: fetchServicios, addServicio, editServicio, removeServicio };
 }

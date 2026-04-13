@@ -9,19 +9,46 @@ import { formatDuration } from '../utils/formatters';
 const CATEGORY_ICONS = ['✂', '◈', '✦', '◆', '◉', '❋'];
 
 export default function ServiciosPage() {
-  const { servicios, loading, addServicio } = useServicios();
-  const { notify }    = useApp();
-  const [modalOpen, setModalOpen] = useState(false);
+  const { servicios, loading, addServicio, editServicio, removeServicio } = useServicios();
+  const { notify } = useApp();
+
+  const [modalOpen, setModalOpen]           = useState(false);
+  const [editingServicio, setEditingServicio] = useState(null);
+
+  const openCreate = () => { setEditingServicio(null); setModalOpen(true); };
+  const openEdit   = (s) => { setEditingServicio(s);   setModalOpen(true); };
 
   const handleSubmit = async (data) => {
-    await addServicio(data);
-    notify('Servicio creado');
+    try {
+      if (editingServicio) {
+        await editServicio(editingServicio.id, data);
+        notify('Servicio actualizado');
+      } else {
+        await addServicio(data);
+        notify('Servicio creado');
+      }
+    } catch (e) {
+      const msg = e?.response?.data?.detail || 'Error al guardar el servicio';
+      notify(msg, 'error');
+      throw e;
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('¿Eliminar este servicio? No podrás eliminarlo si ya fue usado en turnos.')) return;
+    try {
+      await removeServicio(id);
+      notify('Servicio eliminado');
+    } catch (e) {
+      const msg = e?.response?.data?.detail || 'No se pudo eliminar el servicio';
+      notify(msg, 'error');
+    }
   };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <Button variant="primary" onClick={() => setModalOpen(true)}>+ Nuevo servicio</Button>
+        <Button variant="primary" onClick={openCreate}>+ Nuevo servicio</Button>
       </div>
 
       {loading ? (
@@ -31,7 +58,7 @@ export default function ServiciosPage() {
           icon="◆"
           title="Sin servicios"
           description="Cargá los servicios que ofrece tu peluquería."
-          action={<Button variant="primary" onClick={() => setModalOpen(true)}>Crear servicio</Button>}
+          action={<Button variant="primary" onClick={openCreate}>Crear servicio</Button>}
         />
       ) : (
         <div style={{
@@ -41,7 +68,7 @@ export default function ServiciosPage() {
           overflow: 'hidden',
         }}>
           <div style={{
-            display: 'grid', gridTemplateColumns: '36px 2fr 3fr 1fr 1fr',
+            display: 'grid', gridTemplateColumns: '36px 2fr 3fr 1fr 1fr auto',
             padding: '12px 20px',
             borderBottom: '1px solid var(--border)',
             fontSize: '11px', color: 'var(--text-muted)',
@@ -52,13 +79,15 @@ export default function ServiciosPage() {
             <span>Descripción</span>
             <span>Duración</span>
             <span>Precio</span>
+            <span></span>
           </div>
+
           {servicios.map((s, i) => (
             <div
               key={s.id}
               className="animate-fade"
               style={{
-                display: 'grid', gridTemplateColumns: '36px 2fr 3fr 1fr 1fr',
+                display: 'grid', gridTemplateColumns: '36px 2fr 3fr 1fr 1fr auto',
                 padding: '16px 20px',
                 borderBottom: i < servicios.length - 1 ? '1px solid var(--border)' : 'none',
                 alignItems: 'center',
@@ -81,6 +110,10 @@ export default function ServiciosPage() {
               <div style={{ fontSize: '14px', color: 'var(--gold)', fontWeight: 500 }}>
                 ${s.precio?.toLocaleString('es-AR')}
               </div>
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <Button variant="ghost" size="sm" onClick={() => openEdit(s)}>✎</Button>
+                <Button variant="danger" size="sm" onClick={() => handleDelete(s.id)}>✕</Button>
+              </div>
             </div>
           ))}
         </div>
@@ -90,6 +123,7 @@ export default function ServiciosPage() {
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
         onSubmit={handleSubmit}
+        servicio={editingServicio}
       />
     </div>
   );

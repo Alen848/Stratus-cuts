@@ -32,17 +32,6 @@ function precioTurno(turno) {
   }, 0);
 }
 
-/* ── Comisiones guardadas en localStorage ── */
-const STORAGE_KEY = 'turnera_comisiones';
-function loadComisiones() {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); }
-  catch { return {}; }
-}
-function saveComision(empleadoId, porcentaje) {
-  const data = loadComisiones();
-  data[empleadoId] = porcentaje;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-}
 
 /* ════════════════════════════════════════════
    Vista: Equipo
@@ -127,22 +116,6 @@ function VistaEquipo({ empleados, loading, turnos, onAdd, onEdit, onHorarios, on
 /* ════════════════════════════════════════════
    Vista: Sueldos
 ════════════════════════════════════════════ */
-const SUELDOS_KEY = 'turnera_sueldos_pagados';
-
-function getSueldosPagados() {
-  try { return JSON.parse(localStorage.getItem(SUELDOS_KEY) || '{}'); }
-  catch { return {}; }
-}
-
-function marcarSueldoPagado(empleadoId, mes, anio) {
-  const data = getSueldosPagados();
-  data[`${empleadoId}_${mes}_${anio}`] = true;
-  localStorage.setItem(SUELDOS_KEY, JSON.stringify(data));
-}
-
-function isSueldoPagado(empleadoId, mes, anio) {
-  return !!getSueldosPagados()[`${empleadoId}_${mes}_${anio}`];
-}
 
 function VistaSueldos({ empleados, loading, editEmpleado }) {
   const { notify } = useApp();
@@ -157,13 +130,10 @@ function VistaSueldos({ empleados, loading, editEmpleado }) {
   const [loadingReg,   setLoadingReg]   = useState({});
   const [registrados,  setRegistrados]  = useState({});
 
+  // Limpiar el estado de registrados al cambiar de período
   useEffect(() => {
-    const result = {};
-    empleados.forEach(e => {
-      if (isSueldoPagado(e.id, mes, anio)) result[e.id] = true;
-    });
-    setRegistrados(result);
-  }, [empleados, mes, anio]);
+    setRegistrados({});
+  }, [mes, anio]);
 
   const mesesNombres = [
     'Enero','Febrero','Marzo','Abril','Mayo','Junio',
@@ -197,7 +167,7 @@ function VistaSueldos({ empleados, loading, editEmpleado }) {
 
   const registrarSueldo = async (emp) => {
     const monto = getMonto(emp);
-    if (monto <= 0 || isSueldoPagado(emp.id, mes, anio)) return;
+    if (monto <= 0 || registrados[emp.id]) return;
     try {
       setLoadingReg(l => ({ ...l, [emp.id]: true }));
       await gastosApi.create({
@@ -207,7 +177,6 @@ function VistaSueldos({ empleados, loading, editEmpleado }) {
         fecha:          hoy(),
         observaciones: `Período: ${mesesNombres[mes - 1]} ${anio}`,
       });
-      marcarSueldoPagado(emp.id, mes, anio);
       setRegistrados(r => ({ ...r, [emp.id]: true }));
       notify(`Sueldo de ${emp.nombre} registrado en caja ✓`);
     } catch {
@@ -427,27 +396,34 @@ function VistaSueldos({ empleados, loading, editEmpleado }) {
 /* ════════════════════════════════════════════
    Vista: Comisiones
 ════════════════════════════════════════════ */
-function VistaComisiones({ empleados, turnos, loading }) {
+function VistaComisiones({ empleados, turnos, loading, editEmpleado }) {
   const { notify } = useApp();
-  const [desde, setDesde]           = useState(primerDiaMes());
-  const [hasta, setHasta]           = useState(hoy());
-  const [comisiones, setComisiones] = useState(loadComisiones());
-  const [editandoId, setEditandoId] = useState(null);
-  const [editVal, setEditVal]       = useState('');
+  const [desde, setDesde]             = useState(primerDiaMes());
+  const [hasta, setHasta]             = useState(hoy());
+  const [editandoId, setEditandoId]   = useState(null);
+  const [editVal, setEditVal]         = useState('');
   const [registrados, setRegistrados] = useState({});
-  const [loadingReg,   setLoadingReg]   = useState({});
+  const [loadingReg, setLoadingReg]   = useState({});
+  const [savingPct, setSavingPct]     = useState({});
 
   const handleEditComision = (id, actual) => {
     setEditandoId(id);
     setEditVal(String(actual ?? 0));
   };
 
-  const handleSaveComision = (id) => {
+  const handleSaveComision = async (emp) => {
     const val = Math.min(100, Math.max(0, Number(editVal) || 0));
-    saveComision(id, val);
-    setComisiones(prev => ({ ...prev, [id]: val }));
+    setSavingPct(s => ({ ...s, [emp.id]: true }));
+    try {
+      await editEmpleado(emp.id, { comision_porcentaje: val });
+      notify(`Comisión de ${emp.nombre} actualizada`);
+    } catch {
+      notify('Error al guardar el porcentaje', 'error');
+    } finally {
+      setSavingPct(s => ({ ...s, [emp.id]: false }));
+    }
     setEditandoId(null);
-    setRegistrados(r => ({ ...r, [id]: false }));
+    setRegistrados(r => ({ ...r, [emp.id]: false }));
   };
 
   const turnosFiltrados = useMemo(() => {
@@ -462,11 +438,11 @@ function VistaComisiones({ empleados, turnos, loading }) {
     return empleados.map(e => {
       const misTurnos = turnosFiltrados.filter(t => t.empleado_id === e.id);
       const facturado = misTurnos.reduce((sum, t) => sum + precioTurno(t), 0);
-      const pct       = comisiones[e.id] ?? 0;
+      const pct       = e.comision_porcentaje ?? 0;
       const comision  = (facturado * pct) / 100;
       return { empleado: e, turnos: misTurnos.length, facturado, pct, comision };
     });
-  }, [empleados, turnosFiltrados, comisiones]);
+  }, [empleados, turnosFiltrados]);
 
   const totales = useMemo(() => ({
     turnos:    resumen.reduce((s, r) => s + r.turnos, 0),
@@ -586,13 +562,13 @@ function VistaComisiones({ empleados, turnos, loading }) {
                     <input
                       type="number" min="0" max="100" value={editVal}
                       onChange={ev => setEditVal(ev.target.value)}
-                      onKeyDown={ev => { if (ev.key === 'Enter') handleSaveComision(e.id); if (ev.key === 'Escape') setEditandoId(null); }}
+                      onKeyDown={ev => { if (ev.key === 'Enter') handleSaveComision(e); if (ev.key === 'Escape') setEditandoId(null); }}
                       autoFocus
                       style={{ ...inputStyle, width: '60px', padding: '4px 8px', fontSize: '13px' }}
                     />
                     <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>%</span>
                     <button
-                      onClick={() => handleSaveComision(e.id)}
+                      onClick={() => handleSaveComision(e)}
                       style={{
                         padding: '3px 8px', borderRadius: '4px', fontSize: '11px',
                         background: 'var(--gold-dim)', border: '1px solid var(--gold-border)',
@@ -675,8 +651,8 @@ function VistaComisiones({ empleados, turnos, loading }) {
       </div>
 
       <p style={{ fontSize: '11px', color: 'var(--text-muted)', lineHeight: 1.6 }}>
-        * Se calculan turnos <strong style={{ color: 'var(--text-secondary)' }}>confirmados y completados</strong>. 
-        Los porcentajes se guardan localmente. Hacé click en el % para editarlo.
+        * Se calculan turnos <strong style={{ color: 'var(--text-secondary)' }}>confirmados y completados</strong>.
+        Los porcentajes se guardan en la base de datos. Hacé click en el % para editarlo.
         Al presionar <strong style={{ color: 'var(--text-secondary)' }}>→ Registrar en caja</strong> el monto aparece como gasto en la pestaña Caja.
       </p>
     </div>
@@ -756,7 +732,7 @@ export default function EmpleadosPage() {
       )}
       {vista === 'comisiones' && (
         <VistaComisiones
-          empleados={empleados} turnos={turnos} loading={loading}
+          empleados={empleados} turnos={turnos} loading={loading} editEmpleado={editEmpleado}
         />
       )}
 

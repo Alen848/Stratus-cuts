@@ -14,8 +14,9 @@ class Empleado(Base):
     telefono     = Column(String(20))
     email        = Column(String(100), index=True)
     especialidad = Column(String(100))
-    activo       = Column(Boolean, default=True)
-    sueldo_base  = Column(Float, nullable=True)
+    activo              = Column(Boolean, default=True)
+    sueldo_base         = Column(Float, nullable=True)
+    comision_porcentaje = Column(Float, default=0.0, nullable=True)
 
     # Relaciones
     turnos = relationship("Turno", back_populates="empleado")
