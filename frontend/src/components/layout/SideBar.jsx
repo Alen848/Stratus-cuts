@@ -62,7 +62,7 @@ export default function Sidebar() {
       </button>
 
       <div className={styles.footer}>
-        {isSidebarCollapsed ? '©' : `SaaS Turnera © ${new Date().getFullYear()}`}
+        {isSidebarCollapsed ? '©' : `Stratus Industries © ${new Date().getFullYear()}`}
       </div>
     </aside>
   );

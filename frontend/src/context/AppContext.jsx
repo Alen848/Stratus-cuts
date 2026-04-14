@@ -1,4 +1,4 @@
-// Turnera Villan — Admin Frontend
+// Stratus Industries — Admin Frontend
 // Powered by Stratus · stratus.app
 import { createContext, useContext, useState, useEffect } from 'react';
 import { configSalon as configSalonApi } from '../api/api';

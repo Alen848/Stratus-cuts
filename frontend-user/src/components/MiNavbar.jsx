@@ -199,7 +199,7 @@ const Navbar = () => {
 
         <Link to="/" className="navbar-brand">
           <span className="brand-name">{displayName}</span>
-          <span className="brand-tag">Reservas online · Stratus</span>
+          <span className="brand-tag">Reservas online · Stratus Industries</span>
         </Link>
 
         {isHome && (

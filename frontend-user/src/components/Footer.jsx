@@ -25,7 +25,7 @@ const Footer = () => {
 
         <div className="footer-brand">
           <span className="footer-brand-name">{displayName}</span>
-          <span className="footer-brand-tag">Reservas online · Stratus</span>
+          <span className="footer-brand-tag">Reservas online · Stratus Industries</span>
         </div>
 
         <div>
@@ -45,7 +45,7 @@ const Footer = () => {
           Todos los derechos reservados
         </span>
         <span className="footer-copy" style={{ color: 'rgba(198,191,182,0.25)', fontSize: '0.68rem', letterSpacing: '0.08em' }}>
-          Powered by Stratus
+          Powered by Stratus Industries
         </span>
       </div>
     </footer>

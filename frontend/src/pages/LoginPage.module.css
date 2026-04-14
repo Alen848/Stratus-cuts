@@ -142,3 +142,17 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+/* ── Powered by ─────────────────────────────────────────────── */
+.poweredBy {
+  margin-top: 24px;
+  text-align: center;
+  font-size: 10px;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  font-weight: 400;
+}
+.poweredBy strong {
+  font-weight: 500;
+  color: var(--text-secondary);
+}
