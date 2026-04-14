@@ -15,12 +15,18 @@ export function AuthProvider({ children }) {
     let slug = '';
     
     if (host === 'localhost' || host === '127.0.0.1') {
-      // Para desarrollo local, puedes usar un parámetro en la URL ?salon=slug
-      // o hardcodear uno temporalmente
-      slug = new URLSearchParams(window.location.search).get('salon') || 'salon1';
+      // Para desarrollo local: usa ?salon=slug en la URL, la variable de entorno,
+      // o configura VITE_SALON_SLUG en el archivo .env del frontend
+      slug = new URLSearchParams(window.location.search).get('salon')
+          || import.meta.env.VITE_SALON_SLUG
+          || '';
     } else {
       // En producción, tomamos la primera parte del dominio
       slug = host.split('.')[0];
+    }
+
+    if (!slug) {
+      throw new Error('No se encontró el slug del salón. Configurá VITE_SALON_SLUG en el .env del frontend.');
     }
 
     const form = new URLSearchParams();
