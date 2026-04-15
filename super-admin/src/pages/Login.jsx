@@ -98,6 +98,12 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Si ya hay sesión activa, ir directo al dashboard
+  if (localStorage.getItem('sa_token')) {
+    navigate('/', { replace: true });
+    return null;
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from app.database.connection import get_db
-from app.auth.dependencies import get_current_user
+from app.auth.dependencies import get_current_user, require_admin
 from app.models.usuario import Usuario
 from app.services import horario_salon_service
 from app.schemas.horario_salon import HorarioSalon, HorarioSalonUpsert
@@ -23,6 +23,6 @@ def read_horarios(
 def update_horarios(
     horarios: List[HorarioSalonUpsert],
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_admin),
 ):
     return horario_salon_service.upsert_horarios(db, current_user.salon_id, horarios)

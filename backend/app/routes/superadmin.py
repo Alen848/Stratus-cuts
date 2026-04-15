@@ -38,10 +38,15 @@ class UsuarioAdminCreate(BaseModel):
     salon_id: int
     username: str
     password: str
+    rol: str = "admin"
 
 
 class ResetPassword(BaseModel):
     nueva_password: str
+
+
+class UsuarioRolUpdate(BaseModel):
+    rol: str
 
 
 # ── Salones ────────────────────────────────────────────────────────────────────
@@ -171,17 +176,21 @@ def crear_usuario_admin(
     if existe:
         raise HTTPException(status_code=400, detail="El username ya existe en ese salón.")
 
+    roles_validos = ("admin", "empleado")
+    if payload.rol not in roles_validos:
+        raise HTTPException(status_code=400, detail=f"Rol inválido. Debe ser: {', '.join(roles_validos)}.")
+
     usuario = Usuario(
         salon_id=salon_id,
         username=payload.username,
         password_hash=hash_password(payload.password),
-        rol="admin",
+        rol=payload.rol,
         activo=True,
         debe_cambiar_password=True,
     )
     db.add(usuario)
     db.commit()
-    return {"mensaje": "Usuario admin creado.", "usuario_id": usuario.id}
+    return {"mensaje": "Usuario creado.", "usuario_id": usuario.id}
 
 
 @router.patch("/usuarios/{usuario_id}/reset-password")
@@ -202,6 +211,29 @@ def reset_password(
     usuario.debe_cambiar_password = True
     db.commit()
     return {"mensaje": "Contraseña reseteada. El usuario deberá cambiarla al ingresar."}
+
+
+@router.patch("/usuarios/{usuario_id}/rol")
+def actualizar_rol(
+    usuario_id: int,
+    payload: UsuarioRolUpdate,
+    db: Session = Depends(get_db),
+    _: Usuario = Depends(require_superadmin),
+):
+    roles_validos = ("admin", "empleado")
+    if payload.rol not in roles_validos:
+        raise HTTPException(status_code=400, detail=f"Rol inválido. Debe ser: {', '.join(roles_validos)}.")
+
+    usuario = db.query(Usuario).filter(
+        Usuario.id == usuario_id,
+        Usuario.rol != "superadmin",
+    ).first()
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado.")
+
+    usuario.rol = payload.rol
+    db.commit()
+    return {"rol": usuario.rol}
 
 
 @router.patch("/usuarios/{usuario_id}/toggle-activo")

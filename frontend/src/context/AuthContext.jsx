@@ -9,31 +9,15 @@ export function AuthProvider({ children }) {
     try { return JSON.parse(localStorage.getItem('user')); } catch { return null; }
   });
 
-  const login = useCallback(async (username, password) => {
-    // Obtener el slug del subdominio (ej: salon1.tudominio.com -> salon1)
-    const host = window.location.hostname;
-    let slug = '';
-    
-    if (host === 'localhost' || host === '127.0.0.1') {
-      // Para desarrollo local: usa ?salon=slug en la URL, la variable de entorno,
-      // o configura VITE_SALON_SLUG en el archivo .env del frontend
-      slug = new URLSearchParams(window.location.search).get('salon')
-          || import.meta.env.VITE_SALON_SLUG
-          || '';
-    } else {
-      // En producción, tomamos la primera parte del dominio
-      slug = host.split('.')[0];
-    }
-
+  const login = useCallback(async (username, password, slug) => {
     if (!slug) {
-      throw new Error('No se encontró el slug del salón. Configurá VITE_SALON_SLUG en el .env del frontend.');
+      throw new Error('Ingresá el nombre de tu salón.');
     }
 
     const form = new URLSearchParams();
     form.append('username', username);
     form.append('password', password);
 
-    // Enviamos el slug como parámetro de consulta
     const res = await api.post(`/auth/login?slug=${slug}`, form, {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     });

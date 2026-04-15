@@ -1,22 +1,26 @@
 import { NavLink } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
+import { useAuth } from '../../context/AuthContext';
 import styles from '../../styles/layout/SideBar.module.css';
 
 const NAV_ITEMS = [
   { to: '/',              icon: '◈', label: 'Dashboard'     },
   { to: '/turnos',        icon: '◷', label: 'Turnos'        },
   { to: '/clientes',      icon: '◎', label: 'Clientes'      },
-  { to: '/empleados',     icon: '◉', label: 'Empleados'     },
-  { to: '/servicios',     icon: '◆', label: 'Servicios'     },
-  { to: '/caja',          icon: '◈', label: 'Caja'          },
-  { to: '/analisis',      icon: '◑', label: 'Análisis'      },
-  { to: '/recordatorios', icon: '◎', label: 'Recordatorios' },
+  { to: '/empleados',     icon: '◉', label: 'Empleados',     adminOnly: true },
+  { to: '/servicios',     icon: '◆', label: 'Servicios',     adminOnly: true },
+  { to: '/caja',          icon: '◈', label: 'Caja',          adminOnly: true },
+  { to: '/analisis',      icon: '◑', label: 'Análisis',      adminOnly: true },
+  { to: '/recordatorios', icon: '◎', label: 'Recordatorios', adminOnly: true },
   null,
-  { to: '/configuracion', icon: '◇', label: 'Configuración' },
+  { to: '/configuracion', icon: '◇', label: 'Configuración', adminOnly: true },
 ];
 
 export default function Sidebar() {
   const { salonName, isSidebarOpen, closeSidebar, isSidebarCollapsed, toggleCollapse } = useApp();
+  const { user } = useAuth();
+  const isAdmin = user?.rol === 'admin' || user?.rol === 'superadmin';
+  const visibleItems = NAV_ITEMS.filter(item => item === null || !item.adminOnly || isAdmin);
 
   return (
     <aside className={`
@@ -36,7 +40,7 @@ export default function Sidebar() {
       </div>
 
       <nav className={styles.nav}>
-        {NAV_ITEMS.map((item, i) =>
+        {visibleItems.map((item, i) =>
           item === null ? (
             <div key={`divider-${i}`} className={styles.navDivider} />
           ) : (

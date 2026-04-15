@@ -1,11 +1,7 @@
 import axios from 'axios';
+import { getSalonSlug } from '../utils/slug';
 
 const API_URL = import.meta.env.VITE_API_URL;
-const SALON_SLUG = import.meta.env.VITE_SALON_SLUG;
-
-if (!SALON_SLUG) {
-  console.warn('[api] VITE_SALON_SLUG no está definido en .env');
-}
 
 const api = axios.create({
   baseURL: API_URL,
@@ -14,7 +10,8 @@ const api = axios.create({
   },
 });
 
-const pub = (path) => `/public/${SALON_SLUG}${path}`;
+// El slug se evalúa en runtime para soportar múltiples salones desde un solo build
+const pub = (path) => `/public/${getSalonSlug()}${path}`;
 
 export const getServicios = () => api.get(pub('/servicios'));
 export const getEmpleados = () => api.get(pub('/empleados'));

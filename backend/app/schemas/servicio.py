@@ -1,11 +1,11 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 
 class ServicioBase(BaseModel):
-    nombre: str
-    descripcion: Optional[str] = None
+    nombre:           str           = Field(max_length=100)
+    descripcion:      Optional[str] = Field(None, max_length=500)
     duracion_minutos: int
-    precio: float
+    precio:           float
 
 class ServicioCreate(ServicioBase):
     pass

@@ -1,13 +1,13 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime
 from typing import Optional
 
 class ClienteBase(BaseModel):
-    nombre:    str
-    apellido:  Optional[str] = None   # FIX: faltaba este campo, los apellidos nunca se guardaban
-    telefono:  Optional[str] = None
-    email:     Optional[EmailStr] = None  # completamente opcional, sin restricción de dominio
-    direccion: Optional[str] = None
+    nombre:    str            = Field(max_length=100)
+    apellido:  Optional[str] = Field(None, max_length=100)
+    telefono:  Optional[str] = Field(None, max_length=20)
+    email:     Optional[EmailStr] = None
+    direccion: Optional[str] = Field(None, max_length=200)
 
 class ClienteCreate(ClienteBase):
     pass

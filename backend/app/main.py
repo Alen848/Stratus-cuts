@@ -1,7 +1,10 @@
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 from app.database.connection import Base, engine
+from app.limiter import limiter
 
 # Importar todos los modelos para que SQLAlchemy los reconozca
 from app.models import (
@@ -30,6 +33,10 @@ from app.routes.pagos_superadmin import router as pagos_superadmin_router
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Turnera Peluquería API", version="2.0.0")
+
+# Rate limiting
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Configuración CORS
 # ─── Orígenes de desarrollo ────────────────────────────────────────────────────

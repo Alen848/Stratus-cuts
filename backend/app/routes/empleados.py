@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from app.database.connection import get_db
-from app.auth.dependencies import get_current_user
+from app.auth.dependencies import get_current_user, require_admin
 from app.models.usuario import Usuario
 from app.services import empleado_service
 from app.schemas.empleado import Empleado, EmpleadoCreate, EmpleadoUpdate
@@ -24,7 +24,7 @@ def read_empleados(
 def create_empleado(
     empleado: EmpleadoCreate,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_admin),
 ):
     return empleado_service.create_empleado(db, empleado, salon_id=current_user.salon_id)
 
@@ -33,7 +33,7 @@ def create_empleado(
 def update_empleado(
     empleado_id: int, empleado: EmpleadoUpdate,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_admin),
 ):
     updated = empleado_service.update_empleado(db, empleado_id, empleado, salon_id=current_user.salon_id)
     if not updated:
@@ -45,7 +45,7 @@ def update_empleado(
 def delete_empleado(
     empleado_id: int,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_admin),
 ):
     deleted = empleado_service.delete_empleado(db, empleado_id, salon_id=current_user.salon_id)
     if deleted is None:

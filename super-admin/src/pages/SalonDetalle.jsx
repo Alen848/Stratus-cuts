@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import Layout from '../components/Layout';
-import { getUsuariosSalon, resetPassword, toggleActivo } from '../services/api';
+import { getUsuariosSalon, crearUsuario, resetPassword, toggleActivo, actualizarRol, actualizarSalon } from '../services/api';
 
 const S = `
   .sd-layout { min-height: 100vh; background: #0f1117; padding-bottom: 4rem; }
@@ -218,10 +218,70 @@ function ResetModal({ usuario, onClose, onDone }) {
   );
 }
 
+function NuevoUsuarioModal({ salonId, onClose, onCreated }) {
+  const [form, setForm] = useState({ username: '', password: '', rol: 'empleado' });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      await crearUsuario(salonId, form);
+      onCreated();
+      onClose();
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Error al crear el usuario.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="sd-modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="sd-modal">
+        <div className="sd-modal-title">Nuevo usuario</div>
+        <div className="sd-modal-sub">Se creará con cambio de contraseña obligatorio al primer login.</div>
+        <form onSubmit={handleSubmit}>
+          <div className="sd-field">
+            <label className="sd-label">Nombre de usuario</label>
+            <input className="sd-input" value={form.username}
+              onChange={e => set('username', e.target.value)} required autoFocus placeholder="ej: riverempleado" />
+          </div>
+          <div className="sd-field">
+            <label className="sd-label">Contraseña temporal</label>
+            <input className="sd-input" type="password" value={form.password}
+              onChange={e => set('password', e.target.value)} required placeholder="Mínimo 8 caracteres" />
+          </div>
+          <div className="sd-field">
+            <label className="sd-label">Rol</label>
+            <select className="sd-input" value={form.rol} onChange={e => set('rol', e.target.value)}
+              style={{ cursor: 'pointer' }}>
+              <option value="empleado">Empleado</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+          {error && <div className="sd-modal-error">{error}</div>}
+          <div className="sd-modal-actions">
+            <button type="button" className="sd-cancel" onClick={onClose}>Cancelar</button>
+            <button type="submit" className="sd-confirm" disabled={loading}>
+              {loading ? 'Creando...' : 'Crear usuario'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function SalonDetalle({ salon, onBack }) {
   const [usuarios, setUsuarios] = useState([]);
   const [loading, setLoading] = useState(true);
   const [resetTarget, setResetTarget] = useState(null);
+  const [showNuevoUsuario, setShowNuevoUsuario] = useState(false);
+  const [salonActivo, setSalonActivo] = useState(salon.activo);
 
   const cargar = useCallback(async () => {
     try {
@@ -236,7 +296,21 @@ export default function SalonDetalle({ salon, onBack }) {
   const handleToggle = async (u) => {
     try {
       await toggleActivo(u.id);
-      cargar();
+      await cargar();
+    } catch {}
+  };
+
+  const handleRolChange = async (u, nuevoRol) => {
+    try {
+      await actualizarRol(u.id, nuevoRol);
+      await cargar();
+    } catch {}
+  };
+
+  const handleToggleSalon = async () => {
+    try {
+      await actualizarSalon(salon.id, { activo: !salonActivo });
+      setSalonActivo(v => !v);
     } catch {}
   };
 
@@ -257,18 +331,27 @@ export default function SalonDetalle({ salon, onBack }) {
             <div>
               <div className="sd-salon-name">{salon.nombre}</div>
               <div className="sd-salon-meta">
-                <span className={`sd-badge ${salon.activo ? 'activo' : 'inactivo'}`}>
-                  {salon.activo ? 'Activo' : 'Inactivo'}
+                <span className={`sd-badge ${salonActivo ? 'activo' : 'inactivo'}`}>
+                  {salonActivo ? 'Activo' : 'Inactivo'}
                 </span>
                 <span className="sd-badge plan">{salon.plan}</span>
                 <span className="sd-slug">{salon.slug}</span>
               </div>
             </div>
+            <button
+              className={`sd-btn ${salonActivo ? 'danger' : ''}`}
+              onClick={handleToggleSalon}
+            >
+              {salonActivo ? 'Desactivar salón' : 'Activar salón'}
+            </button>
           </div>
 
           <div className="sd-section">
             <div className="sd-section-head">
-              <span className="sd-section-title">Usuarios administradores</span>
+              <span className="sd-section-title">Usuarios del salón</span>
+              <button className="sd-btn primary" onClick={() => setShowNuevoUsuario(true)}>
+                + Nuevo usuario
+              </button>
             </div>
 
             {loading ? (
@@ -290,7 +373,20 @@ export default function SalonDetalle({ salon, onBack }) {
                   {usuarios.map(u => (
                     <tr key={u.id}>
                       <td>{u.username}</td>
-                      <td style={{ textTransform: 'capitalize' }}>{u.rol}</td>
+                      <td>
+                        <select
+                          value={u.rol}
+                          onChange={e => handleRolChange(u, e.target.value)}
+                          style={{
+                            background: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
+                            borderRadius: '4px', color: 'rgba(226,232,240,0.75)',
+                            fontSize: '0.82rem', padding: '0.2rem 0.4rem', cursor: 'pointer',
+                          }}
+                        >
+                          <option value="admin">Admin</option>
+                          <option value="empleado">Empleado</option>
+                        </select>
+                      </td>
                       <td>
                         <span className={`sd-badge ${u.activo ? 'activo' : 'inactivo'}`}>
                           {u.activo ? 'Activo' : 'Inactivo'}
@@ -328,6 +424,14 @@ export default function SalonDetalle({ salon, onBack }) {
           usuario={resetTarget}
           onClose={() => setResetTarget(null)}
           onDone={cargar}
+        />
+      )}
+
+      {showNuevoUsuario && (
+        <NuevoUsuarioModal
+          salonId={salon.id}
+          onClose={() => setShowNuevoUsuario(false)}
+          onCreated={cargar}
         />
       )}
     </Layout>

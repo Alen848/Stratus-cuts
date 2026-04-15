@@ -4,7 +4,7 @@ from typing import List, Optional
 from datetime import date as DateType
 
 from app.database.connection import get_db
-from app.auth.dependencies import get_current_user
+from app.auth.dependencies import require_admin
 from app.models.usuario import Usuario
 from app.services import pago_service
 from app.schemas.pago import Pago, PagoCreate, PagoUpdate
@@ -19,7 +19,7 @@ pagos_router = APIRouter(prefix="/pagos", tags=["Pagos"])
 def read_pagos(
     skip: int = 0, limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_admin),
 ):
     return pago_service.get_pagos(db, salon_id=current_user.salon_id, skip=skip, limit=limit)
 
@@ -28,7 +28,7 @@ def read_pagos(
 def read_pago(
     pago_id: int,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_admin),
 ):
     pago = pago_service.get_pago(db, pago_id, salon_id=current_user.salon_id)
     if not pago:
@@ -40,7 +40,7 @@ def read_pago(
 def create_pago(
     pago: PagoCreate,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_admin),
 ):
     return pago_service.create_pago(db, pago, salon_id=current_user.salon_id)
 
@@ -49,7 +49,7 @@ def create_pago(
 def update_pago(
     pago_id: int, pago: PagoUpdate,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_admin),
 ):
     updated = pago_service.update_pago(db, pago_id, pago, salon_id=current_user.salon_id)
     if not updated:
@@ -61,7 +61,7 @@ def update_pago(
 def delete_pago(
     pago_id: int,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_admin),
 ):
     deleted = pago_service.delete_pago(db, pago_id, salon_id=current_user.salon_id)
     if not deleted:
@@ -77,7 +77,7 @@ gastos_router = APIRouter(prefix="/gastos", tags=["Gastos"])
 def read_gastos(
     skip: int = 0, limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_admin),
 ):
     return pago_service.get_gastos(db, salon_id=current_user.salon_id, skip=skip, limit=limit)
 
@@ -86,7 +86,7 @@ def read_gastos(
 def read_gasto(
     gasto_id: int,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_admin),
 ):
     gasto = pago_service.get_gasto(db, gasto_id, salon_id=current_user.salon_id)
     if not gasto:
@@ -98,7 +98,7 @@ def read_gasto(
 def create_gasto(
     gasto: GastoCreate,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_admin),
 ):
     return pago_service.create_gasto(db, gasto, salon_id=current_user.salon_id)
 
@@ -107,7 +107,7 @@ def create_gasto(
 def update_gasto(
     gasto_id: int, gasto: GastoUpdate,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_admin),
 ):
     updated = pago_service.update_gasto(db, gasto_id, gasto, salon_id=current_user.salon_id)
     if not updated:
@@ -119,7 +119,7 @@ def update_gasto(
 def delete_gasto(
     gasto_id: int,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_admin),
 ):
     deleted = pago_service.delete_gasto(db, gasto_id, salon_id=current_user.salon_id)
     if not deleted:
@@ -135,7 +135,7 @@ caja_router = APIRouter(prefix="/caja", tags=["Caja"])
 def caja_diaria(
     fecha: DateType,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_admin),
 ):
     return pago_service.get_caja_diaria(db, salon_id=current_user.salon_id, fecha=fecha)
 
@@ -144,7 +144,7 @@ def caja_diaria(
 def caja_mensual(
     anio: int, mes: int,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_admin),
 ):
     if not (1 <= mes <= 12):
         raise HTTPException(status_code=400, detail="El mes debe estar entre 1 y 12.")
@@ -155,7 +155,7 @@ def caja_mensual(
 def get_cierre(
     fecha: DateType,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_admin),
 ):
     return pago_service.get_cierre_caja(db, salon_id=current_user.salon_id, fecha=fecha)
 
@@ -164,7 +164,7 @@ def get_cierre(
 def historial_cierres(
     anio: int, mes: int,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_admin),
 ):
     if not (1 <= mes <= 12):
         raise HTTPException(status_code=400, detail="El mes debe estar entre 1 y 12.")
@@ -175,7 +175,7 @@ def historial_cierres(
 def cerrar_caja(
     cierre: CierreCajaCreate,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_admin),
 ):
     existente = pago_service.get_cierre_caja(db, salon_id=current_user.salon_id, fecha=cierre.fecha)
     if existente:

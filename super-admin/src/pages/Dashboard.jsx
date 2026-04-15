@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getSalones, crearSalon, actualizarSalon } from '../services/api';
+import { getSalones, crearSalon } from '../services/api';
 import Layout from '../components/Layout';
 import SalonDetalle from './SalonDetalle';
 
@@ -260,13 +260,6 @@ export default function Dashboard() {
 
   useEffect(() => { cargar(); }, [cargar]);
 
-  const handleToggle = async (salon) => {
-    try {
-      await actualizarSalon(salon.id, { activo: !salon.activo });
-      cargar();
-    } catch {}
-  };
-
   const activos = salones.filter(s => s.activo).length;
 
   if (detalle) {
@@ -337,9 +330,6 @@ export default function Dashboard() {
                     <td>
                       <div className="db-row-actions">
                         <button className="db-icon-btn" onClick={() => setDetalle(s)}>Ver</button>
-                        <button className={`db-icon-btn ${s.activo ? 'danger' : ''}`} onClick={() => handleToggle(s)}>
-                          {s.activo ? 'Desactivar' : 'Activar'}
-                        </button>
                       </div>
                     </td>
                   </tr>

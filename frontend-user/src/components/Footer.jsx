@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom';
 import '../styles/footer.css';
 
-const SALON_SLUG = import.meta.env.VITE_SALON_SLUG || '';
-const API_URL    = import.meta.env.VITE_API_URL    || '';
+import { getSalonSlug } from '../utils/slug';
+
+const API_URL = import.meta.env.VITE_API_URL || '';
 
 import { useState, useEffect } from 'react';
 
@@ -10,8 +11,9 @@ const Footer = () => {
   const [salonNombre, setSalonNombre] = useState('');
 
   useEffect(() => {
-    if (!SALON_SLUG || !API_URL) return;
-    fetch(`${API_URL}/public/${SALON_SLUG}/info`)
+    const slug = getSalonSlug();
+    if (!slug || !API_URL) return;
+    fetch(`${API_URL}/public/${slug}/info`)
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d?.nombre) setSalonNombre(d.nombre); })
       .catch(() => {});

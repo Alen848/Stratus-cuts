@@ -1,12 +1,12 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
 
 class EmpleadoBase(BaseModel):
-    nombre:              str
-    telefono:            Optional[str]      = None
+    nombre:              str            = Field(max_length=100)
+    telefono:            Optional[str]  = Field(None, max_length=20)
     email:               Optional[EmailStr] = None
-    especialidad:        Optional[str]      = None
-    activo:              bool               = True
+    especialidad:        Optional[str]  = Field(None, max_length=100)
+    activo:              bool           = True
     sueldo_base:         Optional[float]    = None
     comision_porcentaje: Optional[float]    = 0.0
 

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from app.database.connection import get_db
-from app.auth.dependencies import get_current_user
+from app.auth.dependencies import get_current_user, require_admin
 from app.models.usuario import Usuario
 from app.services import horario_empleado_service
 from app.schemas.horario_empleado import HorarioEmpleado, HorarioEmpleadoCreate
@@ -26,7 +26,7 @@ def read_horarios(
 def create_horario(
     horario: HorarioEmpleadoCreate,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_admin),
 ):
     return horario_empleado_service.create_or_update_horario(
         db, horario, salon_id=current_user.salon_id
@@ -37,7 +37,7 @@ def create_horario(
 def delete_horario(
     horario_id: int,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_admin),
 ):
     deleted = horario_empleado_service.delete_horario(
         db, horario_id, salon_id=current_user.salon_id

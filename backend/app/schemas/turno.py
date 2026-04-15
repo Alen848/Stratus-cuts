@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Optional, List
 from .cliente import Cliente
@@ -9,9 +9,9 @@ from .turno_servicio import TurnoServicio
 class TurnoBase(BaseModel):
     fecha_hora:    datetime
     duracion:      int            = 30
-    estado:        str            = "pendiente"
-    metodo_pago:   Optional[str]  = None
-    observaciones: Optional[str]  = None
+    estado:        str            = Field("pendiente", max_length=50)
+    metodo_pago:   Optional[str]  = Field(None, max_length=50)
+    observaciones: Optional[str]  = Field(None, max_length=1000)
     cliente_id:    Optional[int]  = None
     empleado_id:   int
 

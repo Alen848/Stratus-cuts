@@ -1,8 +1,9 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 
-const API_URL    = import.meta.env.VITE_API_URL    || '';
-const SALON_SLUG = import.meta.env.VITE_SALON_SLUG || '';
+import { getSalonSlug } from '../utils/slug';
+
+const API_URL = import.meta.env.VITE_API_URL || '';
 
 const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,500;1,6..96,400&family=Jost:wght@300;400;500;600&display=swap');
@@ -183,8 +184,9 @@ const Navbar = () => {
   }, []);
 
   useEffect(() => {
-    if (!SALON_SLUG || !API_URL) return;
-    fetch(`${API_URL}/public/${SALON_SLUG}/info`)
+    const slug = getSalonSlug();
+    if (!slug || !API_URL) return;
+    fetch(`${API_URL}/public/${slug}/info`)
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d?.nombre) setSalonNombre(d.nombre); })
       .catch(() => {});

@@ -3,7 +3,7 @@ Rutas públicas para el frontend del cliente (sin autenticación).
 Prefijo: /public/{slug}/...
 El slug identifica el salón.
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import List
 from datetime import date as DateType, datetime, timezone, timedelta
@@ -16,6 +16,7 @@ from app.schemas.empleado import Empleado
 from app.schemas.servicio import Servicio
 from app.schemas.cliente import ClienteCreate
 from app.schemas.turno import TurnoCreate
+from app.limiter import limiter
 
 router = APIRouter(prefix="/public", tags=["Público"])
 
@@ -72,13 +73,15 @@ def public_disponibilidad(
 
 
 @router.post("/{slug}/clientes")
-def public_create_cliente(slug: str, cliente: ClienteCreate, db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+def public_create_cliente(request: Request, slug: str, cliente: ClienteCreate, db: Session = Depends(get_db)):
     salon = _get_salon(slug, db)
     return cliente_service.create_cliente(db, cliente, salon_id=salon.id)
 
 
 @router.post("/{slug}/turnos")
-def public_create_turno(slug: str, turno: TurnoCreate, db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+def public_create_turno(request: Request, slug: str, turno: TurnoCreate, db: Session = Depends(get_db)):
     salon = _get_salon(slug, db)
     config = _get_config(db, salon.id)
 

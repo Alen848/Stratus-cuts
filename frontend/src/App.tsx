@@ -1,3 +1,4 @@
+import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AppProvider }   from './context/AppContext';
@@ -19,6 +20,12 @@ import ConfiguracionPage     from './pages/ConfiguracionPage';
 import CambiarPasswordPage   from './pages/CambiarPasswordPage';
 import './styles/globals.css';
 
+function AdminRoute({ element }: { element: React.ReactElement }) {
+  const { user } = useAuth();
+  const isAdmin = user?.rol === 'admin' || user?.rol === 'superadmin';
+  return isAdmin ? element : <Navigate to="/" replace />;
+}
+
 function PrivateRoutes() {
   const { isAuthenticated, user } = useAuth();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
@@ -31,12 +38,12 @@ function PrivateRoutes() {
           <Route index              element={<DashboardPage />}  />
           <Route path="turnos"      element={<TurnosPage />}     />
           <Route path="clientes"    element={<ClientesPage />}   />
-          <Route path="empleados"   element={<EmpleadosPage />}  />
-          <Route path="servicios"   element={<ServiciosPage />}  />
-          <Route path="caja"        element={<CajaPage />}       />
-          <Route path="analisis"        element={<AnalisisPage />}        />
-          <Route path="recordatorios"   element={<RecordatoriosPage />}   />
-          <Route path="configuracion"   element={<ConfiguracionPage />}   />
+          <Route path="empleados"   element={<AdminRoute element={<EmpleadosPage />} />}    />
+          <Route path="servicios"   element={<AdminRoute element={<ServiciosPage />} />}    />
+          <Route path="caja"        element={<AdminRoute element={<CajaPage />} />}         />
+          <Route path="analisis"    element={<AdminRoute element={<AnalisisPage />} />}     />
+          <Route path="recordatorios" element={<AdminRoute element={<RecordatoriosPage />} />} />
+          <Route path="configuracion" element={<AdminRoute element={<ConfiguracionPage />} />} />
         </Route>
       </Routes>
     </AppProvider>

@@ -39,10 +39,13 @@ export const actualizarSalon = (id, data) => api.patch(`/superadmin/salones/${id
 
 // Usuarios de salones
 export const getUsuariosSalon = (salonId) => api.get(`/superadmin/salones/${salonId}/usuarios`);
+export const crearUsuario = (salonId, data) => api.post(`/superadmin/salones/${salonId}/usuarios`, data);
 export const resetPassword = (usuarioId, nueva_password) =>
   api.patch(`/superadmin/usuarios/${usuarioId}/reset-password`, { nueva_password });
 export const toggleActivo = (usuarioId) =>
   api.patch(`/superadmin/usuarios/${usuarioId}/toggle-activo`);
+export const actualizarRol = (usuarioId, rol) =>
+  api.patch(`/superadmin/usuarios/${usuarioId}/rol`, { rol });
 
 // Pagos
 export const getPagosMes = (anio, mes) => api.get(`/superadmin/pagos/?anio=${anio}&mes=${mes}`);

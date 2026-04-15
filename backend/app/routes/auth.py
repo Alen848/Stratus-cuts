@@ -1,6 +1,7 @@
 import os
+import re
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
@@ -11,8 +12,19 @@ from app.models.usuario import Usuario
 from app.models.salon import Salon
 from app.auth.security import verify_password, create_access_token, hash_password
 from app.auth.dependencies import get_current_user
+from app.limiter import limiter
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
+
+_SIMBOLOS = r'[!@#$%^&*.,;:\-_?/\\|+=]'
+
+def _validar_password(password: str):
+    if len(password) < 8:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "La contraseña debe tener al menos 8 caracteres.")
+    if not re.search(r'[A-Z]', password):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "La contraseña debe incluir al menos una mayúscula.")
+    if not re.search(_SIMBOLOS, password):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "La contraseña debe incluir al menos un símbolo (ej: ! @ # $ % . , - _).")
 
 SUPERADMIN_SETUP_SECRET = os.getenv("SUPERADMIN_SETUP_SECRET", "")
 
@@ -32,10 +44,13 @@ class SuperadminSetupPayload(BaseModel):
 
 class CambiarPasswordPayload(BaseModel):
     nueva_password: str
+    password_actual: Optional[str] = None
 
 
 @router.post("/login")
+@limiter.limit("10/minute")
 def login(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
     slug: Optional[str] = None,
@@ -114,11 +129,21 @@ def cambiar_password(
     current_user: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    if len(payload.nueva_password) < 8:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="La contraseña debe tener al menos 8 caracteres.",
-        )
+    _validar_password(payload.nueva_password)
+
+    # Si el usuario no tiene cambio forzado (cambio voluntario), exigir la contraseña actual
+    if not current_user.debe_cambiar_password:
+        if not payload.password_actual:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Debes proporcionar tu contraseña actual.",
+            )
+        if not verify_password(payload.password_actual, current_user.password_hash):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="La contraseña actual es incorrecta.",
+            )
+
     current_user.password_hash         = hash_password(payload.nueva_password)
     current_user.debe_cambiar_password  = False
     db.commit()
@@ -130,6 +155,8 @@ def cambiar_password(
 def setup_inicial(payload: SetupPayload, db: Session = Depends(get_db)):
     if db.query(Salon).first():
         raise HTTPException(status_code=400, detail="El sistema ya está configurado.")
+
+    _validar_password(payload.password)
 
     salon = Salon(nombre=payload.salon_nombre, slug=payload.slug)
     db.add(salon)
