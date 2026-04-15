@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database.connection import Base, engine
@@ -31,21 +32,33 @@ Base.metadata.create_all(bind=engine)
 app = FastAPI(title="Turnera Peluquería API", version="2.0.0")
 
 # Configuración CORS
-# En producción, permitimos cualquier subdominio del dominio principal
-origins = [
-    "http://localhost:5173",
+# ─── Orígenes de desarrollo ────────────────────────────────────────────────────
+DEV_ORIGINS = [
+    "http://localhost:5173",   # admin frontend
     "http://127.0.0.1:5173",
-    "http://localhost:5174",
+    "http://localhost:5174",   # user frontend
     "http://127.0.0.1:5174",
-    "http://localhost:5175",
+    "http://localhost:5175",   # super-admin
     "http://127.0.0.1:5175",
 ]
 
-# Puedes agregar tu dominio real aquí. Ej: "https://*.tudominio.com"
+# ─── Dominio de producción (configurar en .env) ────────────────────────────────
+# Ejemplo: PRODUCTION_DOMAIN=stratusapp.com
+# Eso permitirá *.stratusapp.com (subdominio por salón) y el dominio raíz
+PRODUCTION_DOMAIN = os.getenv("PRODUCTION_DOMAIN", "")
+
+allowed_origins = list(DEV_ORIGINS)
+origin_regex = None
+
+if PRODUCTION_DOMAIN:
+    # Permite: https://stratusapp.com  y  https://cualquier-salon.stratusapp.com
+    escaped = PRODUCTION_DOMAIN.replace(".", r"\.")
+    origin_regex = rf"https://({escaped}|[a-z0-9-]+\.{escaped})"
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex="https?://.*\.tudominio\.com", # REEMPLAZAR con tu dominio real
-    allow_origins=origins,
+    allow_origins=allowed_origins,
+    allow_origin_regex=origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

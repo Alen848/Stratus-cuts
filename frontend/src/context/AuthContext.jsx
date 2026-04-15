@@ -59,8 +59,19 @@ export function AuthProvider({ children }) {
     setUser(null);
   }, []);
 
+  // Refresca los datos del usuario desde la API (útil tras cambiar contraseña)
+  const refreshUser = useCallback(async () => {
+    try {
+      const res = await api.get('/auth/me');
+      localStorage.setItem('user', JSON.stringify(res.data));
+      setUser(res.data);
+    } catch {
+      logout();
+    }
+  }, [logout]);
+
   return (
-    <AuthContext.Provider value={{ token, user, login, logout, isAuthenticated: !!token }}>
+    <AuthContext.Provider value={{ token, user, login, logout, refreshUser, isAuthenticated: !!token }}>
       {children}
     </AuthContext.Provider>
   );

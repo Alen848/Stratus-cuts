@@ -114,7 +114,12 @@ export default function Login() {
       localStorage.setItem('sa_token', data.access_token);
       navigate('/');
     } catch (err) {
-      setError(err.response?.data?.detail || 'Error al iniciar sesión.');
+      const detail = err.response?.data?.detail;
+      if (Array.isArray(detail)) {
+        setError(detail.map(e => e.msg).join('. ') || 'Error de validación.');
+      } else {
+        setError(detail || 'Error al iniciar sesión.');
+      }
     } finally {
       setLoading(false);
     }

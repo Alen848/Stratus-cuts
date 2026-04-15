@@ -1,12 +1,27 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { formatCurrency } from '../../utils/formatters';
-import { calcularComision, gastos as gastosApi } from '../../api/api';
+import { calcularComision, gastos as gastosApi, empleados as empleadosApi } from '../../api/api';
 
 export default function ComisionesEmpleados({ empleados = [], fecha, onComisionRegistrada }) {
   const [porcentajes, setPorcentajes]   = useState({});
   const [registrados, setRegistrados]   = useState({});  // emp_id → true si ya se registró
   const [loading, setLoading]           = useState({});
   const [errorMsg, setErrorMsg]         = useState('');
+
+  // Inicializar desde la BD cada vez que cambian los empleados
+  useEffect(() => {
+    if (!empleados.length) return;
+    setPorcentajes(prev => {
+      const next = { ...prev };
+      empleados.forEach(emp => {
+        // Solo sobreescribir si aún no hay valor local (evita pisar edición en curso)
+        if (!(emp.empleado_id in next)) {
+          next[emp.empleado_id] = emp.comision_porcentaje ?? 0;
+        }
+      });
+      return next;
+    });
+  }, [empleados]);
 
   if (empleados.length === 0) {
     return (
@@ -23,8 +38,17 @@ export default function ComisionesEmpleados({ empleados = [], fecha, onComisionR
   const setPorcentaje = (id, value) => {
     const num = Math.min(100, Math.max(0, Number(value) || 0));
     setPorcentajes(p => ({ ...p, [id]: num }));
-    // Si cambia el porcentaje, resetear el estado "registrado" para ese empleado
     setRegistrados(r => ({ ...r, [id]: false }));
+  };
+
+  // Guarda el porcentaje en la BD cuando el usuario sale del input
+  const handlePorcentajeBlur = async (empId) => {
+    const pct = porcentajes[empId] ?? 0;
+    try {
+      await empleadosApi.update(empId, { comision_porcentaje: pct });
+    } catch {
+      // Fallo silencioso — el dato queda en memoria para la sesión actual
+    }
   };
 
   const registrarComoGasto = async (emp) => {
@@ -107,6 +131,7 @@ export default function ComisionesEmpleados({ empleados = [], fecha, onComisionR
                     <input
                       type="number" min="0" max="100" value={pct}
                       onChange={e => setPorcentaje(emp.empleado_id, e.target.value)}
+                      onBlur={() => handlePorcentajeBlur(emp.empleado_id)}
                       style={{
                         width: '60px', padding: '4px 8px',
                         borderRadius: 'var(--radius-sm)',

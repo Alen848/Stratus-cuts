@@ -15,12 +15,14 @@ import ServiciosPage     from './pages/ServiciosPage';
 import CajaPage          from './pages/CajaPage';
 import AnalisisPage          from './pages/AnalisisPage';
 import RecordatoriosPage     from './pages/RecordatoriosPage';
-import ConfiguracionPage    from './pages/ConfiguracionPage';
+import ConfiguracionPage     from './pages/ConfiguracionPage';
+import CambiarPasswordPage   from './pages/CambiarPasswordPage';
 import './styles/globals.css';
 
 function PrivateRoutes() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (user?.debe_cambiar_password) return <CambiarPasswordPage />;
 
   return (
     <AppProvider>

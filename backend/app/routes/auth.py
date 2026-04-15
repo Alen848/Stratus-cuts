@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -29,11 +30,15 @@ class SuperadminSetupPayload(BaseModel):
     password: str
 
 
+class CambiarPasswordPayload(BaseModel):
+    nueva_password: str
+
+
 @router.post("/login")
 def login(
-    slug: str,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
+    slug: Optional[str] = None,
 ):
     # Buscar usuario por username
     user = db.query(Usuario).filter(
@@ -50,6 +55,11 @@ def login(
 
     # Si no es superadmin, validar salón
     if user.rol != "superadmin":
+        if not slug:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El parámetro slug es requerido para usuarios de salón.",
+            )
         # Buscar el salón por el slug
         salon = db.query(Salon).filter(
             Salon.slug == slug,
@@ -95,6 +105,24 @@ def me(current_user: Usuario = Depends(get_current_user)):
         "empleado_id": current_user.empleado_id,
         "debe_cambiar_password": current_user.debe_cambiar_password,
     }
+
+
+# ─── Cambiar contraseña ────────────────────────────────────────────────────────
+@router.put("/cambiar-password")
+def cambiar_password(
+    payload: CambiarPasswordPayload,
+    current_user: Usuario = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if len(payload.nueva_password) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="La contraseña debe tener al menos 8 caracteres.",
+        )
+    current_user.password_hash         = hash_password(payload.nueva_password)
+    current_user.debe_cambiar_password  = False
+    db.commit()
+    return {"mensaje": "Contraseña actualizada correctamente."}
 
 
 # ─── Setup inicial: crea un salón + usuario admin ─────────────────────────────

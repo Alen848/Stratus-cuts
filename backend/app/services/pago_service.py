@@ -236,10 +236,11 @@ def _ingresos_por_empleado(turnos: list) -> list:
         monto  = _calcular_monto_turno(turno)
         if emp_id not in emp_dict:
             emp_dict[emp_id] = {
-                "empleado_id":     emp_id,
-                "empleado_nombre": emp.nombre,
-                "total_ingresos":  0.0,
-                "cantidad_turnos": 0,
+                "empleado_id":         emp_id,
+                "empleado_nombre":     emp.nombre,
+                "total_ingresos":      0.0,
+                "cantidad_turnos":     0,
+                "comision_porcentaje": emp.comision_porcentaje or 0.0,
             }
         emp_dict[emp_id]["total_ingresos"]  += monto
         emp_dict[emp_id]["cantidad_turnos"] += 1

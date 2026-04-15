@@ -87,6 +87,11 @@ export const configSalon = {
   update: (data)   => api.put('/config-salon/', data),
 };
 
+// ─── Auth ─────────────────────────────────────────────────────────────────────
+export const auth = {
+  cambiarPassword: (nueva_password) => api.put('/auth/cambiar-password', { nueva_password }),
+};
+
 // ─── Comisiones (helper local, no requiere endpoint dedicado) ─────────────────
 // Calcula la comisión de un empleado a partir de los datos de caja.
 // porcentaje: número entre 0 y 100 (ej: 30 para 30%)
