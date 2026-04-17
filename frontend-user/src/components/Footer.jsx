@@ -46,7 +46,7 @@ const Footer = () => {
           <span className="footer-dot" />
           Todos los derechos reservados
         </span>
-        <span className="footer-copy" style={{ color: 'rgba(198,191,182,0.25)', fontSize: '0.68rem', letterSpacing: '0.08em' }}>
+        <span className="footer-copy" style={{ color: 'rgba(181,169,155,0.5)', fontSize: '0.68rem', letterSpacing: '0.08em' }}>
           Powered by Stratus Industries
         </span>
       </div>

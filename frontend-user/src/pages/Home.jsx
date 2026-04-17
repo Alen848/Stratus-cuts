@@ -1,12 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getServicios } from '../services/api';
 import FaceShapeGuide from '../components/FaceShapeGuide';
+import { getSalonSlug } from '../utils/slug';
+
+const API_URL = import.meta.env.VITE_API_URL || '';
 
 const STYLES = `
   .home {
     min-height: 100vh;
-    background: transparent;
     padding-top: 70px;
     font-family: 'Jost', sans-serif;
   }
@@ -15,500 +16,284 @@ const STYLES = `
      HERO
   ══════════════════════════════════════ */
   .hero {
-    padding: 7rem 2rem 6rem;
-    max-width: 1040px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 10vh 1.5rem 7vh;
+    max-width: 720px;
     margin: 0 auto;
-    border-bottom: 1px solid rgba(255,255,255,0.045);
     position: relative;
-    overflow: hidden;
   }
 
-  /* Glow ambiental sutil */
   .hero::before {
     content: '';
     position: absolute;
-    top: -80px; right: -160px;
-    width: 700px; height: 600px;
-    background: radial-gradient(ellipse at center, rgba(201,169,110,0.035) 0%, transparent 65%);
+    top: -60px; right: -200px;
+    width: 600px; height: 500px;
+    background: radial-gradient(ellipse at center, rgba(107,82,49,0.04) 0%, transparent 65%);
     pointer-events: none;
   }
 
   .hero-eyebrow {
     display: inline-flex;
     align-items: center;
-    gap: 0.75rem;
-    font-family: 'Jost', sans-serif;
-    font-size: 0.62rem;
+    gap: 0.7rem;
+    font-size: 0.72rem;
     font-weight: 500;
-    letter-spacing: 0.32em;
+    letter-spacing: 0.3em;
     text-transform: uppercase;
-    color: #c9a96e;
-    margin-bottom: 2rem;
+    color: #6B5231;
+    margin-bottom: 1.5rem;
     opacity: 0;
     animation: heroFade 0.5s ease 0.05s forwards;
   }
   .hero-eyebrow::before {
     content: '';
     display: inline-block;
-    width: 28px; height: 1px;
-    background: #c9a96e;
-    opacity: 0.45;
+    width: 28px; height: 1.5px;
+    background: #6B5231;
+    opacity: 0.6;
   }
 
-  .hero-title {
+  .hero-salon-name {
     font-family: 'Bodoni Moda', serif;
-    font-size: clamp(3.8rem, 8vw, 6.5rem);
+    font-size: clamp(3.8rem, 16vw, 8rem);
     font-weight: 400;
-    color: #f2ede6;
-    line-height: 1.02;
+    color: #2C2420;
+    line-height: 0.96;
     letter-spacing: -0.02em;
+    margin-bottom: 1.5rem;
     opacity: 0;
-    animation: heroFade 0.6s ease 0.15s forwards;
-  }
-  .hero-title em {
-    font-style: italic;
-    color: #c9a96e;
+    animation: heroFade 0.65s ease 0.12s forwards;
   }
 
   .hero-sub {
-    font-family: 'Jost', sans-serif;
-    font-size: 1.05rem;
+    font-size: 1.15rem;
     font-weight: 300;
-    color: rgba(242,237,230,0.4);
-    line-height: 1.9;
-    max-width: 400px;
-    margin-top: 1.75rem;
+    color: #5C5147;
+    line-height: 1.7;
+    max-width: 380px;
+    margin-bottom: 2.75rem;
     opacity: 0;
-    animation: heroFade 0.6s ease 0.28s forwards;
+    animation: heroFade 0.6s ease 0.22s forwards;
   }
 
-  /* ── Features horizontales ── */
+  .hero-cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.7rem;
+    width: 100%;
+    max-width: 400px;
+    padding: 1.15rem 2.5rem;
+    background: #2C2420;
+    border: none;
+    border-radius: 4px;
+    color: #FAF7F2;
+    font-family: 'Jost', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    cursor: pointer;
+    text-decoration: none;
+    min-height: 56px;
+    transition: background 0.2s ease, transform 0.18s ease;
+    opacity: 0;
+    animation: heroFade 0.6s ease 0.35s forwards;
+  }
+  .hero-cta:hover  { background: #433832; transform: translateY(-2px); }
+  .hero-cta:active { transform: translateY(0); }
+
   .hero-features {
     display: flex;
     flex-wrap: wrap;
-    gap: 1.5rem 2.5rem;
-    margin-top: 3rem;
+    gap: 1.25rem 2rem;
+    margin-top: 2.75rem;
     opacity: 0;
-    animation: heroFade 0.6s ease 0.42s forwards;
+    animation: heroFade 0.5s ease 0.5s forwards;
   }
 
-  .hero-feature {
+  .hero-feat {
     display: flex;
     align-items: center;
-    gap: 0.65rem;
-    font-family: 'Jost', sans-serif;
-    font-size: 0.78rem;
+    gap: 0.55rem;
+    font-size: 0.82rem;
     font-weight: 400;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: rgba(242,237,230,0.72);
+    color: #5C5147;
+    letter-spacing: 0.03em;
   }
 
-  .hf-icon {
-    width: 20px; height: 20px; min-width: 20px;
-    background: rgba(201,169,110,0.08);
-    border: 1px solid rgba(201,169,110,0.2);
+  .hero-feat-dot {
+    width: 5px; height: 5px;
     border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    background: #6B5231;
     flex-shrink: 0;
-  }
-  .hf-icon svg {
-    width: 9px; height: 9px;
-    stroke: #c9a96e;
-    fill: none;
-    stroke-width: 2.5;
-    stroke-linecap: round;
-    stroke-linejoin: round;
   }
 
   @keyframes heroFade {
-    from { opacity: 0; transform: translateY(18px); }
+    from { opacity: 0; transform: translateY(14px); }
     to   { opacity: 1; transform: translateY(0); }
   }
 
   /* ══════════════════════════════════════
-     SERVICIOS
+     HOW IT WORKS
   ══════════════════════════════════════ */
-  .main-layout {
-    max-width: 1040px;
+  .how-section {
+    max-width: 720px;
     margin: 0 auto;
-    padding: 0 2rem 10rem;
+    padding: 4rem 1.5rem 5rem;
+    border-top: 1px solid rgba(44,36,32,0.06);
   }
 
-  .section-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 3rem 0 0;
-    margin-bottom: 0.2rem;
-  }
-
-  .section-label {
-    font-family: 'Jost', sans-serif;
-    font-size: 0.62rem;
+  .how-label {
+    font-size: 0.65rem;
     font-weight: 500;
     letter-spacing: 0.28em;
     text-transform: uppercase;
-    color: rgba(201,169,110,0.55);
+    color: #6B5231;
+    margin-bottom: 2.5rem;
+    display: block;
   }
 
-  .section-count {
-    font-family: 'Jost', sans-serif;
-    font-size: 0.68rem;
-    font-weight: 300;
-    color: rgba(242,237,230,0.48);
-    letter-spacing: 0.06em;
+  .how-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
   }
 
-  .section-divider {
-    height: 1px;
-    background: linear-gradient(90deg, rgba(201,169,110,0.25) 0%, rgba(201,169,110,0.07) 55%, transparent 100%);
-    margin-bottom: 0;
-  }
+  .how-step {}
 
-  /* ── Lista de servicios ── */
-  .service-list { list-style: none; }
-
-  .service-item {
-    display: flex;
-    align-items: center;
-    gap: 1.5rem;
-    padding: 1.5rem 0.5rem;
-    border-bottom: 1px solid rgba(255,255,255,0.04);
-    border-left: 2px solid transparent;
-    cursor: pointer;
-    transition: background 0.22s ease, border-left-color 0.22s ease;
-  }
-
-  .service-item:hover {
-    background: rgba(201,169,110,0.04);
-    border-left-color: rgba(201,169,110,0.3);
-  }
-  .service-item:hover .service-item-name { color: #f2ede6; }
-  .service-item:hover .check-box:not(.checked) {
-    border-color: rgba(201,169,110,0.4);
-  }
-  .service-item.selected-item {
-    background: rgba(201,169,110,0.05);
-    border-left-color: #c9a96e;
-  }
-
-  /* Checkbox */
-  .check-box {
-    width: 20px; height: 20px; min-width: 20px;
-    border: 1px solid rgba(201,169,110,0.18);
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: border-color 0.18s ease, background 0.18s ease;
-    flex-shrink: 0;
-  }
-  .check-box.checked {
-    background: #c9a96e;
-    border-color: #c9a96e;
-  }
-
-  .check-icon {
-    width: 10px; height: 10px;
-    stroke: #080808;
-    stroke-width: 2.5;
-    fill: none;
-    opacity: 0;
-    transition: opacity 0.15s ease;
-  }
-  .check-box.checked .check-icon { opacity: 1; }
-
-  .service-item-info { flex: 1; min-width: 0; }
-
-  .service-item-name {
-    font-family: 'Jost', sans-serif;
-    font-size: 1.15rem;
-    font-weight: 400;
-    color: #f2ede6;
-    transition: color 0.18s ease;
-    letter-spacing: 0.01em;
-  }
-
-  .service-item-desc {
-    font-family: 'Jost', sans-serif;
-    font-size: 0.84rem;
-    font-weight: 300;
-    color: rgba(242,237,230,0.55);
-    margin-top: 0.2rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .service-item-right {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 0.2rem;
-    flex-shrink: 0;
-  }
-
-  .service-item-price {
+  .how-num {
     font-family: 'Bodoni Moda', serif;
-    font-size: 1.35rem;
-    color: #c9a96e;
+    font-size: 2rem;
+    color: rgba(44,36,32,0.1);
     line-height: 1;
+    margin-bottom: 0.75rem;
   }
 
-  .service-item-duration {
-    font-family: 'Jost', sans-serif;
-    font-size: 0.68rem;
-    font-weight: 300;
-    color: rgba(242,237,230,0.52);
-    letter-spacing: 0.06em;
+  .how-title {
+    font-size: 1rem;
+    font-weight: 500;
+    color: #2C2420;
+    margin-bottom: 0.4rem;
   }
 
-  .state-msg {
-    padding: 4rem 0;
-    text-align: center;
-    font-family: 'Jost', sans-serif;
+  .how-desc {
     font-size: 0.88rem;
     font-weight: 300;
-    color: rgba(242,237,230,0.5);
-    letter-spacing: 0.04em;
+    color: #5C5147;
+    line-height: 1.65;
+  }
+
+  @media (max-width: 600px) {
+    .how-grid { grid-template-columns: 1fr; gap: 2.5rem; }
   }
 
   /* ══════════════════════════════════════
-     BUDGET BAR
+     DESKTOP
   ══════════════════════════════════════ */
-  .budget-bar {
-    position: fixed;
-    bottom: 0; left: 0; right: 0;
-    background: rgba(8,8,8,0.97);
-    border-top: 1px solid rgba(201,169,110,0.18);
-    backdrop-filter: blur(32px) saturate(1.5);
-    -webkit-backdrop-filter: blur(32px) saturate(1.5);
-    padding: 1.15rem 2.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1.5rem;
-    z-index: 200;
-    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+  @media (min-width: 769px) {
+    .hero {
+      padding: 14vh 3rem 10vh;
+    }
+    .hero-cta {
+      width: auto;
+      min-width: 280px;
+    }
+    .how-section { padding: 5rem 3rem 6rem; }
   }
 
-  .budget-left { display: flex; flex-direction: column; gap: 0.12rem; }
-
-  .budget-label {
-    font-family: 'Jost', sans-serif;
-    font-size: 0.6rem;
-    font-weight: 500;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: #c9a96e;
-  }
-
-  .budget-detail {
-    font-family: 'Jost', sans-serif;
-    font-size: 0.82rem;
-    font-weight: 300;
-    color: rgba(242,237,230,0.78);
-    max-width: 380px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .budget-right {
-    display: flex;
-    align-items: center;
-    gap: 2.5rem;
-    flex-shrink: 0;
-  }
-
-  .budget-total { text-align: right; }
-
-  .budget-total-label {
-    font-family: 'Jost', sans-serif;
-    font-size: 0.58rem;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: rgba(242,237,230,0.62);
-    font-weight: 400;
-  }
-
-  .budget-total-amount {
-    font-family: 'Bodoni Moda', serif;
-    font-size: 1.95rem;
-    color: #f2ede6;
-    line-height: 1;
-    margin-top: 0.05rem;
-  }
-
-  .budget-btn {
-    padding: 0.82rem 2.1rem;
-    background: #c9a96e;
-    border: none;
-    border-radius: 3px;
-    color: #080808;
-    font-family: 'Jost', sans-serif;
-    font-size: 0.7rem;
-    font-weight: 500;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: background 0.2s ease, transform 0.18s ease;
-    white-space: nowrap;
-  }
-  .budget-btn:hover {
-    background: #dbbf8a;
-    transform: translateY(-1px);
-  }
-
-  /* ── Responsive ── */
-  @media (max-width: 768px) {
-    .hero { padding: 5rem 1.5rem 4rem; }
-    .main-layout { padding: 0 1.5rem 7rem; }
-    .budget-bar { padding: 1rem 1.25rem; gap: 1rem; }
-    .budget-detail { display: none; }
-    .budget-total-amount { font-size: 1.6rem; }
-    .budget-btn { padding: 0.72rem 1.4rem; }
-  }
-
-  @media (max-width: 480px) {
-    .hero-title { font-size: 3.2rem; }
-    .hero-features { gap: 1rem 1.5rem; }
-    .hero-feature { font-size: 0.72rem; }
-    .budget-left { display: none; }
-    .budget-bar { justify-content: space-between; }
-    .budget-right { width: 100%; justify-content: space-between; gap: 1rem; }
+  @media (max-width: 380px) {
+    .hero { padding: 7vh 1.25rem 5vh; }
+    .hero-salon-name { font-size: 3rem; }
+    .hero-features { gap: 0.8rem 1.5rem; }
   }
 `;
 
 export default function Home() {
   const navigate = useNavigate();
-  const [servicios, setServicios] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [selected, setSelected] = useState([]);
+  const [salonNombre, setSalonNombre] = useState('');
 
   useEffect(() => {
-    getServicios()
-      .then(r => setServicios(r.data))
-      .catch(() => setError('Error al cargar los servicios'))
-      .finally(() => setLoading(false));
+    const slug = getSalonSlug();
+    if (slug && API_URL) {
+      fetch(`${API_URL}/public/${slug}/info`)
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { if (d?.nombre) setSalonNombre(d.nombre); })
+        .catch(() => {});
+    }
   }, []);
-
-  const toggle = (service) => {
-    setSelected(prev =>
-      prev.find(s => s.id === service.id)
-        ? prev.filter(s => s.id !== service.id)
-        : [...prev, service]
-    );
-  };
-
-  const totalPrecio   = selected.reduce((sum, s) => sum + Number(s.precio), 0);
-  const totalDuracion = selected.reduce((sum, s) => sum + s.duracion_minutos, 0);
-
-  const handleReservar = () => {
-    if (selected.length === 0) return;
-    navigate('/booking', { state: { selectedServices: selected } });
-  };
 
   return (
     <>
       <style>{STYLES}</style>
 
       <div className="home">
+
         <div className="hero">
-          <span className="hero-eyebrow">Reserva de turno</span>
-          <h1 className="hero-title">
-            Elegí tu servicio.<br />
-            <em>Confirmá en minutos.</em>
+          <span className="hero-eyebrow">Reservas online</span>
+
+          <h1 className="hero-salon-name">
+            {salonNombre || 'Tu salón'}
           </h1>
+
           <p className="hero-sub">
-            Seleccioná lo que necesitás, elegí el profesional y el horario.
+            Reservá tu turno en minutos.<br />
             Sin llamadas, sin esperas.
           </p>
+
+          <button className="hero-cta" onClick={() => navigate('/booking')}>
+            Reservar turno
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="7" y1="17" x2="17" y2="7"/>
+              <polyline points="7 7 17 7 17 17"/>
+            </svg>
+          </button>
+
           <div className="hero-features">
-            {['Reserva 100% online', 'Confirmación inmediata', 'Sin necesidad de registro'].map(f => (
-              <div key={f} className="hero-feature">
-                <span className="hf-icon">
-                  <svg viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5"/></svg>
-                </span>
-                <span>{f}</span>
-              </div>
-            ))}
+            <span className="hero-feat">
+              <span className="hero-feat-dot" />
+              Confirmación inmediata
+            </span>
+            <span className="hero-feat">
+              <span className="hero-feat-dot" />
+              Sin registro
+            </span>
+            <span className="hero-feat">
+              <span className="hero-feat-dot" />
+              100% online
+            </span>
           </div>
         </div>
 
-        <div id="servicios" className="main-layout" style={{ scrollMarginTop: '70px' }}>
-          <div className="section-head">
-            <span className="section-label">Servicios disponibles</span>
-            {!loading && !error && (
-              <span className="section-count">{servicios.length} opciones</span>
-            )}
+        <div className="how-section">
+          <span className="how-label">Cómo funciona</span>
+          <div className="how-grid">
+            <div className="how-step">
+              <div className="how-num">01</div>
+              <div className="how-title">Elegí tus servicios</div>
+              <p className="how-desc">Seleccioná lo que necesitás de nuestro catálogo.</p>
+            </div>
+            <div className="how-step">
+              <div className="how-num">02</div>
+              <div className="how-title">Elegí fecha y horario</div>
+              <p className="how-desc">Reservá con tu profesional preferido en el horario que quieras.</p>
+            </div>
+            <div className="how-step">
+              <div className="how-num">03</div>
+              <div className="how-title">¡Listo!</div>
+              <p className="how-desc">Recibí la confirmación al instante y listo, te esperamos.</p>
+            </div>
           </div>
-          <div className="section-divider" />
-
-          {loading && <p className="state-msg">Cargando...</p>}
-          {error   && <p className="state-msg" style={{ color: 'rgba(220,100,100,0.6)' }}>{error}</p>}
-
-          {!loading && !error && (
-            <ul className="service-list">
-              {servicios.map(service => {
-                const isChecked = !!selected.find(s => s.id === service.id);
-                return (
-                  <li
-                    key={service.id}
-                    className={`service-item${isChecked ? ' selected-item' : ''}`}
-                    onClick={() => toggle(service)}
-                  >
-                    <div className={`check-box${isChecked ? ' checked' : ''}`}>
-                      <svg viewBox="0 0 12 12" className="check-icon">
-                        <polyline points="2 6 5 9 10 3" />
-                      </svg>
-                    </div>
-                    <div className="service-item-info">
-                      <div className="service-item-name">{service.nombre}</div>
-                      {service.descripcion && (
-                        <div className="service-item-desc">{service.descripcion}</div>
-                      )}
-                    </div>
-                    <div className="service-item-right">
-                      <span className="service-item-price">${service.precio}</span>
-                      <span className="service-item-duration">{service.duracion_minutos} min</span>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
         </div>
 
         <div id="guia" style={{ scrollMarginTop: '70px' }}>
           <FaceShapeGuide />
         </div>
-      </div>
 
-      <div
-        className="budget-bar"
-        style={selected.length > 0
-          ? { transform: 'translateY(0)', opacity: 1, pointerEvents: 'auto' }
-          : { transform: 'translateY(110%)', opacity: 0, pointerEvents: 'none' }
-        }
-      >
-        <div className="budget-left">
-          <span className="budget-label">
-            {selected.length} {selected.length === 1 ? 'servicio seleccionado' : 'servicios seleccionados'}
-          </span>
-          <span className="budget-detail">{selected.map(s => s.nombre).join(' · ')}</span>
-        </div>
-        <div className="budget-right">
-          <div className="budget-total">
-            <div className="budget-total-label">Total · {totalDuracion} min</div>
-            <div className="budget-total-amount">${totalPrecio}</div>
-          </div>
-          <button className="budget-btn" onClick={handleReservar}>Reservar</button>
-        </div>
       </div>
     </>
   );

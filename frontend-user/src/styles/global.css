@@ -1,36 +1,41 @@
 @import url('https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,500;1,6..96,400&family=Jost:wght@300;400;500;600&display=swap');
 
 :root {
-  /* ── Fondos ── */
-  --bg:           #080808;
-  --bg-surface:   #111111;
-  --bg-card:      #181818;
+  /* -- Fondos -- */
+  --bg:           #FAF7F2;
+  --bg-surface:   #F3EDE4;
+  --bg-card:      #FFFFFF;
 
-  /* ── Acento: champagne dorado ── */
-  --accent:       #c9a96e;
-  --accent-hi:    #dbbf8a;
-  --accent-dim:   rgba(201,169,110,0.1);
-  --accent-rgb:   201,169,110;
+  /* -- Acento: bronce profundo -- */
+  --accent:       #8B6F47;
+  --accent-hi:    #A68558;
+  --accent-light: #c9a96e;
+  --accent-dim:   rgba(139,111,71,0.08);
+  --accent-rgb:   139,111,71;
 
-  /* ── Bordes ── */
-  --border:       rgba(255,255,255,0.055);
-  --border-md:    rgba(255,255,255,0.09);
-  --border-accent:rgba(201,169,110,0.2);
+  /* -- Bordes -- */
+  --border:       rgba(44,36,32,0.07);
+  --border-md:    rgba(44,36,32,0.12);
+  --border-accent:rgba(139,111,71,0.18);
 
-  /* ── Texto ── */
-  --text:         #f2ede6;
-  --text-muted:   rgba(242,237,230,0.45);
-  --text-faint:   rgba(242,237,230,0.22);
+  /* -- Texto -- */
+  --text:         #2C2420;
+  --text-muted:   #7A6F64;
+  --text-faint:   #B5A99B;
 
-  /* ── Semánticos ── */
-  --success:      #7ab89a;
-  --danger:       rgba(220,90,90,0.85);
+  /* -- CTA -- */
+  --cta-bg:       #2C2420;
+  --cta-text:     #FAF7F2;
 
-  /* ── Tipografía ── */
+  /* -- Semanticos -- */
+  --success:      #5A9A76;
+  --danger:       #C05050;
+
+  /* -- Tipografia -- */
   --font-display: 'Bodoni Moda', Georgia, serif;
   --font-body:    'Jost', system-ui, sans-serif;
 
-  /* ── Transición estándar ── */
+  /* -- Transicion estandar -- */
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
 }
 

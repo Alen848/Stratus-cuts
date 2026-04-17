@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { createCliente, createTurno, getEmpleados, getDisponibilidadSemanal } from '../services/api';
+import { createCliente, createTurno, getEmpleados, getServicios, getDisponibilidadSemanal } from '../services/api';
 import '../styles/booking.css';
 
 
@@ -8,8 +8,12 @@ export default function Booking() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const selectedServices = location.state?.selectedServices
-    || (location.state?.selectedService ? [location.state.selectedService] : null);
+  const preSelected = location.state?.selectedServices
+    || (location.state?.selectedService ? [location.state.selectedService] : []);
+
+  const [servicios, setServicios] = useState([]);
+  const [loadingServicios, setLoadingServicios] = useState(true);
+  const [selectedServices, setSelectedServices] = useState(preSelected);
 
   const [formData, setFormData] = useState({ nombre: '', telefono: '', email: '' });
   const [empleados, setEmpleados] = useState([]);
@@ -23,8 +27,11 @@ export default function Booking() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!selectedServices || selectedServices.length === 0) navigate('/');
-  }, [selectedServices, navigate]);
+    getServicios()
+      .then(r => setServicios(r.data || []))
+      .catch(() => setServicios([]))
+      .finally(() => setLoadingServicios(false));
+  }, []);
 
   useEffect(() => {
     getEmpleados()
@@ -47,7 +54,13 @@ export default function Booking() {
       .finally(() => setLoadingSlots(false));
   }, [selectedEmpleado, selectedDate]);
 
-  if (!selectedServices || selectedServices.length === 0) return null;
+  const toggleServicio = (service) => {
+    setSelectedServices(prev =>
+      prev.find(s => s.id === service.id)
+        ? prev.filter(s => s.id !== service.id)
+        : [...prev, service]
+    );
+  };
 
   const totalPrecio = selectedServices.reduce((sum, s) => sum + Number(s.precio), 0);
   const totalDuracion = selectedServices.reduce((sum, s) => sum + s.duracion_minutos, 0);
@@ -71,6 +84,10 @@ export default function Booking() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (selectedServices.length === 0) {
+      setError('Por favor seleccioná al menos un servicio.');
+      return;
+    }
     if (!selectedEmpleado) {
       setError('Por favor elegí un profesional.');
       return;
@@ -90,8 +107,6 @@ export default function Booking() {
       });
       const clienteId = clienteResponse.data.id;
 
-      // Enviar como string naive (hora Argentina) sin convertir a UTC.
-      // El backend recibe un datetime sin timezone y lo guarda tal cual.
       const fechaHoraISO = `${selectedDate}T${selectedTime}:00`;
 
       const turnoData = {
@@ -131,30 +146,64 @@ export default function Booking() {
     <div className="booking-page">
       <div className="booking-wrap">
         <span className="booking-tag">Reserva de turno</span>
-        <h1 className="booking-title">Completá<br />tus datos</h1>
-
-        <div className="services-summary">
-          {selectedServices.map(s => (
-            <div key={s.id} className="summary-row">
-              <span className="summary-name">
-                {s.nombre}
-                <span className="summary-duration">{s.duracion_minutos} min</span>
-              </span>
-              <span className="summary-price">${s.precio}</span>
-            </div>
-          ))}
-          {selectedServices.length > 1 && (
-            <div className="summary-row total">
-              <span className="summary-total-label">Total · {totalDuracion} min</span>
-              <span className="summary-total-amount">${totalPrecio}</span>
-            </div>
-          )}
-        </div>
+        <h1 className="booking-title">Reservá<br />tu turno</h1>
 
         {error && <div className="error-box" style={{ marginBottom: '1.5rem' }}>{error}</div>}
 
         <form className="form" onSubmit={handleSubmit}>
 
+          {/* -- Servicios -- */}
+          <div className="field">
+            <label className="field-label">Servicios <span className="field-req">*</span></label>
+            {loadingServicios ? (
+              <span className="slots-placeholder" style={{ padding: '1rem 0', textAlign: 'left' }}>
+                Cargando servicios...
+              </span>
+            ) : servicios.length === 0 ? (
+              <span className="slots-placeholder" style={{ padding: '1rem 0', textAlign: 'left' }}>
+                No hay servicios disponibles
+              </span>
+            ) : (
+              <div className="servicio-list">
+                {servicios.map(s => {
+                  const checked = !!selectedServices.find(ss => ss.id === s.id);
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      className={`servicio-item${checked ? ' si-selected' : ''}`}
+                      onClick={() => toggleServicio(s)}
+                    >
+                      <div className={`si-check${checked ? ' si-checked' : ''}`}>
+                        <svg viewBox="0 0 12 12" className="si-check-icon">
+                          <polyline points="2 6 5 9 10 3" />
+                        </svg>
+                      </div>
+                      <div className="si-info">
+                        <span className="si-name">{s.nombre}</span>
+                        {s.descripcion && <span className="si-desc">{s.descripcion}</span>}
+                      </div>
+                      <div className="si-right">
+                        <span className="si-price">${s.precio}</span>
+                        <span className="si-dur">{s.duracion_minutos} min</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            {selectedServices.length > 0 && (
+              <div className="servicio-summary">
+                <span className="ss-label">
+                  {selectedServices.length} {selectedServices.length === 1 ? 'servicio' : 'servicios'}
+                  {' · '}{totalDuracion} min
+                </span>
+                <span className="ss-total">${totalPrecio}</span>
+              </div>
+            )}
+          </div>
+
+          {/* -- Nombre -- */}
           <div className="field">
             <label className="field-label">Nombre completo <span className="field-req">*</span></label>
             <input className="field-input" type="text" name="nombre" value={formData.nombre}
@@ -174,7 +223,7 @@ export default function Booking() {
             </div>
           </div>
 
-          {/* ── Selector de profesional ── */}
+          {/* -- Profesional -- */}
           <div className="field">
             <label className="field-label">Profesional <span className="field-req">*</span></label>
             {loadingEmpleados ? (
@@ -204,7 +253,7 @@ export default function Booking() {
             )}
           </div>
 
-          {/* ── Fecha ── */}
+          {/* -- Fecha -- */}
           <div className="field">
             <label className="field-label">Fecha <span className="field-req">*</span></label>
             {!selectedEmpleado ? (
@@ -216,7 +265,6 @@ export default function Booking() {
                 {Array.from({ length: 30 }, (_, i) => {
                   const d = new Date();
                   d.setDate(d.getDate() + i);
-                  // Usar fecha LOCAL, no UTC (toISOString daría fecha UTC que puede diferir)
                   const iso = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
                   const dayName = d.toLocaleDateString('es-AR', { weekday: 'short' }).replace('.', '');
                   const dayNum  = d.getDate();
@@ -240,7 +288,7 @@ export default function Booking() {
             )}
           </div>
 
-          {/* ── Horarios ── */}
+          {/* -- Horarios -- */}
           <div className="time-section">
             <div className="time-section-header">
               <label className="field-label">
@@ -310,7 +358,7 @@ export default function Booking() {
             {selectedDate && selectedTime && (
               <div className="selected-time-display">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                  stroke="#c6bfb6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  stroke="#8B6F47" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="10" />
                   <polyline points="12 6 12 12 16 14" />
                 </svg>
@@ -322,7 +370,7 @@ export default function Booking() {
           <button
             className="submit-btn"
             type="submit"
-            disabled={loading || !selectedEmpleado || !selectedDate || !selectedTime}
+            disabled={loading || selectedServices.length === 0 || !selectedEmpleado || !selectedDate || !selectedTime}
           >
             {loading ? 'Procesando...' : 'Confirmar turno'}
           </button>
