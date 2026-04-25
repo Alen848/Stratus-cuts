@@ -1,5 +1,5 @@
-import { Cliente } from './cliente';
-import { Empleado } from './empleado';
+import type { Cliente } from './cliente';
+import type { Empleado } from './empleado';
 
 export interface TurnoServicio {
   id: number;
