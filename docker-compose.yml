@@ -4,14 +4,58 @@ services:
   mysql:
     image: mysql:8
     restart: unless-stopped
-    ports:
-      - "3306:3306"
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: peluqueria
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-peluqueria}
+      MYSQL_USER: ${MYSQL_USER:-stratus}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     volumes:
       - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: mysql+pymysql://${MYSQL_USER:-stratus}:${MYSQL_PASSWORD}@mysql/${MYSQL_DATABASE:-peluqueria}
+      SUPERADMIN_SETUP_SECRET: ${SUPERADMIN_SETUP_SECRET}
+      PRODUCTION_DOMAIN: ${PRODUCTION_DOMAIN}
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: ${VITE_API_URL}
+    restart: unless-stopped
+    ports:
+      - "3001:80"
+
+  frontend-user:
+    build:
+      context: ./frontend-user
+      args:
+        VITE_API_URL: ${VITE_API_URL}
+    restart: unless-stopped
+    ports:
+      - "3002:80"
+
+  super-admin:
+    build:
+      context: ./super-admin
+      args:
+        VITE_API_URL: ${VITE_API_URL}
+    restart: unless-stopped
+    ports:
+      - "3003:80"
 
 volumes:
   mysql_data:
-
