@@ -9,7 +9,7 @@ const STYLES = `
   .home {
     min-height: 100vh;
     padding-top: 70px;
-    font-family: 'Jost', sans-serif;
+    font-family: var(--font-body);
   }
 
   /* ══════════════════════════════════════
@@ -31,7 +31,7 @@ const STYLES = `
     position: absolute;
     top: -60px; right: -200px;
     width: 600px; height: 500px;
-    background: radial-gradient(ellipse at center, rgba(107,82,49,0.04) 0%, transparent 65%);
+    background: radial-gradient(ellipse at center, rgba(var(--accent-rgb),0.04) 0%, transparent 65%);
     pointer-events: none;
   }
 
@@ -43,7 +43,7 @@ const STYLES = `
     font-weight: 500;
     letter-spacing: 0.3em;
     text-transform: uppercase;
-    color: #6B5231;
+    color: var(--accent);
     margin-bottom: 1.5rem;
     opacity: 0;
     animation: heroFade 0.5s ease 0.05s forwards;
@@ -52,15 +52,15 @@ const STYLES = `
     content: '';
     display: inline-block;
     width: 28px; height: 1.5px;
-    background: #6B5231;
+    background: var(--accent);
     opacity: 0.6;
   }
 
   .hero-salon-name {
-    font-family: 'Bodoni Moda', serif;
+    font-family: var(--font-display);
     font-size: clamp(3.8rem, 16vw, 8rem);
     font-weight: 400;
-    color: #2C2420;
+    color: var(--text);
     line-height: 0.96;
     letter-spacing: -0.02em;
     margin-bottom: 1.5rem;
@@ -71,7 +71,7 @@ const STYLES = `
   .hero-sub {
     font-size: 1.15rem;
     font-weight: 300;
-    color: #5C5147;
+    color: var(--text-2);
     line-height: 1.7;
     max-width: 380px;
     margin-bottom: 2.75rem;
@@ -87,11 +87,11 @@ const STYLES = `
     width: 100%;
     max-width: 400px;
     padding: 1.15rem 2.5rem;
-    background: #2C2420;
+    background: var(--cta);
     border: none;
     border-radius: 4px;
-    color: #FAF7F2;
-    font-family: 'Jost', sans-serif;
+    color: var(--cta-text);
+    font-family: var(--font-body);
     font-size: 0.82rem;
     font-weight: 600;
     letter-spacing: 0.22em;
@@ -103,7 +103,7 @@ const STYLES = `
     opacity: 0;
     animation: heroFade 0.6s ease 0.35s forwards;
   }
-  .hero-cta:hover  { background: #433832; transform: translateY(-2px); }
+  .hero-cta:hover  { background: var(--cta-hover); transform: translateY(-2px); }
   .hero-cta:active { transform: translateY(0); }
 
   .hero-features {
@@ -121,14 +121,14 @@ const STYLES = `
     gap: 0.55rem;
     font-size: 0.82rem;
     font-weight: 400;
-    color: #5C5147;
+    color: var(--text-2);
     letter-spacing: 0.03em;
   }
 
   .hero-feat-dot {
     width: 5px; height: 5px;
     border-radius: 50%;
-    background: #6B5231;
+    background: var(--accent);
     flex-shrink: 0;
   }
 
@@ -144,7 +144,7 @@ const STYLES = `
     max-width: 720px;
     margin: 0 auto;
     padding: 4rem 1.5rem 5rem;
-    border-top: 1px solid rgba(44,36,32,0.06);
+    border-top: 1px solid var(--border);
   }
 
   .how-label {
@@ -152,7 +152,7 @@ const STYLES = `
     font-weight: 500;
     letter-spacing: 0.28em;
     text-transform: uppercase;
-    color: #6B5231;
+    color: var(--accent);
     margin-bottom: 2.5rem;
     display: block;
   }
@@ -163,12 +163,10 @@ const STYLES = `
     gap: 2rem;
   }
 
-  .how-step {}
-
   .how-num {
-    font-family: 'Bodoni Moda', serif;
+    font-family: var(--font-display);
     font-size: 2rem;
-    color: rgba(44,36,32,0.1);
+    color: rgba(var(--text-rgb),0.1);
     line-height: 1;
     margin-bottom: 0.75rem;
   }
@@ -176,14 +174,14 @@ const STYLES = `
   .how-title {
     font-size: 1rem;
     font-weight: 500;
-    color: #2C2420;
+    color: var(--text);
     margin-bottom: 0.4rem;
   }
 
   .how-desc {
     font-size: 0.88rem;
     font-weight: 300;
-    color: #5C5147;
+    color: var(--text-2);
     line-height: 1.65;
   }
 
@@ -191,17 +189,9 @@ const STYLES = `
     .how-grid { grid-template-columns: 1fr; gap: 2.5rem; }
   }
 
-  /* ══════════════════════════════════════
-     DESKTOP
-  ══════════════════════════════════════ */
   @media (min-width: 769px) {
-    .hero {
-      padding: 14vh 3rem 10vh;
-    }
-    .hero-cta {
-      width: auto;
-      min-width: 280px;
-    }
+    .hero { padding: 14vh 3rem 10vh; }
+    .hero-cta { width: auto; min-width: 280px; }
     .how-section { padding: 5rem 3rem 6rem; }
   }
 

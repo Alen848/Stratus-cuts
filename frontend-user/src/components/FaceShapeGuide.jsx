@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import { useTheme } from '../context/ThemeContext';
 
-const SchematicHead = ({ shape, size = 120, accent = '#8B6F47' }) => {
+const SchematicHead = ({ shape, size = 120, accent = '#6B5231', fillColor }) => {
   const W = 100, H = 130;
 
   const features = (
@@ -40,13 +41,15 @@ const SchematicHead = ({ shape, size = 120, accent = '#8B6F47' }) => {
     oblong: <ellipse cx="50" cy="72" rx="26" ry="48" stroke={accent} strokeWidth="2.5" fill="none" />,
   };
 
+  const fill = fillColor || 'rgba(107,82,49,0.06)';
+
   const fills = {
-    oval: <ellipse cx="50" cy="72" rx="32" ry="46" fill="rgba(139,111,71,0.06)" />,
-    round: <circle cx="50" cy="72" r="34" fill="rgba(139,111,71,0.06)" />,
-    square: <rect x="17" y="30" width="66" height="84" rx="10" fill="rgba(139,111,71,0.06)" />,
-    heart: <path d={`M50 118 Q28 100 20 80 Q15 60 18 45 Q22 30 35 28 Q44 27 50 36 Q56 27 65 28 Q78 30 82 45 Q85 60 80 80 Q72 100 50 118Z`} fill="rgba(139,111,71,0.06)" />,
-    diamond: <path d={`M50 26 Q64 30 78 55 Q84 70 78 90 Q68 112 50 120 Q32 112 22 90 Q16 70 22 55 Q36 30 50 26Z`} fill="rgba(139,111,71,0.06)" />,
-    oblong: <ellipse cx="50" cy="72" rx="26" ry="48" fill="rgba(139,111,71,0.06)" />,
+    oval: <ellipse cx="50" cy="72" rx="32" ry="46" fill={fill} />,
+    round: <circle cx="50" cy="72" r="34" fill={fill} />,
+    square: <rect x="17" y="30" width="66" height="84" rx="10" fill={fill} />,
+    heart: <path d={`M50 118 Q28 100 20 80 Q15 60 18 45 Q22 30 35 28 Q44 27 50 36 Q56 27 65 28 Q78 30 82 45 Q85 60 80 80 Q72 100 50 118Z`} fill={fill} />,
+    diamond: <path d={`M50 26 Q64 30 78 55 Q84 70 78 90 Q68 112 50 120 Q32 112 22 90 Q16 70 22 55 Q36 30 50 26Z`} fill={fill} />,
+    oblong: <ellipse cx="50" cy="72" rx="26" ry="48" fill={fill} />,
   };
 
   return (
@@ -133,8 +136,8 @@ const STYLES = `
     max-width: 860px;
     margin: 0 auto;
     padding: 5rem 2rem 6rem;
-    font-family: 'Jost', sans-serif;
-    border-top: 1px solid rgba(44,36,32,0.06);
+    font-family: var(--font-body);
+    border-top: 1px solid var(--border);
   }
 
   .fsg-header { margin-bottom: 3rem; }
@@ -147,7 +150,7 @@ const STYLES = `
     font-weight: 500;
     letter-spacing: 0.22em;
     text-transform: uppercase;
-    color: #8B6F47;
+    color: var(--accent);
     margin-bottom: 1.1rem;
   }
 
@@ -156,30 +159,29 @@ const STYLES = `
     display: inline-block;
     width: 18px;
     height: 1px;
-    background: #8B6F47;
+    background: var(--accent);
     opacity: 0.5;
   }
 
   .fsg-title {
-    font-family: 'Bodoni Moda', serif;
+    font-family: var(--font-display);
     font-size: clamp(1.7rem, 3.5vw, 2.5rem);
     font-weight: 400;
-    color: #2C2420;
+    color: var(--text);
     line-height: 1.15;
     margin-bottom: 0.75rem;
   }
 
-  .fsg-title em { font-style: italic; color: #8B6F47; }
+  .fsg-title em { font-style: italic; color: var(--accent); }
 
   .fsg-subtitle {
     font-size: 0.95rem;
     font-weight: 300;
-    color: #7A6F64;
+    color: var(--text-3);
     line-height: 1.7;
     max-width: 480px;
   }
 
-  /* -- Shape grid -- */
   .fsg-shapes {
     display: grid;
     grid-template-columns: repeat(6, 1fr);
@@ -193,23 +195,23 @@ const STYLES = `
     align-items: center;
     gap: 0.85rem;
     padding: 1.4rem 0.5rem 1rem;
-    background: #FFFFFF;
-    border: 1px solid rgba(44,36,32,0.07);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
     border-radius: 4px;
     cursor: pointer;
     transition: border-color 0.25s, background 0.25s, transform 0.2s, box-shadow 0.2s;
   }
 
   .fsg-shape-btn:hover {
-    border-color: rgba(139,111,71,0.3);
-    background: rgba(139,111,71,0.03);
+    border-color: rgba(var(--accent-rgb),0.3);
+    background: var(--hover);
     transform: translateY(-4px);
-    box-shadow: 0 8px 20px rgba(44,36,32,0.06);
+    box-shadow: 0 8px 20px rgba(var(--text-rgb),0.06);
   }
 
   .fsg-shape-btn.active {
-    border-color: #8B6F47;
-    background: rgba(139,111,71,0.06);
+    border-color: var(--accent);
+    background: var(--selected);
   }
 
   .fsg-shape-label {
@@ -217,17 +219,16 @@ const STYLES = `
     font-weight: 400;
     letter-spacing: 0.1em;
     text-transform: uppercase;
-    color: #7A6F64;
+    color: var(--text-3);
     transition: color 0.2s;
     text-align: center;
   }
 
-  .fsg-shape-btn:hover .fsg-shape-label { color: #2C2420; }
-  .fsg-shape-btn.active .fsg-shape-label { color: #8B6F47; }
+  .fsg-shape-btn:hover .fsg-shape-label { color: var(--text); }
+  .fsg-shape-btn.active .fsg-shape-label { color: var(--accent); }
 
-  /* -- Result -- */
   .fsg-result {
-    animation: fsgIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: fsgIn 0.4s var(--ease) forwards;
   }
 
   .fsg-intro {
@@ -235,8 +236,8 @@ const STYLES = `
     align-items: flex-start;
     gap: 2.5rem;
     padding: 2rem;
-    background: #FFFFFF;
-    border: 1px solid rgba(44,36,32,0.07);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
     border-radius: 4px;
     margin-bottom: 2.5rem;
   }
@@ -249,28 +250,27 @@ const STYLES = `
   .fsg-intro-body { flex: 1; }
 
   .fsg-shape-name {
-    font-family: 'Bodoni Moda', serif;
+    font-family: var(--font-display);
     font-size: 1.4rem;
     font-weight: 400;
-    color: #2C2420;
+    color: var(--text);
     margin-bottom: 0.5rem;
   }
 
   .fsg-shape-desc {
     font-size: 0.9rem;
     font-weight: 300;
-    color: #7A6F64;
+    color: var(--text-3);
     line-height: 1.7;
     max-width: 440px;
   }
 
-  /* Cuts */
   .fsg-cuts-title {
     font-size: 0.65rem;
     font-weight: 500;
     letter-spacing: 0.2em;
     text-transform: uppercase;
-    color: #B5A99B;
+    color: var(--text-4);
     margin-bottom: 1rem;
     display: block;
   }
@@ -284,24 +284,24 @@ const STYLES = `
 
   .fsg-cut {
     padding: 1.25rem;
-    background: #FFFFFF;
-    border: 1px solid rgba(44,36,32,0.06);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
     border-radius: 4px;
     transition: border-color 0.2s, background 0.2s, transform 0.2s, box-shadow 0.2s;
   }
 
   .fsg-cut:hover {
-    border-color: rgba(139,111,71,0.2);
-    background: rgba(139,111,71,0.02);
+    border-color: rgba(var(--accent-rgb),0.2);
+    background: var(--hover);
     transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(44,36,32,0.05);
+    box-shadow: 0 6px 16px rgba(var(--text-rgb),0.05);
   }
 
   .fsg-cut-n {
     font-size: 0.6rem;
     font-weight: 500;
     letter-spacing: 0.12em;
-    color: #8B6F47;
+    color: var(--accent);
     margin-bottom: 0.5rem;
     display: block;
   }
@@ -309,32 +309,31 @@ const STYLES = `
   .fsg-cut-name {
     font-size: 0.95rem;
     font-weight: 400;
-    color: #2C2420;
+    color: var(--text);
     margin-bottom: 0.4rem;
   }
 
   .fsg-cut-desc {
     font-size: 0.8rem;
     font-weight: 300;
-    color: #7A6F64;
+    color: var(--text-3);
     line-height: 1.6;
   }
 
-  /* Nota */
   .fsg-nota {
     display: flex;
     gap: 0.75rem;
     align-items: flex-start;
     padding: 0.9rem 1.1rem;
-    border: 1px solid rgba(139,111,71,0.12);
+    border: 1px solid rgba(var(--accent-rgb),0.12);
     border-radius: 4px;
-    background: rgba(139,111,71,0.04);
+    background: var(--glow);
   }
 
   .fsg-nota-bar {
     width: 2px;
     min-height: 100%;
-    background: rgba(139,111,71,0.3);
+    background: rgba(var(--accent-rgb),0.3);
     border-radius: 2px;
     flex-shrink: 0;
     align-self: stretch;
@@ -343,17 +342,16 @@ const STYLES = `
   .fsg-nota-text {
     font-size: 0.85rem;
     font-weight: 300;
-    color: #7A6F64;
+    color: var(--text-3);
     line-height: 1.65;
   }
 
-  /* Empty */
   .fsg-empty {
     text-align: center;
     padding: 2rem 0 1rem;
     font-size: 0.82rem;
     font-weight: 300;
-    color: #B5A99B;
+    color: var(--text-4);
     letter-spacing: 0.04em;
     font-style: italic;
   }
@@ -376,7 +374,12 @@ const STYLES = `
 
 export default function FaceShapeGuide() {
   const [active, setActive] = useState(null);
+  const { theme } = useTheme();
   const shape = FACE_SHAPES.find(f => f.id === active);
+
+  const accentColor = theme === 'dark' ? '#C9A96E' : '#6B5231';
+  const accentFaded = theme === 'dark' ? 'rgba(201,169,110,0.3)' : 'rgba(107,82,49,0.3)';
+  const accentFill  = theme === 'dark' ? 'rgba(201,169,110,0.06)' : 'rgba(107,82,49,0.06)';
 
   return (
     <>
@@ -398,7 +401,7 @@ export default function FaceShapeGuide() {
               className={`fsg-shape-btn ${active === f.id ? 'active' : ''}`}
               onClick={() => setActive(active === f.id ? null : f.id)}
             >
-              <SchematicHead shape={f.id} size={62} accent={active === f.id ? '#8B6F47' : 'rgba(139,111,71,0.3)'} />
+              <SchematicHead shape={f.id} size={62} accent={active === f.id ? accentColor : accentFaded} fillColor={accentFill} />
               <span className="fsg-shape-label">{f.nombre}</span>
             </button>
           ))}
@@ -411,7 +414,7 @@ export default function FaceShapeGuide() {
 
             <div className="fsg-intro">
               <div className="fsg-intro-img">
-                <SchematicHead shape={shape.id} size={90} accent="#8B6F47" />
+                <SchematicHead shape={shape.id} size={90} accent={accentColor} fillColor={accentFill} />
               </div>
               <div className="fsg-intro-body">
                 <h3 className="fsg-shape-name">Cara {shape.nombre}</h3>

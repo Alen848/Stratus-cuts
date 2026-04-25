@@ -314,6 +314,7 @@ export default function SalonDetalle({ salon, onBack }) {
     } catch {}
   };
 
+
   return (
     <Layout>
       <style>{S}</style>

@@ -1,11 +1,9 @@
 import { Link } from 'react-router-dom';
 import '../styles/footer.css';
-
 import { getSalonSlug } from '../utils/slug';
+import { useState, useEffect } from 'react';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
-
-import { useState, useEffect } from 'react';
 
 const Footer = () => {
   const [salonNombre, setSalonNombre] = useState('');
@@ -46,7 +44,7 @@ const Footer = () => {
           <span className="footer-dot" />
           Todos los derechos reservados
         </span>
-        <span className="footer-copy" style={{ color: 'rgba(181,169,155,0.5)', fontSize: '0.68rem', letterSpacing: '0.08em' }}>
+        <span className="footer-copy" style={{ opacity: 0.5, fontSize: '0.68rem', letterSpacing: '0.08em' }}>
           Powered by Stratus Industries
         </span>
       </div>

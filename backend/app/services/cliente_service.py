@@ -60,6 +60,7 @@ def delete_cliente(db: Session, cliente_id: int, salon_id: int):
 
     # Bloquear solo si tiene turnos activos o futuros
     turno_activo = db.query(Turno).filter(
+        Turno.salon_id == salon_id,
         Turno.cliente_id == cliente_id,
         Turno.estado.in_(["pendiente", "confirmado"]),
     ).first()

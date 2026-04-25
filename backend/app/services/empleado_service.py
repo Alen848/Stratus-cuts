@@ -47,6 +47,7 @@ def delete_empleado(db: Session, empleado_id: int, salon_id: int):
 
     # Bloquear si tiene turnos activos o futuros
     turno_activo = db.query(Turno).filter(
+        Turno.salon_id == salon_id,
         Turno.empleado_id == empleado_id,
         Turno.estado.in_(["pendiente", "confirmado"]),
     ).first()

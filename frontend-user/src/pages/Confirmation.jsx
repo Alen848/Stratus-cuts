@@ -9,7 +9,7 @@ const STYLES = `
     flex-direction: column;
     align-items: center;
     gap: 2.25rem;
-    font-family: 'Jost', sans-serif;
+    font-family: var(--font-body);
   }
 
   @keyframes checkPop {
@@ -30,7 +30,7 @@ const STYLES = `
     display: flex;
     align-items: center;
     justify-content: center;
-    animation: checkPop 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: checkPop 0.55s var(--ease) both;
     flex-shrink: 0;
   }
 
@@ -40,18 +40,18 @@ const STYLES = `
   }
 
   .conf-title {
-    font-family: 'Bodoni Moda', serif;
+    font-family: var(--font-display);
     font-size: 2.5rem;
     font-weight: 400;
-    color: #2C2420;
+    color: var(--text);
     margin-bottom: 0.6rem;
     letter-spacing: 0.01em;
     line-height: 1.08;
   }
 
   .conf-subtitle {
-    font-family: 'Jost', sans-serif;
-    color: #7A6F64;
+    font-family: var(--font-body);
+    color: var(--text-3);
     font-size: 0.9rem;
     font-weight: 300;
     line-height: 1.8;
@@ -59,8 +59,8 @@ const STYLES = `
 
   .conf-card {
     width: 100%;
-    background: #FFFFFF;
-    border: 1px solid rgba(139,111,71,0.12);
+    background: var(--bg-elevated);
+    border: 1px solid rgba(var(--accent-rgb),0.12);
     border-radius: 8px;
     overflow: hidden;
     animation: fadeIn 0.5s ease 0.3s both;
@@ -68,16 +68,16 @@ const STYLES = `
 
   .conf-card-header {
     padding: 0.95rem 1.6rem;
-    background: rgba(139,111,71,0.05);
-    border-bottom: 1px solid rgba(139,111,71,0.08);
+    background: rgba(var(--accent-rgb),0.05);
+    border-bottom: 1px solid rgba(var(--accent-rgb),0.08);
   }
 
   .conf-card-header-label {
-    font-family: 'Jost', sans-serif;
+    font-family: var(--font-body);
     font-size: 0.6rem;
     letter-spacing: 0.22em;
     text-transform: uppercase;
-    color: #8B6F47;
+    color: var(--accent);
     font-weight: 500;
   }
 
@@ -86,15 +86,15 @@ const STYLES = `
     justify-content: space-between;
     align-items: flex-start;
     padding: 1rem 1.6rem;
-    border-bottom: 1px solid rgba(44,36,32,0.05);
+    border-bottom: 1px solid var(--border);
     gap: 1rem;
   }
   .conf-row:last-child { border-bottom: none; }
 
   .conf-row-label {
-    font-family: 'Jost', sans-serif;
+    font-family: var(--font-body);
     font-size: 0.68rem;
-    color: #B5A99B;
+    color: var(--text-4);
     letter-spacing: 0.12em;
     text-transform: uppercase;
     white-space: nowrap;
@@ -103,9 +103,9 @@ const STYLES = `
   }
 
   .conf-row-value {
-    font-family: 'Jost', sans-serif;
+    font-family: var(--font-body);
     font-size: 0.94rem;
-    color: #2C2420;
+    color: var(--text);
     text-align: right;
     line-height: 1.5;
     font-weight: 300;
@@ -114,11 +114,11 @@ const STYLES = `
   .conf-cta {
     display: inline-block;
     padding: 0.82rem 2.2rem;
-    border: 1px solid rgba(44,36,32,0.15);
+    border: 1px solid var(--border-md);
     border-radius: 4px;
-    color: #7A6F64;
+    color: var(--text-3);
     text-decoration: none;
-    font-family: 'Jost', sans-serif;
+    font-family: var(--font-body);
     font-size: 0.68rem;
     letter-spacing: 0.2em;
     text-transform: uppercase;
@@ -127,9 +127,9 @@ const STYLES = `
     font-weight: 400;
   }
   .conf-cta:hover {
-    border-color: #2C2420;
-    color: #2C2420;
-    background: rgba(44,36,32,0.03);
+    border-color: var(--text);
+    color: var(--text);
+    background: var(--hover);
   }
 
   .conf-empty {
@@ -139,15 +139,15 @@ const STYLES = `
     justify-content: center;
     min-height: 60vh;
     gap: 1.5rem;
-    font-family: 'Jost', sans-serif;
+    font-family: var(--font-body);
   }
   .conf-empty p {
-    color: #B5A99B;
+    color: var(--text-4);
     font-size: 0.88rem;
     font-weight: 300;
   }
   .conf-empty a {
-    color: #8B6F47;
+    color: var(--accent);
     text-decoration: none;
     font-size: 0.72rem;
     letter-spacing: 0.16em;
@@ -194,7 +194,7 @@ const Confirmation = () => {
 
         <div className="conf-icon">
           <svg width="30" height="30" viewBox="0 0 24 24" fill="none"
-            stroke="#5A9A76" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            stroke="var(--success)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="20 6 9 17 4 12" />
           </svg>
         </div>

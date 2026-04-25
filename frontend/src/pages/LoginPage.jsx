@@ -69,19 +69,6 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className={styles.form}>
           <div className={styles.field}>
-            <label className={styles.label}>Salón</label>
-            <input
-              className={styles.input}
-              type="text"
-              value={slug}
-              onChange={e => setSlug(e.target.value)}
-              placeholder="nombre-del-salon"
-              required
-              autoFocus
-            />
-          </div>
-
-          <div className={styles.field}>
             <label className={styles.label}>Usuario</label>
             <input
               className={styles.input}
@@ -90,6 +77,7 @@ export default function LoginPage() {
               onChange={e => setUsername(e.target.value)}
               placeholder="tu_usuario"
               required
+              autoFocus
             />
           </div>
 

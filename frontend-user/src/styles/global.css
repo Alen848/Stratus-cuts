@@ -1,44 +1,91 @@
 @import url('https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,500;1,6..96,400&family=Jost:wght@300;400;500;600&display=swap');
 
-:root {
-  /* -- Fondos -- */
-  --bg:           #FAF7F2;
-  --bg-surface:   #F3EDE4;
-  --bg-card:      #FFFFFF;
+/* ═══════════════════════════════════════════
+   DESIGN TOKENS — Light (default)
+═══════════════════════════════════════════ */
+:root,
+[data-theme="light"] {
+  --bg:            #FAF7F2;
+  --bg-elevated:   #FFFFFF;
+  --bg-sunken:     #F3EDE4;
 
-  /* -- Acento: bronce profundo -- */
-  --accent:       #8B6F47;
-  --accent-hi:    #A68558;
-  --accent-light: #c9a96e;
-  --accent-dim:   rgba(139,111,71,0.08);
-  --accent-rgb:   139,111,71;
+  --text:          #2C2420;
+  --text-2:        #5C5147;
+  --text-3:        #8C7E72;
+  --text-4:        #B5A99B;
 
-  /* -- Bordes -- */
-  --border:       rgba(44,36,32,0.07);
-  --border-md:    rgba(44,36,32,0.12);
-  --border-accent:rgba(139,111,71,0.18);
+  --accent:        #6B5231;
+  --accent-rgb:    107,82,49;
+  --text-rgb:      44,36,32;
 
-  /* -- Texto -- */
-  --text:         #2C2420;
-  --text-muted:   #7A6F64;
-  --text-faint:   #B5A99B;
+  --cta:           #2C2420;
+  --cta-text:      #FAF7F2;
+  --cta-hover:     #433832;
 
-  /* -- CTA -- */
-  --cta-bg:       #2C2420;
-  --cta-text:     #FAF7F2;
+  --border:        rgba(44,36,32,0.07);
+  --border-md:     rgba(44,36,32,0.12);
+  --border-accent: rgba(107,82,49,0.18);
 
-  /* -- Semanticos -- */
-  --success:      #5A9A76;
-  --danger:       #C05050;
+  --hover:         rgba(107,82,49,0.03);
+  --selected:      rgba(107,82,49,0.06);
+  --glow:          rgba(107,82,49,0.04);
 
-  /* -- Tipografia -- */
-  --font-display: 'Bodoni Moda', Georgia, serif;
-  --font-body:    'Jost', system-ui, sans-serif;
+  --nav-bg:        rgba(250,247,242,0.88);
+  --nav-bg-solid:  rgba(250,247,242,0.96);
+  --nav-shadow:    0 1px 12px rgba(44,36,32,0.04);
+  --line-rgb:      107,82,49;
+  --ghost:         rgba(44,36,32,0.1);
 
-  /* -- Transicion estandar -- */
-  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --success:       #5A9A76;
+  --danger:        #B03030;
+
+  --font-display:  'Bodoni Moda', Georgia, serif;
+  --font-body:     'Jost', system-ui, sans-serif;
+  --ease:          cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* ═══════════════════════════════════════════
+   DESIGN TOKENS — Dark
+═══════════════════════════════════════════ */
+[data-theme="dark"] {
+  --bg:            #121110;
+  --bg-elevated:   #1C1A17;
+  --bg-sunken:     #0A0908;
+
+  --text:          #F0EBE3;
+  --text-2:        #B0A89E;
+  --text-3:        #807870;
+  --text-4:        #5A5550;
+
+  --accent:        #C9A96E;
+  --accent-rgb:    201,169,110;
+  --text-rgb:      240,235,227;
+
+  --cta:           #C9A96E;
+  --cta-text:      #121110;
+  --cta-hover:     #DBBF8A;
+
+  --border:        rgba(255,255,255,0.06);
+  --border-md:     rgba(255,255,255,0.1);
+  --border-accent: rgba(201,169,110,0.2);
+
+  --hover:         rgba(201,169,110,0.04);
+  --selected:      rgba(201,169,110,0.08);
+  --glow:          rgba(201,169,110,0.04);
+
+  --nav-bg:        rgba(18,17,16,0.92);
+  --nav-bg-solid:  rgba(18,17,16,0.98);
+  --nav-shadow:    0 1px 12px rgba(0,0,0,0.2);
+  --line-rgb:      201,169,110;
+  --ghost:         rgba(255,255,255,0.07);
+
+  --success:       #7AB89A;
+  --danger:        #E05050;
+}
+
+/* ═══════════════════════════════════════════
+   RESETS & BASE
+═══════════════════════════════════════════ */
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -58,6 +105,7 @@ body {
   line-height: 1.65;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 #root {
