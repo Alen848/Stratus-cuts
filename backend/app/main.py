@@ -57,10 +57,18 @@ PRODUCTION_DOMAIN = os.getenv("PRODUCTION_DOMAIN", "")
 allowed_origins = list(DEV_ORIGINS)
 origin_regex = None
 
+# Orígenes extra separados por coma (útil para acceso por IP durante setup)
+EXTRA_ORIGINS = os.getenv("EXTRA_ORIGINS", "")
+if EXTRA_ORIGINS:
+    for _origin in EXTRA_ORIGINS.split(","):
+        _origin = _origin.strip()
+        if _origin:
+            allowed_origins.append(_origin)
+
 if PRODUCTION_DOMAIN:
     # Permite: https://stratusapp.com  y  https://cualquier-salon.stratusapp.com
     escaped = PRODUCTION_DOMAIN.replace(".", r"\.")
-    origin_regex = rf"https://({escaped}|[a-z0-9-]+\.{escaped})"
+    origin_regex = rf"https?://({escaped}|[a-z0-9-]+\.{escaped})"
 
 app.add_middleware(
     CORSMiddleware,
