@@ -20,7 +20,7 @@ def get_recordatorios(
     dias_retorno_desde: int = 20,
     dias_retorno_hasta: int = 25,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(require_admin),
+    current_user: Usuario = Depends(get_current_user),
 ):
     return turno_service.get_recordatorios(
         db,
