@@ -233,7 +233,8 @@ function NuevoUsuarioModal({ salonId, onClose, onCreated }) {
       onCreated();
       onClose();
     } catch (err) {
-      setError(err.response?.data?.detail || 'Error al crear el usuario.');
+      const detail = err.response?.data?.detail;
+      setError(Array.isArray(detail) ? detail.map(e => e.msg).join(', ') : (detail || 'Error al crear el usuario.'));
     } finally {
       setLoading(false);
     }
