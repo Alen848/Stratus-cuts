@@ -13,7 +13,12 @@ DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 if DATABASE_URL.startswith("sqlite"):
     engine = create_engine(DATABASE_URL, echo=DEBUG, connect_args={"check_same_thread": False})
 else:
-    engine = create_engine(DATABASE_URL, echo=DEBUG)
+    engine = create_engine(
+        DATABASE_URL,
+        echo=DEBUG,
+        pool_pre_ping=True,
+        pool_recycle=1800,
+    )
 
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
