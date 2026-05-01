@@ -5,14 +5,14 @@ import styles from './LoginPage.module.css';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
-// Detecta el slug inicial: desde el subdominio en prod, o desde .env en dev.
+// Detecta el slug inicial: query param > subdominio > env > vacío.
 // Si el subdominio es "admin" (panel compartido), el campo queda vacío para que el usuario lo ingrese.
 function detectSlugInicial() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('salon')) return params.get('salon');
   const host = window.location.hostname;
   if (host === 'localhost' || host === '127.0.0.1') {
-    return new URLSearchParams(window.location.search).get('salon')
-        || import.meta.env.VITE_SALON_SLUG
-        || '';
+    return import.meta.env.VITE_SALON_SLUG || '';
   }
   const sub = host.split('.')[0];
   return sub === 'admin' ? '' : sub;
@@ -68,6 +68,21 @@ export default function LoginPage() {
         {error && <div className={styles.error}>{error}</div>}
 
         <form onSubmit={handleSubmit} className={styles.form}>
+          {(!import.meta.env.VITE_SALON_SLUG || !slug) && (
+            <div className={styles.field}>
+              <label className={styles.label}>Salón</label>
+              <input
+                className={styles.input}
+                type="text"
+                value={slug}
+                onChange={e => setSlug(e.target.value)}
+                placeholder="nombre-del-salon"
+                required
+                autoFocus
+              />
+            </div>
+          )}
+
           <div className={styles.field}>
             <label className={styles.label}>Usuario</label>
             <input
@@ -77,7 +92,7 @@ export default function LoginPage() {
               onChange={e => setUsername(e.target.value)}
               placeholder="tu_usuario"
               required
-              autoFocus
+              autoFocus={!!import.meta.env.VITE_SALON_SLUG}
             />
           </div>
 
