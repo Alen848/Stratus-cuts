@@ -191,7 +191,8 @@ function NuevoSalonModal({ onClose, onCreated }) {
       await crearSalon(form);
       onCreated();
     } catch (err) {
-      setError(err.response?.data?.detail || 'Error al crear el salón.');
+      const detail = err.response?.data?.detail;
+      setError(Array.isArray(detail) ? detail.map(e => e.msg).join(', ') : (detail || 'Error al crear el salón.'));
     } finally {
       setLoading(false);
     }

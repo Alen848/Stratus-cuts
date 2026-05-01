@@ -35,7 +35,6 @@ class SalonUpdate(BaseModel):
 
 
 class UsuarioAdminCreate(BaseModel):
-    salon_id: int
     username: str
     password: str
     rol: str = "admin"
