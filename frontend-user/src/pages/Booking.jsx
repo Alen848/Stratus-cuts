@@ -15,7 +15,7 @@ export default function Booking() {
   const [loadingServicios, setLoadingServicios] = useState(true);
   const [selectedServices, setSelectedServices] = useState(preSelected);
 
-  const [formData, setFormData] = useState({ nombre: '', telefono: '', email: '' });
+  const [formData, setFormData] = useState({ nombre: '' });
   const [empleados, setEmpleados] = useState([]);
   const [selectedEmpleado, setSelectedEmpleado] = useState(null);
   const [selectedDate, setSelectedDate] = useState('');
@@ -102,8 +102,6 @@ export default function Booking() {
     try {
       const clienteResponse = await createCliente({
         nombre: formData.nombre,
-        telefono: formData.telefono || null,
-        email: formData.email || null,
       });
       const clienteId = clienteResponse.data.id;
 
@@ -208,19 +206,6 @@ export default function Booking() {
             <label className="field-label">Nombre completo <span className="field-req">*</span></label>
             <input className="field-input" type="text" name="nombre" value={formData.nombre}
               onChange={handleChange} placeholder="Tu nombre y apellido" required />
-          </div>
-
-          <div className="form-row">
-            <div className="field">
-              <label className="field-label">Teléfono</label>
-              <input className="field-input" type="tel" name="telefono" value={formData.telefono}
-                onChange={handleChange} placeholder="2235000000" />
-            </div>
-            <div className="field">
-              <label className="field-label">Email</label>
-              <input className="field-input" type="email" name="email" value={formData.email}
-                onChange={handleChange} placeholder="tu@email.com" />
-            </div>
           </div>
 
           {/* -- Profesional -- */}
