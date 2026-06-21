@@ -57,5 +57,14 @@ services:
     ports:
       - "3003:80"
 
+  frontend-blue-moon:
+    build:
+      context: ./frontend-blue-moon
+      args:
+        VITE_API_URL: ${VITE_API_URL}
+    restart: unless-stopped
+    ports:
+      - "3004:80"
+
 volumes:
   mysql_data:
