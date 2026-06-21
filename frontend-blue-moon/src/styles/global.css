@@ -1,0 +1,157 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* ═══════════════════════════════════════════
+   BLUE MOON — DESIGN TOKENS · Light (default)
+   "Daylight elegance" — warm moonlit ivory,
+   midnight-navy ink, champagne sparkle.
+═══════════════════════════════════════════ */
+:root,
+[data-theme="light"] {
+  --bg:            #F7F5F0;
+  --bg-elevated:   #FFFFFF;
+  --bg-sunken:     #EEEBE2;
+
+  --text:          #1C2438;
+  --text-2:        #424B63;
+  --text-3:        #6E7689;
+  --text-4:        #A6ABB9;
+
+  --accent:        #2E3A63;
+  --accent-rgb:    46,58,99;
+  --text-rgb:      28,36,56;
+
+  --gold:          #A98545;
+  --gold-rgb:      169,133,69;
+
+  --cta:           #1C2438;
+  --cta-text:      #F7F5F0;
+  --cta-hover:     #2E3A63;
+
+  --border:        rgba(28,36,56,0.08);
+  --border-md:     rgba(28,36,56,0.14);
+  --border-accent: rgba(46,58,99,0.20);
+
+  --hover:         rgba(46,58,99,0.035);
+  --selected:      rgba(46,58,99,0.07);
+  --glow:          rgba(169,133,69,0.06);
+
+  --nav-bg:        rgba(247,245,240,0.82);
+  --nav-bg-solid:  rgba(247,245,240,0.96);
+  --nav-shadow:    0 1px 16px rgba(28,36,56,0.05);
+  --line-rgb:      169,133,69;
+  --ghost:         rgba(28,36,56,0.10);
+
+  --success:       #4F8A6B;
+  --success-rgb:   79,138,107;
+  --danger:        #B0413E;
+
+  --font-display:  'Cormorant Garamond', Georgia, serif;
+  --font-body:     'Inter', system-ui, -apple-system, sans-serif;
+  --ease:          cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ═══════════════════════════════════════════
+   BLUE MOON — DESIGN TOKENS · Dark ("Midnight")
+═══════════════════════════════════════════ */
+[data-theme="dark"] {
+  --bg:            #0F121C;
+  --bg-elevated:   #181C2A;
+  --bg-sunken:     #0A0C13;
+
+  --text:          #ECEDF3;
+  --text-2:        #B4B9CC;
+  --text-3:        #828799;
+  --text-4:        #595F72;
+
+  --accent:        #9DB0E8;
+  --accent-rgb:    157,176,232;
+  --text-rgb:      236,237,243;
+
+  --gold:          #D4B575;
+  --gold-rgb:      212,181,117;
+
+  --cta:           #9DB0E8;
+  --cta-text:      #0F121C;
+  --cta-hover:     #B6C5F0;
+
+  --border:        rgba(255,255,255,0.07);
+  --border-md:     rgba(255,255,255,0.12);
+  --border-accent: rgba(157,176,232,0.22);
+
+  --hover:         rgba(157,176,232,0.05);
+  --selected:      rgba(157,176,232,0.10);
+  --glow:          rgba(212,181,117,0.06);
+
+  --nav-bg:        rgba(15,18,28,0.85);
+  --nav-bg-solid:  rgba(15,18,28,0.97);
+  --nav-shadow:    0 1px 16px rgba(0,0,0,0.35);
+  --line-rgb:      212,181,117;
+  --ghost:         rgba(255,255,255,0.08);
+
+  --success:       #6FB995;
+  --success-rgb:   111,185,149;
+  --danger:        #E0605C;
+}
+
+/* ═══════════════════════════════════════════
+   RESETS & BASE
+═══════════════════════════════════════════ */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.4s ease, color 0.4s ease;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+::selection {
+  background: rgba(var(--accent-rgb), 0.18);
+  color: var(--text);
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+@keyframes pageEnter {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+main {
+  animation: pageEnter 0.4s var(--ease) forwards;
+}
+
+/* Respeta a quien prefiere menos movimiento */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
