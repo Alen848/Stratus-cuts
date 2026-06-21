@@ -9,6 +9,10 @@ RUN pnpm install
 ARG VITE_API_URL
 ENV VITE_API_URL=$VITE_API_URL
 
+# Slug del salón (dedicado a Blue Moon). Debe coincidir con el slug en la BD.
+ARG VITE_SALON_SLUG
+ENV VITE_SALON_SLUG=$VITE_SALON_SLUG
+
 COPY . .
 RUN pnpm build
 

@@ -62,6 +62,7 @@ services:
       context: ./frontend-blue-moon
       args:
         VITE_API_URL: ${VITE_API_URL}
+        VITE_SALON_SLUG: blue-moon
     restart: unless-stopped
     ports:
       - "3004:80"
