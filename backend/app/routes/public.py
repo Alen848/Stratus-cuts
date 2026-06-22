@@ -3,6 +3,7 @@ Rutas públicas para el frontend del cliente (sin autenticación).
 Prefijo: /public/{slug}/...
 El slug identifica el salón.
 """
+import os
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import List
@@ -118,7 +119,10 @@ def public_create_turno(request: Request, slug: str, turno: ReservaPublicaCreate
             detail=f"No se pueden reservar turnos con más de {max_dias} días de anticipación.",
         )
 
-    webhook_url = str(request.base_url).rstrip("/") + f"/public/{slug}/mp/webhook"
+    # La notification_url debe ser pública y HTTPS. Detrás de un proxy,
+    # request.base_url puede ser incorrecta, por eso priorizamos BACKEND_PUBLIC_URL.
+    base = (os.getenv("BACKEND_PUBLIC_URL") or str(request.base_url)).rstrip("/")
+    webhook_url = f"{base}/public/{slug}/mp/webhook"
     try:
         resultado = reserva_service.crear_reserva(db, turno, salon, config, webhook_url=webhook_url)
     except RuntimeError as e:
