@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from app.database.connection import Base, engine
+from app.database.migrations import run_migrations
 from app.limiter import limiter
 
 # Importar todos los modelos para que SQLAlchemy los reconozca
@@ -31,6 +32,8 @@ from app.routes.pagos_superadmin import router as pagos_superadmin_router
 
 # Crear tablas en la base de datos (si no existen)
 Base.metadata.create_all(bind=engine)
+# Agregar columnas nuevas a tablas existentes (mini-migraciones idempotentes)
+run_migrations(engine)
 
 app = FastAPI(title="Turnera Peluquería API", version="2.0.0")
 
