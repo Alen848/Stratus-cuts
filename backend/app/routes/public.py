@@ -11,11 +11,15 @@ from datetime import date as DateType, datetime, timezone, timedelta
 from app.database.connection import get_db
 from app.models.salon import Salon
 from app.models.config_salon import ConfigSalon
-from app.services import empleado_service, servicio_service, cliente_service, turno_service
+from app.models.turno import Turno
+from app.services import (
+    empleado_service, servicio_service, cliente_service, turno_service,
+    reserva_service, config_salon_service,
+)
 from app.schemas.empleado import Empleado
 from app.schemas.servicio import Servicio
 from app.schemas.cliente import ClienteCreate
-from app.schemas.turno import TurnoCreate
+from app.schemas.reserva import ReservaPublicaCreate
 from app.limiter import limiter
 
 router = APIRouter(prefix="/public", tags=["Público"])
@@ -81,7 +85,7 @@ def public_create_cliente(request: Request, slug: str, cliente: ClienteCreate, d
 
 @router.post("/{slug}/turnos")
 @limiter.limit("30/minute")
-def public_create_turno(request: Request, slug: str, turno: TurnoCreate, db: Session = Depends(get_db)):
+def public_create_turno(request: Request, slug: str, turno: ReservaPublicaCreate, db: Session = Depends(get_db)):
     salon = _get_salon(slug, db)
     config = _get_config(db, salon.id)
 
@@ -114,4 +118,74 @@ def public_create_turno(request: Request, slug: str, turno: TurnoCreate, db: Ses
             detail=f"No se pueden reservar turnos con más de {max_dias} días de anticipación.",
         )
 
-    return turno_service.create_turno(db, turno, salon_id=salon.id)
+    webhook_url = str(request.base_url).rstrip("/") + f"/public/{slug}/mp/webhook"
+    try:
+        resultado = reserva_service.crear_reserva(db, turno, salon, config, webhook_url=webhook_url)
+    except RuntimeError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+    # Sin pago: devolvemos el turno tal cual (comportamiento de siempre)
+    if not resultado["requiere_pago"]:
+        return resultado["turno"]
+
+    # Con seña: el frontend debe redirigir a init_point para pagar
+    t = resultado["turno"]
+    return {
+        "requiere_pago": True,
+        "turno_id": t.id,
+        "estado": t.estado,
+        "init_point": resultado["init_point"],
+        "monto_total": resultado["monto_total"],
+        "monto_sena": resultado["monto_sena"],
+        "saldo_pendiente": resultado["saldo_pendiente"],
+    }
+
+
+@router.post("/{slug}/mp/webhook")
+async def public_mp_webhook(slug: str, request: Request, db: Session = Depends(get_db)):
+    """Notificación de Mercado Pago. Confirma la seña consultando el pago real."""
+    salon = _get_salon(slug, db)
+    token = config_salon_service.get_mp_access_token(db, salon.id)
+    if not token:
+        return {"ok": True, "ignored": True}
+
+    tipo = request.query_params.get("type") or request.query_params.get("topic")
+    payment_id = request.query_params.get("data.id") or request.query_params.get("id")
+    if not payment_id:
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        if isinstance(body, dict):
+            tipo = tipo or body.get("type") or body.get("topic")
+            payment_id = (body.get("data") or {}).get("id") or body.get("id")
+
+    # Solo nos interesan notificaciones de pagos
+    if tipo and "payment" not in str(tipo):
+        return {"ok": True, "ignored": True}
+    if not payment_id:
+        return {"ok": True, "ignored": True}
+
+    try:
+        reserva_service.confirmar_pago(db, salon.id, str(payment_id), token)
+    except Exception:
+        # Devolver 200 igual para que MP no reintente en loop; ya quedó logueable
+        pass
+    return {"ok": True}
+
+
+@router.get("/{slug}/turnos/{turno_id}/estado")
+def public_estado_turno(slug: str, turno_id: int, db: Session = Depends(get_db)):
+    """Estado del turno/seña, para que el frontend confirme tras el redirect de MP."""
+    salon = _get_salon(slug, db)
+    turno_service.expirar_turnos_vencidos(db, salon.id)
+    t = db.query(Turno).filter(Turno.id == turno_id, Turno.salon_id == salon.id).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="Turno no encontrado.")
+    return {
+        "estado": t.estado,
+        "sena_estado": t.sena_estado,
+        "monto_total": t.monto_total,
+        "monto_sena": t.monto_sena,
+        "saldo_pendiente": t.saldo_pendiente,
+    }

@@ -10,12 +10,39 @@ from app.services.pago_service import check_dia_abierto
 # ─── Timezone Argentina ────────────────────────────────────────────────────────
 ARG_TZ = timezone(timedelta(hours=-3))
 
+# Estados que liberan el horario (no ocupan slot ni generan conflicto)
+ESTADOS_LIBERAN_SLOT = ("cancelado", "expirado")
+
 
 def to_argentina_naive(dt: datetime) -> datetime:
     """Convierte cualquier datetime a hora Argentina sin timezone (naive)."""
     if dt.tzinfo is not None:
         return dt.astimezone(ARG_TZ).replace(tzinfo=None)
     return dt
+
+
+def expirar_turnos_vencidos(db: Session, salon_id: int = None) -> int:
+    """
+    Libera turnos en 'pendiente_pago' cuya seña no se pagó dentro del plazo
+    (expira_en vencido). Los pasa a 'expirado' para que dejen de ocupar el slot.
+    Idempotente y barato; se llama antes de chequear disponibilidad y al reservar.
+    """
+    ahora = datetime.now(ARG_TZ).replace(tzinfo=None)
+    q = db.query(Turno).filter(
+        Turno.estado == "pendiente_pago",
+        Turno.expira_en.isnot(None),
+        Turno.expira_en < ahora,
+    )
+    if salon_id is not None:
+        q = q.filter(Turno.salon_id == salon_id)
+    vencidos = q.all()
+    for t in vencidos:
+        t.estado = "expirado"
+        if t.sena_estado == "pendiente":
+            t.sena_estado = "anulada"
+    if vencidos:
+        db.commit()
+    return len(vencidos)
 
 
 # ─── CRUD básico ───────────────────────────────────────────────────────────────
@@ -54,6 +81,9 @@ def _check_horario_salon(db: Session, salon_id: int, fecha_hora: datetime):
 
 
 def create_turno(db: Session, turno: TurnoCreate, salon_id: int):
+    # 0. Liberar holds de seña vencidos antes de chequear conflictos
+    expirar_turnos_vencidos(db, salon_id)
+
     # 1. Verificar si el día ya está cerrado
     nuevo_inicio = to_argentina_naive(turno.fecha_hora)
     check_dia_abierto(db, salon_id, nuevo_inicio.date())
@@ -76,7 +106,7 @@ def create_turno(db: Session, turno: TurnoCreate, salon_id: int):
     turnos_empleado = db.query(Turno).filter(
         Turno.salon_id == salon_id,
         Turno.empleado_id == turno.empleado_id,
-        Turno.estado != "cancelado",
+        ~Turno.estado.in_(ESTADOS_LIBERAN_SLOT),
         func.date(Turno.fecha_hora) == dia_del_turno,
     ).all()
 
@@ -91,7 +121,7 @@ def create_turno(db: Session, turno: TurnoCreate, salon_id: int):
         turnos_cliente = db.query(Turno).filter(
             Turno.salon_id == salon_id,
             Turno.cliente_id == turno.cliente_id,
-            Turno.estado != "cancelado",
+            ~Turno.estado.in_(ESTADOS_LIBERAN_SLOT),
             func.date(Turno.fecha_hora) == dia_del_turno,
         ).all()
         for t in turnos_cliente:
@@ -158,7 +188,7 @@ def update_turno(db: Session, turno_id: int, turno_update: TurnoUpdate, salon_id
         turnos_empleado = db.query(Turno).filter(
             Turno.salon_id == salon_id,
             Turno.empleado_id == empleado_final,
-            Turno.estado != "cancelado",
+            ~Turno.estado.in_(ESTADOS_LIBERAN_SLOT),
             Turno.id != turno_id,
             func.date(Turno.fecha_hora) == dia_final,
         ).all()
@@ -218,6 +248,9 @@ def delete_turno(db: Session, turno_id: int, salon_id: int):
 # ─── Disponibilidad Semanal ──────────────────────────────────────────────────
 
 def get_horarios_semanales(db: Session, empleado_id: int, fecha_inicio: date, salon_id: int):
+    # Liberar holds de seña vencidos para que no aparezcan como ocupados
+    expirar_turnos_vencidos(db, salon_id)
+
     resultado = {}
     horarios_laborales = db.query(HorarioEmpleado).filter(
         HorarioEmpleado.empleado_id == empleado_id,
@@ -266,7 +299,7 @@ def get_horarios_semanales(db: Session, empleado_id: int, fecha_inicio: date, sa
         turnos_dia = db.query(Turno).filter(
             Turno.salon_id == salon_id,
             Turno.empleado_id == empleado_id,
-            Turno.estado != "cancelado",
+            ~Turno.estado.in_(ESTADOS_LIBERAN_SLOT),
             func.date(Turno.fecha_hora) == fecha_actual,
         ).all()
 
