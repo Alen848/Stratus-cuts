@@ -15,6 +15,16 @@ const DEFAULT_CONFIG = {
   telefono:     '',
   direccion:    '',
   url_reserva:  '',
+  // Se preservan al guardar (no se pisan)
+  reservas_online:       true,
+  max_dias_anticipacion: 60,
+  min_hs_anticipacion:   1,
+  // Mercado Pago
+  mp_activo:        false,
+  mp_configurado:   false,
+  mp_public_key:    '',
+  sena_porcentaje:  0,
+  sena_obligatoria: false,
 };
 
 function timeToStr(t) {
@@ -264,6 +274,143 @@ function TabInfo({ config, setField }) {
   );
 }
 
+// ─── Sub-tab: Mercado Pago ────────────────────────────────────────────────────
+function TabPagos({ config, setField }) {
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved]   = useState(false);
+  const [error, setError]   = useState('');
+  const [tokenInput, setTokenInput] = useState('');
+
+  const pct = Number(config.sena_porcentaje) || 0;
+  const ejemploSena = Math.round(10000 * pct / 100);
+
+  const handleSave = async () => {
+    setError('');
+    if (config.mp_activo && !config.mp_configurado && !tokenInput.trim()) {
+      setError('Para activar Mercado Pago, ingresá tu Access Token.');
+      return;
+    }
+    if (pct < 0 || pct > 100) {
+      setError('El porcentaje de seña debe estar entre 0 y 100.');
+      return;
+    }
+    if (config.sena_obligatoria && pct <= 0) {
+      setError('Si la seña es obligatoria, el porcentaje debe ser mayor a 0.');
+      return;
+    }
+    try {
+      setSaving(true);
+      const payload = {
+        // se preservan para no pisarlos en el backend
+        reservas_online:       config.reservas_online,
+        max_dias_anticipacion: config.max_dias_anticipacion,
+        min_hs_anticipacion:   config.min_hs_anticipacion,
+        // Mercado Pago
+        mp_activo:        config.mp_activo,
+        mp_public_key:    config.mp_public_key,
+        sena_porcentaje:  pct,
+        sena_obligatoria: config.sena_obligatoria,
+      };
+      // El token solo se envía si se ingresó uno nuevo (write-only)
+      if (tokenInput.trim()) payload.mp_access_token = tokenInput.trim();
+
+      await configSalonApi.update(payload);
+
+      if (tokenInput.trim()) {
+        setField('mp_configurado', true);
+        setTokenInput('');
+      }
+      setSaved(true);
+    } catch {
+      setError('Error al guardar. Intentá de nuevo.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div>
+      <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '8px', lineHeight: 1.5 }}>
+        Cobrá una <strong>seña</strong> al reservar online con tu propia cuenta de Mercado Pago.
+        El dinero entra directo a tu cuenta — nosotros no lo tocamos.
+      </p>
+      <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '24px', lineHeight: 1.5 }}>
+        🔒 Tus credenciales se guardan <strong>cifradas</strong> y no se comparten con nadie.
+        Obtenelas en Mercado Pago → Tu negocio → Credenciales.
+      </p>
+
+      <FieldRow label="Activar Mercado Pago" hint="Si está apagado, las reservas funcionan sin pago (como hasta ahora).">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <Toggle value={config.mp_activo} onChange={v => { setField('mp_activo', v); setSaved(false); }} />
+          <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+            {config.mp_activo ? 'Activo' : 'Inactivo'}
+          </span>
+        </div>
+      </FieldRow>
+
+      <FieldRow
+        label="Access Token"
+        hint={config.mp_configurado
+          ? 'Ya hay un token guardado. Dejá el campo vacío para conservarlo, o pegá uno nuevo para reemplazarlo.'
+          : 'Token privado de tu cuenta de Mercado Pago. Se guarda cifrado.'}
+      >
+        <input
+          type="password"
+          autoComplete="off"
+          value={tokenInput}
+          onChange={e => { setTokenInput(e.target.value); setSaved(false); }}
+          placeholder={config.mp_configurado ? '•••••••••• (configurado)' : 'APP_USR-...'}
+          style={inputSt}
+        />
+      </FieldRow>
+
+      <FieldRow label="Public Key" hint="Clave pública de tu cuenta (no es secreta).">
+        <input
+          type="text"
+          autoComplete="off"
+          value={config.mp_public_key}
+          onChange={e => { setField('mp_public_key', e.target.value); setSaved(false); }}
+          placeholder="APP_USR-..."
+          style={inputSt}
+        />
+      </FieldRow>
+
+      <FieldRow
+        label="Porcentaje de seña"
+        hint={pct > 0
+          ? `Ej: en un turno de $10.000, la seña sería $${ejemploSena.toLocaleString('es-AR')}. Con 100% se paga el total online.`
+          : 'Porcentaje del total que se cobra como seña. Con 100% se paga todo online.'}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <input
+            type="number"
+            min={0}
+            max={100}
+            value={config.sena_porcentaje}
+            onChange={e => { setField('sena_porcentaje', e.target.value); setSaved(false); }}
+            style={{ ...inputSt, width: '100px' }}
+          />
+          <span style={{ fontSize: '14px', color: 'var(--text-muted)' }}>%</span>
+        </div>
+      </FieldRow>
+
+      <FieldRow
+        label="Seña obligatoria"
+        hint="Si está activa, el cliente debe pagar la seña para confirmar. Si no, puede elegir pagar la seña o pagar todo en el local."
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <Toggle value={config.sena_obligatoria} onChange={v => { setField('sena_obligatoria', v); setSaved(false); }} />
+          <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+            {config.sena_obligatoria ? 'Obligatoria' : 'Opcional'}
+          </span>
+        </div>
+      </FieldRow>
+
+      <SaveBar onSave={handleSave} saving={saving} saved={saved} error={error} />
+    </div>
+  );
+}
+
 // ─── Página principal ─────────────────────────────────────────────────────────
 export default function ConfiguracionPage() {
   const [activeTab, setActiveTab] = useState('horarios');
@@ -283,6 +430,14 @@ export default function ConfiguracionPage() {
           telefono:     d.telefono     || '',
           direccion:    d.direccion    || '',
           url_reserva:  d.url_reserva  || '',
+          reservas_online:       d.reservas_online ?? true,
+          max_dias_anticipacion: d.max_dias_anticipacion ?? 60,
+          min_hs_anticipacion:   d.min_hs_anticipacion ?? 1,
+          mp_activo:        d.mp_activo ?? false,
+          mp_configurado:   d.mp_configurado ?? false,
+          mp_public_key:    d.mp_public_key || '',
+          sena_porcentaje:  d.sena_porcentaje ?? 0,
+          sena_obligatoria: d.sena_obligatoria ?? false,
         });
       }
       if (horRes?.data?.length > 0) {
@@ -312,6 +467,7 @@ export default function ConfiguracionPage() {
   const TABS = [
     { key: 'horarios', label: 'Horarios' },
     { key: 'info',     label: 'Info del local' },
+    { key: 'pagos',    label: 'Mercado Pago' },
   ];
 
   return (
@@ -358,6 +514,9 @@ export default function ConfiguracionPage() {
       )}
       {activeTab === 'info' && (
         <TabInfo config={config} setField={setField} />
+      )}
+      {activeTab === 'pagos' && (
+        <TabPagos config={config} setField={setField} />
       )}
 
     </div>
