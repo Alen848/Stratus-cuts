@@ -1,4 +1,6 @@
 import { useLocation, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { getTurnoEstado } from '../services/api';
 
 const STYLES = `
   .conf-wrap {
@@ -156,72 +158,152 @@ const STYLES = `
   }
 `;
 
-const Confirmation = () => {
-  const location = useLocation();
-  const turno = location.state?.turno;
+const ICON_CHECK = (
+  <svg width="30" height="30" viewBox="0 0 24 24" fill="none"
+    stroke="var(--success)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="20 6 9 17 4 12" />
+  </svg>
+);
+const ICON_CLOCK = (
+  <svg width="30" height="30" viewBox="0 0 24 24" fill="none"
+    stroke="var(--accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10" />
+    <polyline points="12 6 12 12 16 14" />
+  </svg>
+);
 
-  if (!turno) {
-    return (
-      <>
-        <style>{STYLES}</style>
-        <div className="conf-empty">
-          <p>No hay información del turno.</p>
-          <Link to="/">Volver al inicio</Link>
-        </div>
-      </>
-    );
-  }
+const fmtFecha = (iso) => {
+  if (!iso) return '—';
+  const d = new Date(String(iso).replace('T', ' ').split('.')[0]);
+  return isNaN(d) ? '—' : d.toLocaleString('es-AR', { dateStyle: 'full', timeStyle: 'short' });
+};
+const money = (n) => (n == null ? null : `$${Number(n).toLocaleString('es-AR')}`);
+const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : '');
 
-  const fechaStr = turno.fecha_hora?.replace('T', ' ').split('.')[0] || '';
-  const fecha = new Date(fechaStr).toLocaleString('es-AR', {
-    dateStyle: 'full',
-    timeStyle: 'short',
-  });
-
-  const serviciosNombres = turno.servicios?.map(s => s.servicio?.nombre).filter(Boolean).join(', ');
-
-  const rows = [
-    { label: 'Cliente',      value: turno.cliente?.nombre },
-    { label: 'Fecha y hora', value: fecha },
-    { label: 'Servicio',     value: serviciosNombres },
-    { label: 'Estado',       value: turno.estado?.charAt(0).toUpperCase() + turno.estado?.slice(1) },
-  ];
-
+function Card({ icon, title, subtitle, rows }) {
+  const visibles = (rows || []).filter(Boolean);
   return (
     <>
       <style>{STYLES}</style>
       <div className="conf-wrap">
-
-        <div className="conf-icon">
-          <svg width="30" height="30" viewBox="0 0 24 24" fill="none"
-            stroke="var(--success)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
-        </div>
-
+        <div className="conf-icon">{icon}</div>
         <div className="conf-heading">
-          <h1 className="conf-title">¡Turno confirmado!</h1>
-          <p className="conf-subtitle">
-            Te esperamos. Podés cancelar o reagendar cuando necesites.
-          </p>
+          <h1 className="conf-title">{title}</h1>
+          <p className="conf-subtitle">{subtitle}</p>
         </div>
-
-        <div className="conf-card">
-          <div className="conf-card-header">
-            <span className="conf-card-header-label">Detalles de la reserva</span>
-          </div>
-          {rows.map(({ label, value }) => (
-            <div key={label} className="conf-row">
-              <span className="conf-row-label">{label}</span>
-              <span className="conf-row-value">{value || '—'}</span>
+        {visibles.length > 0 && (
+          <div className="conf-card">
+            <div className="conf-card-header">
+              <span className="conf-card-header-label">Detalles de la reserva</span>
             </div>
-          ))}
-        </div>
+            {visibles.map(({ label, value }) => (
+              <div key={label} className="conf-row">
+                <span className="conf-row-label">{label}</span>
+                <span className="conf-row-value">{value || '—'}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        <Link to="/" className="conf-cta">Reservar otro turno</Link>
+      </div>
+    </>
+  );
+}
 
-        <Link to="/" className="conf-cta">
-          Reservar otro turno
-        </Link>
+const Confirmation = () => {
+  const location = useLocation();
+  const stateTurno = location.state?.turno;
 
+  const params = new URLSearchParams(location.search);
+  const turnoIdUrl = params.get('external_reference') || params.get('turno');
+
+  const [estado, setEstado] = useState(null);
+  const [cargando, setCargando] = useState(!stateTurno && !!turnoIdUrl);
+
+  // Vuelta de Mercado Pago: consultar el estado real (el webhook puede demorar)
+  useEffect(() => {
+    if (stateTurno || !turnoIdUrl) return;
+    let cancelled = false;
+    let tries = 0;
+    const poll = () => {
+      getTurnoEstado(turnoIdUrl)
+        .then(r => {
+          if (cancelled) return;
+          setEstado(r.data);
+          if (r.data?.estado === 'pendiente_pago' && tries < 5) {
+            tries += 1;
+            setTimeout(poll, 2000);
+          } else {
+            setCargando(false);
+          }
+        })
+        .catch(() => { if (!cancelled) setCargando(false); });
+    };
+    poll();
+    return () => { cancelled = true; };
+  }, [turnoIdUrl, stateTurno]);
+
+  // ── Modo 1: reserva sin seña (navegación interna) ──
+  if (stateTurno) {
+    const t = stateTurno;
+    const servicios = t.servicios?.map(s => s.servicio?.nombre).filter(Boolean).join(', ');
+    return (
+      <Card
+        icon={ICON_CHECK}
+        title="¡Turno confirmado!"
+        subtitle="Te esperamos. Podés cancelar o reagendar cuando necesites."
+        rows={[
+          { label: 'Cliente',      value: t.cliente?.nombre },
+          { label: 'Fecha y hora', value: fmtFecha(t.fecha_hora) },
+          { label: 'Servicio',     value: servicios },
+          { label: 'Estado',       value: cap(t.estado) },
+        ]}
+      />
+    );
+  }
+
+  // ── Modo 2: vuelta de Mercado Pago ──
+  if (turnoIdUrl) {
+    if (cargando) {
+      return <Card icon={ICON_CLOCK} title="Verificando tu pago…" subtitle="Esto puede tardar unos segundos." />;
+    }
+    const e = estado;
+    if (!e) {
+      return <Card icon={ICON_CLOCK} title="No pudimos verificar el turno"
+        subtitle="Si realizaste el pago, vas a recibir la confirmación. Ante dudas, contactá al salón." />;
+    }
+    if (e.estado === 'confirmado') {
+      return (
+        <Card
+          icon={ICON_CHECK}
+          title="¡Turno confirmado!"
+          subtitle="Tu seña fue acreditada. Te esperamos."
+          rows={[
+            { label: 'Cliente',      value: e.cliente_nombre },
+            { label: 'Fecha y hora', value: fmtFecha(e.fecha_hora) },
+            { label: 'Servicio',     value: (e.servicios || []).join(', ') },
+            { label: 'Profesional',  value: e.empleado_nombre },
+            e.monto_sena ? { label: 'Seña pagada', value: money(e.monto_sena) } : null,
+            e.saldo_pendiente ? { label: 'Resta en el local', value: money(e.saldo_pendiente) } : null,
+          ]}
+        />
+      );
+    }
+    if (e.estado === 'pendiente_pago') {
+      return <Card icon={ICON_CLOCK} title="Pago en proceso"
+        subtitle="Estamos esperando la confirmación de Mercado Pago. Actualizá esta página en unos minutos." />;
+    }
+    return <Card icon={ICON_CLOCK} title="El pago no se completó"
+      subtitle="Tu turno no quedó confirmado. Podés intentar reservar nuevamente." />;
+  }
+
+  // ── Sin información ──
+  return (
+    <>
+      <style>{STYLES}</style>
+      <div className="conf-empty">
+        <p>No hay información del turno.</p>
+        <Link to="/">Volver al inicio</Link>
       </div>
     </>
   );

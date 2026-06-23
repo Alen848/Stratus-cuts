@@ -21,4 +21,8 @@ export const createTurno = (turnoData) => api.post(pub('/turnos'), turnoData);
 export const getDisponibilidadSemanal = (empleadoId, fechaInicio) =>
   api.get(pub(`/disponibilidad/${empleadoId}`), { params: { fecha_inicio: fechaInicio } });
 
+// Mercado Pago / seña
+export const getPagoConfig = () => api.get(pub('/pago-config'));
+export const getTurnoEstado = (turnoId) => api.get(pub(`/turnos/${turnoId}/estado`));
+
 export default api;

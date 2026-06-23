@@ -178,12 +178,30 @@ async def public_mp_webhook(slug: str, request: Request, db: Session = Depends(g
     return {"ok": True}
 
 
+@router.get("/{slug}/pago-config")
+def public_pago_config(slug: str, db: Session = Depends(get_db)):
+    """
+    Le dice al frontend si debe pedir seña y cuánto, SIN exponer credenciales.
+    'habilitado' = MP activo + token cargado + porcentaje > 0.
+    """
+    salon = _get_salon(slug, db)
+    cfg = db.query(ConfigSalon).filter(ConfigSalon.salon_id == salon.id).first()
+    token = config_salon_service.get_mp_access_token(db, salon.id)
+    porcentaje = (cfg.sena_porcentaje if cfg else 0) or 0
+    habilitado = bool(cfg and cfg.mp_activo and token and porcentaje > 0)
+    return {
+        "habilitado": habilitado,
+        "sena_porcentaje": porcentaje,
+        "sena_obligatoria": bool(cfg and cfg.sena_obligatoria),
+    }
+
+
 @router.get("/{slug}/turnos/{turno_id}/estado")
 def public_estado_turno(slug: str, turno_id: int, db: Session = Depends(get_db)):
     """Estado del turno/seña, para que el frontend confirme tras el redirect de MP."""
     salon = _get_salon(slug, db)
     turno_service.expirar_turnos_vencidos(db, salon.id)
-    t = db.query(Turno).filter(Turno.id == turno_id, Turno.salon_id == salon.id).first()
+    t = turno_service.get_turno(db, turno_id, salon.id)
     if not t:
         raise HTTPException(status_code=404, detail="Turno no encontrado.")
     return {
@@ -192,4 +210,8 @@ def public_estado_turno(slug: str, turno_id: int, db: Session = Depends(get_db))
         "monto_total": t.monto_total,
         "monto_sena": t.monto_sena,
         "saldo_pendiente": t.saldo_pendiente,
+        "fecha_hora": t.fecha_hora,
+        "cliente_nombre": t.cliente.nombre if t.cliente else None,
+        "empleado_nombre": t.empleado.nombre if t.empleado else None,
+        "servicios": [ts.servicio.nombre for ts in t.servicios if ts.servicio],
     }

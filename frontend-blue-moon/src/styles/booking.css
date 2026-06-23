@@ -566,3 +566,41 @@
 @media (max-width: 480px) {
   .time-grid { grid-template-columns: repeat(3, 1fr); }
 }
+
+/* ── Seña / Mercado Pago ───────────────────────────────────────────────── */
+.sena-box {
+  padding: 0.95rem 1.1rem;
+  border: 1px solid var(--border-accent);
+  background: rgba(var(--accent-rgb), 0.05);
+  border-radius: 10px;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--text-2);
+}
+.sena-choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+.sena-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.9rem 1rem;
+  text-align: left;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 0.2s var(--ease), background 0.2s var(--ease);
+}
+.sena-choice:hover { border-color: var(--border-accent); }
+.sena-choice.sc-selected {
+  border-color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.07);
+}
+.sc-title { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+.sc-sub   { font-size: 0.78rem; color: var(--text-3); line-height: 1.4; }
+@media (max-width: 480px) {
+  .sena-choices { grid-template-columns: 1fr; }
+}
