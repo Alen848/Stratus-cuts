@@ -277,12 +277,66 @@ function NuevoUsuarioModal({ salonId, onClose, onCreated }) {
   );
 }
 
+function SlugModal({ salon, onClose, onSaved }) {
+  const [slug, setSlug] = useState(salon.slug);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    const limpio = slug.trim().toLowerCase();
+    if (!/^[a-z0-9-]+$/.test(limpio)) {
+      setError('Solo minúsculas, números y guiones (sin espacios).');
+      return;
+    }
+    setLoading(true);
+    try {
+      await actualizarSalon(salon.id, { slug: limpio });
+      onSaved(limpio);
+      onClose();
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Error al guardar el slug.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="sd-modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="sd-modal">
+        <div className="sd-modal-title">Editar slug</div>
+        <div className="sd-modal-sub">
+          El slug identifica al salón en las URLs públicas y debe coincidir con el frontend.
+          Cambialo solo si sabés lo que hacés.
+        </div>
+        <form onSubmit={handleSubmit}>
+          <div className="sd-field">
+            <label className="sd-label">Slug</label>
+            <input className="sd-input" value={slug} autoFocus
+              onChange={e => setSlug(e.target.value)} placeholder="ej: blue-moon" />
+          </div>
+          {error && <div className="sd-modal-error">{error}</div>}
+          <div className="sd-modal-actions">
+            <button type="button" className="sd-cancel" onClick={onClose}>Cancelar</button>
+            <button type="submit" className="sd-confirm" disabled={loading}>
+              {loading ? 'Guardando...' : 'Guardar slug'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function SalonDetalle({ salon, onBack }) {
   const [usuarios, setUsuarios] = useState([]);
   const [loading, setLoading] = useState(true);
   const [resetTarget, setResetTarget] = useState(null);
   const [showNuevoUsuario, setShowNuevoUsuario] = useState(false);
   const [salonActivo, setSalonActivo] = useState(salon.activo);
+  const [salonSlug, setSalonSlug] = useState(salon.slug);
+  const [showSlugModal, setShowSlugModal] = useState(false);
 
   const cargar = useCallback(async () => {
     try {
@@ -337,7 +391,11 @@ export default function SalonDetalle({ salon, onBack }) {
                   {salonActivo ? 'Activo' : 'Inactivo'}
                 </span>
                 <span className="sd-badge plan">{salon.plan}</span>
-                <span className="sd-slug">{salon.slug}</span>
+                <span className="sd-slug">{salonSlug}</span>
+                <button className="sd-btn" style={{ padding: '0.15rem 0.5rem', fontSize: '0.68rem' }}
+                  onClick={() => setShowSlugModal(true)}>
+                  ✎ editar slug
+                </button>
               </div>
             </div>
             <button
@@ -434,6 +492,14 @@ export default function SalonDetalle({ salon, onBack }) {
           salonId={salon.id}
           onClose={() => setShowNuevoUsuario(false)}
           onCreated={cargar}
+        />
+      )}
+
+      {showSlugModal && (
+        <SlugModal
+          salon={{ ...salon, slug: salonSlug }}
+          onClose={() => setShowSlugModal(false)}
+          onSaved={(nuevo) => setSalonSlug(nuevo)}
         />
       )}
     </Layout>

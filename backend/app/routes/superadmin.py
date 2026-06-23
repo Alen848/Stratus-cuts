@@ -3,6 +3,7 @@ Rutas exclusivas del superadmin.
 Prefijo: /superadmin/...
 Todas requieren rol=superadmin en el JWT.
 """
+import re
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -30,6 +31,7 @@ class SalonCreate(BaseModel):
 
 class SalonUpdate(BaseModel):
     nombre: Optional[str] = None
+    slug: Optional[str] = None
     plan: Optional[str] = None
     activo: Optional[bool] = None
 
@@ -124,6 +126,15 @@ def actualizar_salon(
 
     if payload.nombre is not None:
         salon.nombre = payload.nombre
+    if payload.slug is not None:
+        nuevo_slug = payload.slug.strip().lower()
+        if not re.fullmatch(r"[a-z0-9-]+", nuevo_slug):
+            raise HTTPException(status_code=400, detail="Slug inválido: solo minúsculas, números y guiones.")
+        if nuevo_slug != salon.slug:
+            existe = db.query(Salon).filter(Salon.slug == nuevo_slug, Salon.id != salon_id).first()
+            if existe:
+                raise HTTPException(status_code=400, detail="Ese slug ya está en uso por otro salón.")
+            salon.slug = nuevo_slug
     if payload.plan is not None:
         salon.plan = payload.plan
     if payload.activo is not None:
