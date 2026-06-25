@@ -1,4 +1,4 @@
-from sqlalchemy import func
+from sqlalchemy import func, or_, and_
 from sqlalchemy.orm import Session, joinedload
 from app.models import Turno, TurnoServicio, Servicio, HorarioEmpleado
 from app.services.horario_salon_service import get_horarios as get_salon_horarios
@@ -23,26 +23,39 @@ def to_argentina_naive(dt: datetime) -> datetime:
 
 def expirar_turnos_vencidos(db: Session, salon_id: int = None) -> int:
     """
-    Libera turnos en 'pendiente_pago' cuya seña no se pagó dentro del plazo
-    (expira_en vencido). Los pasa a 'expirado' para que dejen de ocupar el slot.
-    Idempotente y barato; se llama antes de chequear disponibilidad y al reservar.
+    Reservas online cuya seña no se pagó dentro del plazo (hold vencido) se
+    ELIMINAN: nunca se concretaron, no son turnos, no deben aparecer en el admin.
+    También limpia 'expirado' heredados. Nunca borra un turno con pago aprobado.
+    Idempotente y barato; se llama al listar turnos, reservar y ver disponibilidad.
     """
+    from app.models.pago import Pago
+
     ahora = datetime.now(ARG_TZ).replace(tzinfo=None)
     q = db.query(Turno).filter(
-        Turno.estado == "pendiente_pago",
-        Turno.expira_en.isnot(None),
-        Turno.expira_en < ahora,
+        or_(
+            and_(
+                Turno.estado == "pendiente_pago",
+                Turno.expira_en.isnot(None),
+                Turno.expira_en < ahora,
+            ),
+            Turno.estado == "expirado",
+        )
     )
     if salon_id is not None:
         q = q.filter(Turno.salon_id == salon_id)
-    vencidos = q.all()
-    for t in vencidos:
-        t.estado = "expirado"
-        if t.sena_estado == "pendiente":
-            t.sena_estado = "anulada"
-    if vencidos:
+
+    eliminados = 0
+    for t in q.all():
+        # Defensa: jamás borrar un turno que tenga plata cobrada
+        if db.query(Pago).filter(Pago.turno_id == t.id, Pago.estado == "aprobada").first():
+            continue
+        db.query(TurnoServicio).filter(TurnoServicio.turno_id == t.id).delete(synchronize_session=False)
+        db.query(Pago).filter(Pago.turno_id == t.id).delete(synchronize_session=False)
+        db.delete(t)
+        eliminados += 1
+    if eliminados:
         db.commit()
-    return len(vencidos)
+    return eliminados
 
 
 # ─── CRUD básico ───────────────────────────────────────────────────────────────
@@ -71,12 +84,18 @@ def get_turno(db: Session, turno_id: int, salon_id: int):
 
 
 def get_turnos(db: Session, salon_id: int, skip: int = 0, limit: int = 100):
+    # Limpiar reservas online no pagadas (no son turnos) antes de listar
+    expirar_turnos_vencidos(db, salon_id)
     turnos = db.query(Turno).options(
         joinedload(Turno.cliente),
         joinedload(Turno.empleado),
         joinedload(Turno.pagos),
         joinedload(Turno.servicios).joinedload(TurnoServicio.servicio)
-    ).filter(Turno.salon_id == salon_id).offset(skip).limit(limit).all()
+    ).filter(
+        Turno.salon_id == salon_id,
+        # Ocultar reservas online en curso/no pagadas: solo turnos en firme
+        ~Turno.estado.in_(("pendiente_pago", "expirado")),
+    ).offset(skip).limit(limit).all()
     return [_attach_saldo(t) for t in turnos]
 
 
