@@ -6,6 +6,7 @@ import { useServicios } from '../hooks/useServicios';
 import { useApp }       from '../context/AppContext';
 import TurnoCard   from '../components/turnos/TurnoCard';
 import TurnoModal  from '../components/turnos/TurnoModal';
+import PagoModal   from '../components/turnos/PagoModal';
 import Button      from '../components/ui/Button';
 import EmptyState  from '../components/ui/EmptyState';
 import styles      from '../styles/pages/TurnosPage.module.css';
@@ -44,6 +45,7 @@ export default function TurnosPage() {
 
   const [modalOpen, setModalOpen]       = useState(false);
   const [editingTurno, setEditingTurno] = useState(null);
+  const [cobroTurno, setCobroTurno]     = useState(null);
   const [filtroEstado, setFiltroEstado] = useState('todos');
   const [search, setSearch]             = useState('');
   const [selectedDate, setSelectedDate] = useState(toLocalDateStr(new Date()));
@@ -120,13 +122,29 @@ export default function TurnosPage() {
 
   const handlePagoRegistrado = () => {
     notify('Cobro registrado correctamente ✓');
+    setCobroTurno(null);
     if (refetch) refetch();
+  };
+
+  const handleMarcar = async (t, estado) => {
+    const labels = { no_show: 'marcar como "No vino"', cancelado: 'cancelar' };
+    if (!window.confirm(`¿Seguro que querés ${labels[estado] || 'actualizar'} este turno?`)) return;
+    try {
+      await editTurno(t.id, { estado });
+      notify(estado === 'no_show' ? 'Turno marcado como "No vino"' : 'Turno cancelado');
+    } catch (e) {
+      notify(e.response?.data?.detail || 'No se pudo actualizar el turno', 'error');
+    }
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm('¿Eliminar este turno?')) return;
-    await removeTurno(id);
-    notify('Turno eliminado');
+    try {
+      await removeTurno(id);
+      notify('Turno eliminado');
+    } catch (e) {
+      notify(e.response?.data?.detail || 'No se pudo eliminar el turno', 'error');
+    }
   };
 
   return (
@@ -219,7 +237,8 @@ export default function TurnosPage() {
       ) : (
         <div className={styles.list}>
           {filtrados.map(t => (
-            <TurnoCard key={t.id} turno={t} onEdit={openEdit} onDelete={handleDelete} />
+            <TurnoCard key={t.id} turno={t} onEdit={openEdit} onDelete={handleDelete}
+              onCobrar={setCobroTurno} onMarcar={handleMarcar} />
           ))}
         </div>
       )}
@@ -234,6 +253,13 @@ export default function TurnosPage() {
         empleados={empleados}
         servicios={servicios}
         turnos={turnos}
+      />
+
+      <PagoModal
+        isOpen={!!cobroTurno}
+        turno={cobroTurno}
+        onClose={() => setCobroTurno(null)}
+        onPagoRegistrado={handlePagoRegistrado}
       />
     </div>
   );

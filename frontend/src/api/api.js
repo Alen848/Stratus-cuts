@@ -51,6 +51,10 @@ export const pagos = {
   create:  (data)                   => api.post('/pagos/', data),
   // data: { turno_id, monto, metodo_pago?, observaciones? }
 
+  // Cobra el saldo de un turno; soporta varios métodos (split).
+  // data: { turno_id, lineas: [{ metodo_pago, monto }], observaciones? }
+  cobrar:  (data)                   => api.post('/pagos/cobrar', data),
+
   update:  (id, data)               => api.put(`/pagos/${id}`, data),
 
   // Al eliminar un pago el turno vuelve a "confirmado"
