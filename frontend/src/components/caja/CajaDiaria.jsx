@@ -143,12 +143,36 @@ export default function CajaDiaria() {
             <ResumenCierre cierre={cierre} />
           )}
 
+          {/* Desglose por método de cobro + señas */}
+          {(data.por_metodo?.length > 0 || data.total_senas > 0) && (
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+              {(data.por_metodo || []).map(m => (
+                <span key={m.metodo} style={{
+                  padding: '5px 12px', borderRadius: '999px', fontSize: '12px',
+                  background: 'var(--bg-elevated)', border: '1px solid var(--border)',
+                  color: 'var(--text-secondary)',
+                }}>
+                  {m.metodo}: <strong style={{ color: 'var(--text-primary)' }}>{formatCurrency(m.monto)}</strong>
+                </span>
+              ))}
+              {data.total_senas > 0 && (
+                <span style={{
+                  padding: '5px 12px', borderRadius: '999px', fontSize: '12px',
+                  background: 'rgba(59,169,232,0.12)', border: '1px solid rgba(59,169,232,0.3)',
+                  color: '#3ba9e8',
+                }}>
+                  Señas (Mercado Pago): <strong>{formatCurrency(data.total_senas)}</strong>
+                </span>
+              )}
+            </div>
+          )}
+
           {/* Ingresos */}
           <div>
             <SectionTitle>
               Ingresos del día
               <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                Turnos completados
+                Cobros y señas
               </span>
             </SectionTitle>
             <TablaIngresos ingresos={data.detalle_ingresos} />

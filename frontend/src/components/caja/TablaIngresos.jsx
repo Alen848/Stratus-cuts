@@ -4,6 +4,8 @@ const METODO_COLORS = {
   efectivo:      { bg: '#4caf7d20', color: '#4caf7d' },
   débito:        { bg: '#5b8fd920', color: '#5b8fd9' },
   transferencia: { bg: '#c9a84c20', color: '#c9a84c' },
+  'mercado pago': { bg: '#00aaff20', color: '#3ba9e8' },
+  varios:        { bg: '#a78bfa20', color: '#a78bfa' },
   'no especificado': { bg: '#88888820', color: '#888888' },
 };
 
@@ -20,14 +22,14 @@ function MetodoBadge({ metodo }) {
   );
 }
 
-function EstadoBadge({ estado }) {
-  const color = estado === 'completado' ? '#10b981' : '#3b82f6';
+function TipoBadge({ esSena }) {
+  const color = esSena ? '#3ba9e8' : '#10b981';
   return (
     <span style={{
       padding: '2px 10px', borderRadius: '99px', fontSize: '11px', fontWeight: 500,
       background: `${color}20`, color,
     }}>
-      {estado?.charAt(0).toUpperCase() + estado?.slice(1)}
+      {esSena ? 'Seña' : 'Cobro'}
     </span>
   );
 }
@@ -40,7 +42,7 @@ export default function TablaIngresos({ ingresos = [] }) {
         borderRadius: 'var(--radius-md)', padding: '32px',
         textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px',
       }}>
-        No hay turnos confirmados o completados para este período.
+        No hay cobros registrados para este período.
       </div>
     );
   }
@@ -53,7 +55,7 @@ export default function TablaIngresos({ ingresos = [] }) {
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
         <thead>
           <tr style={{ borderBottom: '1px solid var(--border)' }}>
-            {['Hora', 'Cliente', 'Profesional', 'Servicios', 'Método', 'Estado', 'Monto'].map(h => (
+            {['Hora', 'Cliente', 'Profesional', 'Servicios', 'Método', 'Tipo', 'Monto'].map(h => (
               <th key={h} style={{
                 padding: '12px 16px', textAlign: 'left',
                 fontSize: '11px', color: 'var(--text-muted)',
@@ -64,7 +66,7 @@ export default function TablaIngresos({ ingresos = [] }) {
         </thead>
         <tbody>
           {ingresos.map((item, i) => (
-            <tr key={item.turno_id}
+            <tr key={item.pago_id ?? i}
               style={{
                 borderBottom: i < ingresos.length - 1 ? '1px solid var(--border)' : 'none',
                 transition: 'background 0.15s',
@@ -73,7 +75,7 @@ export default function TablaIngresos({ ingresos = [] }) {
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >
               <td style={{ padding: '12px 16px', color: 'var(--gold)', fontFamily: 'var(--font-display)', fontWeight: 500 }}>
-                {formatTime(item.fecha_hora)}
+                {formatTime(item.fecha_pago)}
               </td>
               <td style={{ padding: '12px 16px', color: 'var(--text-primary)', fontWeight: 500 }}>
                 {item.cliente}
@@ -88,7 +90,7 @@ export default function TablaIngresos({ ingresos = [] }) {
                 <MetodoBadge metodo={item.metodo_pago} />
               </td>
               <td style={{ padding: '12px 16px' }}>
-                <EstadoBadge estado={item.estado} />
+                <TipoBadge esSena={item.es_sena} />
               </td>
               <td style={{ padding: '12px 16px', color: 'var(--color-success, #4caf7d)', fontWeight: 500 }}>
                 +{formatCurrency(item.monto)}
