@@ -133,7 +133,7 @@ export default function ResumenCierre({ cierre, ingresos, gastos }) {
       }}>
         {[
           { label: 'Total ingresado', value: totalReal, color: 'var(--color-success, #4caf7d)' },
-          { label: 'Gastos del día',  value: cierre.total_gastos ?? 0, color: 'var(--color-danger, #e53e3e)', prefix: '-' },
+          { label: 'Egresos del día', value: cierre.total_gastos ?? 0, color: 'var(--color-danger, #e53e3e)', prefix: '-' },
           {
             label: 'Resultado neto',
             value: resultadoNeto,

@@ -42,7 +42,7 @@ export default function ResumenCards({ totalIngresos, totalGastos, gananciaNeta,
         sub={`${cantidadTurnos ?? 0} turno${cantidadTurnos !== 1 ? 's' : ''}`}
       />
       <Card
-        label="Gastos"
+        label="Egresos"
         value={formatCurrency(totalGastos)}
         color="var(--color-danger, #e53e3e)"
       />

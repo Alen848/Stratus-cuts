@@ -57,7 +57,7 @@ function BarChart({ data }) {
 // Desglose de gastos por categoría
 function GraficoGastos({ data }) {
   if (!data || Object.keys(data).length === 0) {
-    return <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Sin gastos registrados.</div>;
+    return <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Sin egresos registrados.</div>;
   }
 
   const total = Object.values(data).reduce((a, b) => a + b, 0);
@@ -179,7 +179,7 @@ export default function CajaMensual() {
           </div>
 
           <div>
-            <SectionTitle>Gastos por categoría</SectionTitle>
+            <SectionTitle>Egresos por categoría</SectionTitle>
             <GraficoGastos data={data.gastos_por_categoria} />
           </div>
 

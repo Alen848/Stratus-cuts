@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-export const CATEGORIAS = ['alquiler', 'productos', 'sueldos', 'servicios', 'otros'];
+export const CATEGORIAS = ['alquiler', 'productos', 'sueldos', 'servicios', 'devolución', 'otros'];
 
 const defaultForm = { descripcion: '', monto: '', categoria: 'otros', observaciones: '' };
 
@@ -54,7 +54,7 @@ export default function GastoModal({ isOpen, onClose, onSubmit, gasto = null }) 
       await onSubmit({ ...form, monto });
       onClose();
     } catch {
-      setError('Ocurrió un error al guardar el gasto.');
+      setError('Ocurrió un error al guardar el egreso.');
     } finally {
       setLoading(false);
     }
@@ -77,7 +77,7 @@ export default function GastoModal({ isOpen, onClose, onSubmit, gasto = null }) 
         onClick={e => e.stopPropagation()}
       >
         <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', color: 'var(--text-primary)' }}>
-          {isEdit ? 'Editar gasto' : 'Nuevo gasto'}
+          {isEdit ? 'Editar egreso' : 'Nuevo egreso'}
         </div>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -155,7 +155,7 @@ export default function GastoModal({ isOpen, onClose, onSubmit, gasto = null }) 
                 color: 'var(--gold)', cursor: 'pointer', fontSize: '13px', fontWeight: 500,
               }}
             >
-              {loading ? '...' : isEdit ? 'Guardar cambios' : 'Agregar gasto'}
+              {loading ? '...' : isEdit ? 'Guardar cambios' : 'Agregar egreso'}
             </button>
           </div>
         </form>

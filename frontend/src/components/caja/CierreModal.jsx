@@ -226,7 +226,7 @@ export default function CierreModal({ isOpen, onClose, onSubmit, resumen, fecha 
             display: 'flex', flexDirection: 'column', gap: '2px',
           }}>
             <span style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)' }}>
-              Gastos del día
+              Egresos del día
             </span>
             <span style={{ fontSize: '16px', fontFamily: 'var(--font-display)', color: 'var(--color-danger, #e53e3e)' }}>
               {formatCurrency(totalGastos)}

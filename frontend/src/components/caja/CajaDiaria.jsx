@@ -64,7 +64,7 @@ export default function CajaDiaria() {
   };
 
   const handleEliminarGasto = async (id) => {
-    if (!window.confirm('¿Eliminar este gasto?')) return;
+    if (!window.confirm('¿Eliminar este egreso?')) return;
     await gastosApi.delete(id);
     fetchCaja();
   };
@@ -191,12 +191,12 @@ export default function CajaDiaria() {
                       color: 'var(--gold)', cursor: 'pointer', fontSize: '12px',
                     }}
                   >
-                    + Agregar gasto
+                    + Agregar egreso
                   </button>
                 )
               }
             >
-              Gastos del día
+              Egresos del día
             </SectionTitle>
             <TablaGastos
               gastos={data.detalle_gastos}

@@ -29,7 +29,7 @@ export default function TablaGastos({ gastos = [], onEdit, onDelete }) {
         borderRadius: 'var(--radius-md)', padding: '32px',
         textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px',
       }}>
-        No hay gastos registrados para este período.
+        No hay egresos registrados para este período.
       </div>
     );
   }

@@ -162,7 +162,7 @@ export default function ComisionesEmpleados({ empleados = [], fecha, onComisionR
                         opacity:    cargando ? 0.6 : 1,
                       }}
                     >
-                      {cargando ? '...' : yaRegistrado ? '✓ Registrado' : 'Registrar como gasto'}
+                      {cargando ? '...' : yaRegistrado ? '✓ Registrado' : 'Registrar como egreso'}
                     </button>
                   )}
                 </td>
