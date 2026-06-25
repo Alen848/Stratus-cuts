@@ -40,6 +40,16 @@ class Turno(TurnoBase):
     empleado:  Empleado
     servicios: List[TurnoServicio]
 
+    # Seña / pago (la seña entra a Caja el día que se pagó)
+    monto_total:     Optional[float] = None
+    monto_sena:      Optional[float] = None
+    saldo_pendiente: Optional[float] = None
+    sena_estado:     Optional[str]   = None
+    # Calculados (total del turno, lo pagado y lo que resta cobrar)
+    total_turno:     Optional[float] = None
+    total_pagado:    Optional[float] = None
+    saldo:           Optional[float] = None
+
     class Config:
         from_attributes = True
 

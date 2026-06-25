@@ -7,7 +7,7 @@ from app.database.connection import get_db
 from app.auth.dependencies import require_admin
 from app.models.usuario import Usuario
 from app.services import pago_service
-from app.schemas.pago import Pago, PagoCreate, PagoUpdate
+from app.schemas.pago import Pago, PagoCreate, PagoUpdate, CobroCreate
 from app.schemas.gasto import Gasto, GastoCreate, GastoUpdate
 from app.schemas.cierre_caja import CierreCaja, CierreCajaCreate
 
@@ -43,6 +43,22 @@ def create_pago(
     current_user: Usuario = Depends(require_admin),
 ):
     return pago_service.create_pago(db, pago, salon_id=current_user.salon_id)
+
+
+@pagos_router.post("/cobrar")
+def cobrar_saldo(
+    cobro: CobroCreate,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(require_admin),
+):
+    """Cobra el saldo de un turno (uno o varios métodos). Completa el turno si se cubre el total."""
+    return pago_service.registrar_cobro(
+        db,
+        salon_id=current_user.salon_id,
+        turno_id=cobro.turno_id,
+        lineas=[l.model_dump() for l in cobro.lineas],
+        observaciones=cobro.observaciones,
+    )
 
 
 @pagos_router.put("/{pago_id}", response_model=Pago)

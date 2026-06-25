@@ -146,6 +146,7 @@ def confirmar_pago(db: Session, salon_id: int, payment_id: str, access_token: st
                 estado="aprobada",
                 mp_payment_id=str(payment_id),
                 observaciones="Seña de reserva online",
+                fecha_pago=_ahora(),  # hora Argentina, para imputar a la caja del día correcto
             ))
         db.commit()
         return {"ok": True, "estado": "confirmado"}

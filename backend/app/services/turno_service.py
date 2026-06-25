@@ -47,20 +47,37 @@ def expirar_turnos_vencidos(db: Session, salon_id: int = None) -> int:
 
 # ─── CRUD básico ───────────────────────────────────────────────────────────────
 
+def _attach_saldo(turno: Turno) -> Turno:
+    """Adjunta total/pagado/saldo al turno (atributos transitorios para el schema)."""
+    if turno.monto_total is not None:
+        total = float(turno.monto_total)
+    else:
+        total = sum((ts.precio_unitario or 0.0) * (ts.cantidad or 1) for ts in turno.servicios)
+    pagado = sum(p.monto for p in turno.pagos if p.estado == "aprobada")
+    turno.total_turno  = round(total, 2)
+    turno.total_pagado = round(pagado, 2)
+    turno.saldo        = round(total - pagado, 2)
+    return turno
+
+
 def get_turno(db: Session, turno_id: int, salon_id: int):
-    return db.query(Turno).options(
+    turno = db.query(Turno).options(
         joinedload(Turno.cliente),
         joinedload(Turno.empleado),
+        joinedload(Turno.pagos),
         joinedload(Turno.servicios).joinedload(TurnoServicio.servicio)
     ).filter(Turno.id == turno_id, Turno.salon_id == salon_id).first()
+    return _attach_saldo(turno) if turno else None
 
 
 def get_turnos(db: Session, salon_id: int, skip: int = 0, limit: int = 100):
-    return db.query(Turno).options(
+    turnos = db.query(Turno).options(
         joinedload(Turno.cliente),
         joinedload(Turno.empleado),
+        joinedload(Turno.pagos),
         joinedload(Turno.servicios).joinedload(TurnoServicio.servicio)
     ).filter(Turno.salon_id == salon_id).offset(skip).limit(limit).all()
+    return [_attach_saldo(t) for t in turnos]
 
 
 def _check_horario_salon(db: Session, salon_id: int, fecha_hora: datetime):
@@ -166,9 +183,10 @@ def update_turno(db: Session, turno_id: int, turno_update: TurnoUpdate, salon_id
 
     # Si el día está cerrado, solo permitimos cambiar el estado a 'cancelado'
     # y nada más. Si se intenta cambiar otra cosa, check_dia_abierto lanzará error.
-    solo_cancelando = len(update_data) == 1 and update_data.get("estado") == "cancelado"
-    
-    if not solo_cancelando:
+    # Cambiar solo el estado a cancelado/no_show (no vino) no requiere día abierto
+    solo_estado_terminal = len(update_data) == 1 and update_data.get("estado") in ("cancelado", "no_show")
+
+    if not solo_estado_terminal:
         check_dia_abierto(db, salon_id, db_turno.fecha_hora.date())
 
     if "fecha_hora" in update_data and update_data["fecha_hora"]:
@@ -233,6 +251,17 @@ def delete_turno(db: Session, turno_id: int, salon_id: int):
         Turno.salon_id == salon_id,
     ).first()
     if db_turno:
+        # Proteger la caja: un turno con pagos aprobados (ej. seña) NO se borra,
+        # porque borraría el ingreso. Para esos casos se cancela.
+        tiene_pago = db.query(Pago).filter(
+            Pago.turno_id == turno_id,
+            Pago.estado == "aprobada",
+        ).first()
+        if tiene_pago:
+            raise HTTPException(
+                status_code=400,
+                detail="Este turno tiene pagos registrados (seña/cobro). Cancelalo en lugar de eliminarlo.",
+            )
         # Eliminar registros hijos antes de borrar el turno
         db.query(TurnoServicio).filter(TurnoServicio.turno_id == turno_id).delete(
             synchronize_session=False

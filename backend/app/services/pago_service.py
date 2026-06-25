@@ -45,34 +45,88 @@ def get_pagos(db: Session, salon_id: int, skip: int = 0, limit: int = 100):
     ).order_by(Pago.fecha_pago.desc()).offset(skip).limit(limit).all()
 
 
-def create_pago(db: Session, pago: PagoCreate, salon_id: int):
-    turno = db.query(Turno).filter(
-        Turno.id == pago.turno_id,
+# ─── Saldo de un turno ──────────────────────────────────────────────────────
+
+def _total_turno(turno: Turno) -> float:
+    """Total del turno: snapshot monto_total (reservas con seña) o suma de servicios."""
+    if getattr(turno, "monto_total", None) is not None:
+        return float(turno.monto_total)
+    return _calcular_monto_turno(turno)
+
+
+def estado_pago_turno(db: Session, turno: Turno) -> dict:
+    """Devuelve total, pagado (suma de pagos aprobados) y saldo del turno."""
+    pagado = db.query(func.coalesce(func.sum(Pago.monto), 0.0)).filter(
+        Pago.turno_id == turno.id,
+        Pago.estado == "aprobada",
+    ).scalar() or 0.0
+    total = _total_turno(turno)
+    pagado = float(pagado)
+    return {"total": round(total, 2), "pagado": round(pagado, 2), "saldo": round(total - pagado, 2)}
+
+
+def registrar_cobro(db: Session, salon_id: int, turno_id: int, lineas: list, observaciones: str = None) -> dict:
+    """
+    Registra el cobro del saldo de un turno. `lineas` = [{metodo_pago, monto}].
+    Permite varios métodos (split). El pago entra a la caja del día actual
+    (fecha_pago=hoy). Completa el turno cuando se cubre el total.
+    """
+    turno = db.query(Turno).options(joinedload(Turno.servicios)).filter(
+        Turno.id == turno_id,
         Turno.salon_id == salon_id,
     ).first()
     if not turno:
         raise HTTPException(status_code=404, detail="Turno no encontrado.")
-    if turno.estado == "cancelado":
-        raise HTTPException(status_code=400, detail="No se puede registrar un pago en un turno cancelado.")
-    check_dia_abierto(db, salon_id, turno.fecha_hora.date())
-    pago_existente = db.query(Pago).filter(Pago.turno_id == pago.turno_id).first()
-    if pago_existente:
-        raise HTTPException(status_code=400, detail="Este turno ya tiene un pago registrado.")
-    if pago.monto <= 0:
-        raise HTTPException(status_code=400, detail="El monto debe ser mayor a 0.")
-    db_pago = Pago(
-        turno_id=pago.turno_id,
-        monto=pago.monto,
-        metodo_pago=pago.metodo_pago,
-        observaciones=pago.observaciones,
-        fecha_pago=now_arg()
-    )
-    db.add(db_pago)
-    turno.estado = "completado"
-    turno.metodo_pago = pago.metodo_pago
+    if turno.estado in ("cancelado", "expirado"):
+        raise HTTPException(status_code=400, detail="No se puede cobrar un turno cancelado o expirado.")
+
+    # El cobro entra a la caja de HOY
+    hoy = now_arg().date()
+    check_dia_abierto(db, salon_id, hoy)
+
+    est = estado_pago_turno(db, turno)
+    if est["saldo"] <= 0.01:
+        raise HTTPException(status_code=400, detail="Este turno ya está pagado por completo.")
+
+    lineas = [l for l in (lineas or []) if (l.get("monto") or 0) > 0]
+    if not lineas:
+        raise HTTPException(status_code=400, detail="Ingresá al menos un monto mayor a 0.")
+    total_cobro = round(sum(float(l["monto"]) for l in lineas), 2)
+    if total_cobro - est["saldo"] > 0.01:
+        raise HTTPException(
+            status_code=400,
+            detail=f"El cobro (${total_cobro}) supera el saldo pendiente (${est['saldo']}).",
+        )
+
+    for l in lineas:
+        db.add(Pago(
+            turno_id=turno.id,
+            monto=round(float(l["monto"]), 2),
+            metodo_pago=l.get("metodo_pago"),
+            tipo="saldo",
+            estado="aprobada",
+            fecha_pago=now_arg(),
+            observaciones=observaciones,
+        ))
+
+    metodo = lineas[0].get("metodo_pago") if len(lineas) == 1 else "varios"
+    turno.metodo_pago = metodo
+    if est["pagado"] + total_cobro + 0.01 >= est["total"] and est["total"] > 0:
+        turno.estado = "completado"
+
     db.commit()
-    db.refresh(db_pago)
-    return db_pago
+    db.refresh(turno)
+    return {**estado_pago_turno(db, turno), "estado": turno.estado}
+
+
+def create_pago(db: Session, pago: PagoCreate, salon_id: int):
+    """Compat: registra un cobro de un solo método. Reusa registrar_cobro."""
+    registrar_cobro(
+        db, salon_id, pago.turno_id,
+        [{"metodo_pago": pago.metodo_pago, "monto": pago.monto}],
+        pago.observaciones,
+    )
+    return db.query(Pago).filter(Pago.turno_id == pago.turno_id).order_by(Pago.id.desc()).first()
 
 
 def update_pago(db: Session, pago_id: int, pago_update: PagoUpdate, salon_id: int):
@@ -226,51 +280,65 @@ def _calcular_monto_turno(turno: Turno) -> float:
     )
 
 
-def _ingresos_por_empleado(turnos: list) -> list:
+def _ingresos_por_empleado_pagos(pagos: list) -> list:
+    """Ingresos por empleado a partir de los pagos aprobados (plata cobrada)."""
     emp_dict: dict = {}
-    for turno in turnos:
-        if not turno.empleado:
+    for p in pagos:
+        turno = p.turno
+        if not turno or not turno.empleado:
             continue
-        emp    = turno.empleado
-        emp_id = emp.id
-        monto  = _calcular_monto_turno(turno)
-        if emp_id not in emp_dict:
-            emp_dict[emp_id] = {
-                "empleado_id":         emp_id,
-                "empleado_nombre":     emp.nombre,
-                "total_ingresos":      0.0,
-                "cantidad_turnos":     0,
-                "comision_porcentaje": emp.comision_porcentaje or 0.0,
-            }
-        emp_dict[emp_id]["total_ingresos"]  += monto
-        emp_dict[emp_id]["cantidad_turnos"] += 1
-    return list(emp_dict.values())
+        emp = turno.empleado
+        d = emp_dict.setdefault(emp.id, {
+            "empleado_id":         emp.id,
+            "empleado_nombre":     emp.nombre,
+            "total_ingresos":      0.0,
+            "comision_porcentaje": emp.comision_porcentaje or 0.0,
+            "_turnos":             set(),
+        })
+        d["total_ingresos"] += p.monto
+        d["_turnos"].add(turno.id)
+    salida = []
+    for d in emp_dict.values():
+        d["cantidad_turnos"] = len(d.pop("_turnos"))
+        d["total_ingresos"]  = round(d["total_ingresos"], 2)
+        salida.append(d)
+    return salida
 
 
-def _query_turnos(db: Session, salon_id: int, *filtros) -> list:
-    return db.query(Turno).options(
-        joinedload(Turno.empleado),
-        joinedload(Turno.cliente),
-        joinedload(Turno.servicios),
+def _query_pagos(db: Session, salon_id: int, *filtros) -> list:
+    """Pagos APROBADOS del salón (excluye pendientes y anulados)."""
+    return db.query(Pago).join(Turno).options(
+        joinedload(Pago.turno).joinedload(Turno.empleado),
+        joinedload(Pago.turno).joinedload(Turno.cliente),
+        joinedload(Pago.turno).joinedload(Turno.servicios),
     ).filter(
         Turno.salon_id == salon_id,
-        Turno.estado == "completado",
+        Pago.estado == "aprobada",
         *filtros,
     ).all()
 
 
-# ─── Caja diaria ──────────────────────────────────────────────────────────────
+# ─── Caja diaria (por pago) ───────────────────────────────────────────────────
 
 def get_caja_diaria(db: Session, salon_id: int, fecha: date) -> dict:
-    turnos = _query_turnos(db, salon_id, func.date(Turno.fecha_hora) == fecha)
+    # Ingresos = pagos aprobados imputados por fecha_pago (día que entró la plata)
+    pagos = _query_pagos(db, salon_id, func.date(Pago.fecha_pago) == fecha)
     gastos = db.query(Gasto).filter(
         Gasto.salon_id == salon_id,
         func.date(Gasto.fecha) == fecha,
     ).all()
 
     saldo_anterior = get_ultimo_saldo_real(db, salon_id, fecha)
-    total_ingresos = sum(_calcular_monto_turno(t) for t in turnos)
+    total_ingresos = sum(p.monto for p in pagos)
     total_gastos   = sum(g.monto for g in gastos)
+
+    por_metodo: dict = {}
+    total_senas = 0.0
+    for p in pagos:
+        m = p.metodo_pago or "No especificado"
+        por_metodo[m] = por_metodo.get(m, 0.0) + p.monto
+        if (p.tipo or "") == "sena":
+            total_senas += p.monto
 
     return {
         "fecha":           fecha.isoformat(),
@@ -278,20 +346,24 @@ def get_caja_diaria(db: Session, salon_id: int, fecha: date) -> dict:
         "total_ingresos":  round(total_ingresos, 2),
         "total_gastos":    round(total_gastos, 2),
         "ganancia_neta":   round(total_ingresos - total_gastos, 2),
-        "cantidad_turnos": len(turnos),
-        "ingresos_por_empleado": _ingresos_por_empleado(turnos),
+        "cantidad_turnos": len({p.turno_id for p in pagos}),
+        "total_senas":     round(total_senas, 2),
+        "por_metodo":      [{"metodo": k, "monto": round(v, 2)} for k, v in sorted(por_metodo.items())],
+        "ingresos_por_empleado": _ingresos_por_empleado_pagos(pagos),
         "detalle_ingresos": [
             {
-                "turno_id":    t.id,
-                "cliente":     t.cliente.nombre if t.cliente else "—",
-                "empleado":    t.empleado.nombre if t.empleado else "—",
-                "estado":      t.estado,
-                "metodo_pago": t.metodo_pago or "No especificado",
-                "fecha_hora":  t.fecha_hora.isoformat(),
-                "monto":       round(_calcular_monto_turno(t), 2),
-                "servicios":   [ts.servicio.nombre for ts in t.servicios if ts.servicio],
+                "pago_id":     p.id,
+                "turno_id":    p.turno_id,
+                "cliente":     p.turno.cliente.nombre if p.turno and p.turno.cliente else "—",
+                "empleado":    p.turno.empleado.nombre if p.turno and p.turno.empleado else "—",
+                "tipo":        p.tipo or "saldo",
+                "es_sena":     (p.tipo or "") == "sena",
+                "metodo_pago": p.metodo_pago or "No especificado",
+                "fecha_pago":  p.fecha_pago.isoformat() if p.fecha_pago else None,
+                "monto":       round(p.monto, 2),
+                "servicios":   [ts.servicio.nombre for ts in p.turno.servicios if ts.servicio] if p.turno else [],
             }
-            for t in sorted(turnos, key=lambda x: x.fecha_hora)
+            for p in sorted(pagos, key=lambda x: x.fecha_pago or now_arg())
         ],
         "detalle_gastos": [
             {
@@ -307,13 +379,13 @@ def get_caja_diaria(db: Session, salon_id: int, fecha: date) -> dict:
     }
 
 
-# ─── Caja mensual ─────────────────────────────────────────────────────────────
+# ─── Caja mensual (por pago) ──────────────────────────────────────────────────
 
 def get_caja_mensual(db: Session, salon_id: int, anio: int, mes: int) -> dict:
-    turnos = _query_turnos(
+    pagos = _query_pagos(
         db, salon_id,
-        extract("year",  Turno.fecha_hora) == anio,
-        extract("month", Turno.fecha_hora) == mes,
+        extract("year",  Pago.fecha_pago) == anio,
+        extract("month", Pago.fecha_pago) == mes,
     )
     gastos = db.query(Gasto).filter(
         Gasto.salon_id == salon_id,
@@ -321,13 +393,15 @@ def get_caja_mensual(db: Session, salon_id: int, anio: int, mes: int) -> dict:
         extract("month", Gasto.fecha) == mes,
     ).all()
 
-    total_ingresos = sum(_calcular_monto_turno(t) for t in turnos)
+    total_ingresos = sum(p.monto for p in pagos)
     total_gastos   = sum(g.monto for g in gastos)
 
     ingresos_por_dia: dict = {}
-    for turno in turnos:
-        dia = turno.fecha_hora.date().isoformat()
-        ingresos_por_dia[dia] = ingresos_por_dia.get(dia, 0.0) + _calcular_monto_turno(turno)
+    for p in pagos:
+        if not p.fecha_pago:
+            continue
+        dia = p.fecha_pago.date().isoformat()
+        ingresos_por_dia[dia] = ingresos_por_dia.get(dia, 0.0) + p.monto
 
     gastos_por_categoria: dict = {}
     for gasto in gastos:
@@ -340,8 +414,8 @@ def get_caja_mensual(db: Session, salon_id: int, anio: int, mes: int) -> dict:
         "total_ingresos":  round(total_ingresos, 2),
         "total_gastos":    round(total_gastos, 2),
         "ganancia_neta":   round(total_ingresos - total_gastos, 2),
-        "cantidad_turnos": len(turnos),
-        "ingresos_por_empleado":  _ingresos_por_empleado(turnos),
+        "cantidad_turnos": len({p.turno_id for p in pagos}),
+        "ingresos_por_empleado":  _ingresos_por_empleado_pagos(pagos),
         "ingresos_por_dia":       {k: round(v, 2) for k, v in sorted(ingresos_por_dia.items())},
         "gastos_por_categoria":   {k: round(v, 2) for k, v in gastos_por_categoria.items()},
     }
