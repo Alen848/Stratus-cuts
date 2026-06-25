@@ -78,6 +78,11 @@ export default function CierreModal({ isOpen, onClose, onSubmit, resumen, fecha 
     .filter(i => ['débito', 'debito', 'tarjeta'].includes(i.metodo_pago?.toLowerCase()))
     .reduce((acc, curr) => acc + curr.monto, 0);
 
+  // Mercado Pago: automático (plata digital, no se cuenta a mano)
+  const totalMercadoPago = detalleIngresos
+    .filter(i => i.metodo_pago?.toLowerCase() === 'mercado pago')
+    .reduce((acc, curr) => acc + curr.monto, 0);
+
   const totalGastos      = resumen?.total_gastos || 0;
   const teoricoEfectivo  = saldoAnterior + ingresosEfectivo - totalGastos;
 
@@ -109,6 +114,7 @@ export default function CierreModal({ isOpen, onClose, onSubmit, resumen, fecha 
         total_efectivo_teorico: teoricoEfectivo,
         total_transferencia:    totalTransferencia,
         total_debito:           totalDebito,
+        total_mercadopago:      totalMercadoPago,
         total_gastos:           totalGastos,
         efectivo_real:          parseFloat(efectivoReal),
         transferencia_real:     parseFloat(transferenciaReal),
@@ -171,6 +177,19 @@ export default function CierreModal({ isOpen, onClose, onSubmit, resumen, fecha 
             setReal={setTransferenciaReal}
             dif={difTransferencia}
           />
+          {totalMercadoPago > 0 && (
+            <div style={{
+              display: 'grid', gridTemplateColumns: '110px 1fr 1fr 80px', gap: '8px',
+              alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--border)',
+            }}>
+              <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>Mercado Pago</span>
+              <span style={{ fontSize: '13px', color: 'var(--text-muted)', textAlign: 'right' }}>
+                {formatCurrency(totalMercadoPago)}
+              </span>
+              <span style={{ fontSize: '11px', color: '#3ba9e8', textAlign: 'center' }}>Automático</span>
+              <span style={{ fontSize: '12px', color: 'var(--text-muted)', textAlign: 'right' }}>✓</span>
+            </div>
+          )}
         </div>
 
         {/* Fondo de caja */}

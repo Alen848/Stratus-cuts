@@ -8,6 +8,7 @@ class CierreCajaBase(BaseModel):
     total_efectivo_teorico: float = 0.0
     total_transferencia:    float = 0.0
     total_debito:           float = 0.0
+    total_mercadopago:      float = 0.0
     total_gastos:           float = 0.0
     efectivo_real:          float
     transferencia_real:     float = 0.0

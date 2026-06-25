@@ -45,8 +45,9 @@ function FilaComparacion({ label, real, teorico }) {
 export default function ResumenCierre({ cierre, ingresos, gastos }) {
   if (!cierre) return null;
 
-  const totalReal   = cierre.efectivo_real + cierre.transferencia_real + cierre.tarjeta_real;
-  const totalTeorico = cierre.total_efectivo_teorico + cierre.total_transferencia + cierre.total_debito;
+  const mp = cierre.total_mercadopago ?? 0;
+  const totalReal   = cierre.efectivo_real + cierre.transferencia_real + cierre.tarjeta_real + mp;
+  const totalTeorico = cierre.total_efectivo_teorico + cierre.total_transferencia + cierre.total_debito + mp;
   const resultadoNeto = totalReal - (cierre.total_gastos ?? 0);
   const difTotal = cierre.diferencia ?? (totalReal - totalTeorico);
 
@@ -121,6 +122,13 @@ export default function ResumenCierre({ cierre, ingresos, gastos }) {
           real={cierre.transferencia_real}
           teorico={cierre.total_transferencia}
         />
+        {mp > 0 && (
+          <FilaComparacion
+            label="Mercado Pago"
+            real={mp}
+            teorico={mp}
+          />
+        )}
       </div>
 
       {/* Totales */}

@@ -34,6 +34,9 @@ COLUMNS_TO_ADD = {
         "estado":        "VARCHAR(20) NOT NULL DEFAULT 'aprobada'",
         "mp_payment_id": "VARCHAR(50) NULL",
     },
+    "cierres_caja": {
+        "total_mercadopago": "FLOAT NOT NULL DEFAULT 0",
+    },
 }
 
 

@@ -17,6 +17,7 @@ class CierreCaja(Base):
     total_efectivo_teorico = Column(Float,   default=0.0)
     total_transferencia    = Column(Float,   default=0.0)
     total_debito           = Column(Float,   default=0.0)
+    total_mercadopago      = Column(Float,   default=0.0)  # señas/cobros vía MP (automático)
     total_gastos           = Column(Float,   default=0.0)
     
     # Ingreso Manual

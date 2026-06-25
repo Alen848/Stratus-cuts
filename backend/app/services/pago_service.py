@@ -252,6 +252,7 @@ def create_cierre_caja(db: Session, cierre: CierreCajaCreate, salon_id: int):
             total_efectivo_teorico=cierre.total_efectivo_teorico,
             total_transferencia=cierre.total_transferencia,
             total_debito=cierre.total_debito,
+            total_mercadopago=cierre.total_mercadopago,
             total_gastos=cierre.total_gastos,
             efectivo_real=cierre.efectivo_real,
             transferencia_real=cierre.transferencia_real,
