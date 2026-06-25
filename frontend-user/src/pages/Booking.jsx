@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { createCliente, createTurno, getEmpleados, getServicios, getDisponibilidadSemanal } from '../services/api';
+import { createCliente, createTurno, getEmpleados, getServicios, getDisponibilidadSemanal, getPagoConfig } from '../services/api';
 import '../styles/booking.css';
 
 
@@ -25,6 +25,16 @@ export default function Booking() {
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Seña / Mercado Pago
+  const [pagoConfig, setPagoConfig] = useState({ habilitado: false, sena_porcentaje: 0, sena_obligatoria: false });
+  const [metodoPago, setMetodoPago] = useState('sena'); // 'sena' | 'local' (solo si la seña es opcional)
+
+  useEffect(() => {
+    getPagoConfig()
+      .then(r => setPagoConfig(r.data || { habilitado: false }))
+      .catch(() => setPagoConfig({ habilitado: false, sena_porcentaje: 0, sena_obligatoria: false }));
+  }, []);
 
   useEffect(() => {
     getServicios()
@@ -64,6 +74,13 @@ export default function Booking() {
 
   const totalPrecio = selectedServices.reduce((sum, s) => sum + Number(s.precio), 0);
   const totalDuracion = selectedServices.reduce((sum, s) => sum + s.duracion_minutos, 0);
+
+  // Seña
+  const senaPorcentaje = pagoConfig.sena_porcentaje || 0;
+  const montoSena = Math.round(totalPrecio * senaPorcentaje / 100);
+  const saldoLocal = totalPrecio - montoSena;
+  // ¿Esta reserva paga seña online?
+  const pagaSena = pagoConfig.habilitado && (pagoConfig.sena_obligatoria || metodoPago === 'sena');
 
   const isSlotPast = (fechaHoraISO) => new Date(fechaHoraISO) <= new Date();
 
@@ -116,10 +133,21 @@ export default function Booking() {
         cliente_id: clienteId,
         empleado_id: selectedEmpleado.id,
         servicios_ids: selectedServices.map(s => s.id),
+        pagar_sena: pagaSena,
+        return_url: `${window.location.origin}/confirmation`,
       };
 
       const turnoResponse = await createTurno(turnoData);
-      navigate('/confirmation', { state: { turno: turnoResponse.data } });
+      const data = turnoResponse.data;
+
+      // Si requiere pago de seña, el backend devuelve el link de Mercado Pago
+      if (data?.requiere_pago && data?.init_point) {
+        window.location.href = data.init_point;
+        return;
+      }
+
+      // Reserva sin seña: confirmación directa (comportamiento de siempre)
+      navigate('/confirmation', { state: { turno: data } });
     } catch (err) {
       const msg =
         err?.response?.data?.detail ||
@@ -360,12 +388,49 @@ export default function Booking() {
             )}
           </div>
 
+          {/* -- Seña / Mercado Pago -- */}
+          {pagoConfig.habilitado && selectedServices.length > 0 && (
+            <div className="field">
+              <label className="field-label">Pago</label>
+
+              {pagoConfig.sena_obligatoria ? (
+                <div className="sena-box">
+                  Para confirmar tu turno se abona una <strong>seña de ${montoSena.toLocaleString('es-AR')}</strong>
+                  {' '}({senaPorcentaje}%). El resto (${saldoLocal.toLocaleString('es-AR')}) lo pagás en el local.
+                </div>
+              ) : (
+                <div className="sena-choices">
+                  <button
+                    type="button"
+                    className={`sena-choice${metodoPago === 'sena' ? ' sc-selected' : ''}`}
+                    onClick={() => setMetodoPago('sena')}
+                  >
+                    <span className="sc-title">Pagar seña ahora</span>
+                    <span className="sc-sub">${montoSena.toLocaleString('es-AR')} ({senaPorcentaje}%) · resto en el local</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`sena-choice${metodoPago === 'local' ? ' sc-selected' : ''}`}
+                    onClick={() => setMetodoPago('local')}
+                  >
+                    <span className="sc-title">Pagar todo en el local</span>
+                    <span className="sc-sub">Reservás sin pagar ahora</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           <button
             className="submit-btn"
             type="submit"
             disabled={loading || selectedServices.length === 0 || !selectedEmpleado || !selectedDate || !selectedTime}
           >
-            {loading ? 'Procesando...' : 'Confirmar turno'}
+            {loading
+              ? 'Procesando...'
+              : pagaSena
+                ? `Pagar seña $${montoSena.toLocaleString('es-AR')}`
+                : 'Confirmar turno'}
           </button>
         </form>
       </div>
