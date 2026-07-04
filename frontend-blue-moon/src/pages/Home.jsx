@@ -17,6 +17,8 @@ const IMG = {
   lash:    'https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?auto=format&fit=crop&w=900&q=80',
   masajes: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=900&q=80',
   laser:   'https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&w=900&q=80',
+  cejas:   'https://images.unsplash.com/photo-1589710751893-f9a6770ad71b?auto=format&fit=crop&w=900&q=80',
+  clinica: 'https://images.unsplash.com/photo-1552693673-1bf958298935?auto=format&fit=crop&w=900&q=80',
 };
 
 const SERVICIOS = [
@@ -54,6 +56,20 @@ const SERVICIOS = [
     sub: 'Tecnología de última generación',
     desc: 'Sesiones seguras y efectivas para una piel suave, pareja y libre de vello de forma duradera.',
     img: IMG.laser,
+  },
+  {
+    id: 'cejas',
+    nombre: 'Laminado de Cejas',
+    sub: 'Diseño & Perfilado',
+    desc: 'Cejas peinadas, definidas y con efecto lifting que dura semanas. Un marco natural para tu mirada.',
+    img: IMG.cejas,
+  },
+  {
+    id: 'clinica',
+    nombre: 'Estética Clínica',
+    sub: 'Tratamientos Avanzados',
+    desc: 'Protocolos médico-estéticos con aparatología de precisión y supervisión profesional, para resultados visibles y seguros.',
+    img: IMG.clinica,
   },
 ];
 
@@ -442,7 +458,7 @@ export default function Home() {
             <img className="bm-about-img" src={IMG.about}
               alt="Productos y ritual de cuidado de la piel en Blue Moon" loading="lazy" />
             <div className="bm-about-badge">
-              <div className="bm-about-badge-num">5</div>
+              <div className="bm-about-badge-num">7</div>
               <div className="bm-about-badge-txt">Especialidades<br />en un solo lugar</div>
             </div>
           </div>
