@@ -2,6 +2,8 @@ import { Link } from 'react-router-dom';
 import '../styles/footer.css';
 import { getSalonSlug } from '../utils/slug';
 import { useState, useEffect } from 'react';
+import logoLight from '../assets/logo-light.svg';
+import logoDark from '../assets/logo-dark.svg';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
@@ -24,8 +26,9 @@ const Footer = () => {
       <div className="footer-inner">
 
         <div className="footer-brand">
-          <span className="footer-brand-name">{displayName}</span>
-          <span className="footer-brand-tag">Estética & Belleza · Reservas online</span>
+          <img className="footer-logo footer-logo--light" src={logoLight} alt={displayName} />
+          <img className="footer-logo footer-logo--dark" src={logoDark} alt={displayName} />
+          <span className="footer-brand-tag">Centro de Estética · Reservas online</span>
         </div>
 
         <div>

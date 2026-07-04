@@ -1,13 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getSalonSlug } from '../utils/slug';
+import heroMoodboard from '../assets/hero-moodboard.jpg';
+import heroSalon from '../assets/hero-salon.jpg';
+import logoDark from '../assets/logo-dark.svg';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
 const IMG = {
-  hero:    'https://images.unsplash.com/photo-1556760544-74068565f05c?auto=format&fit=crop&w=1600&q=80',
+  hero:    heroMoodboard,
+  salon:   heroSalon,
   about:   'https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?auto=format&fit=crop&w=1100&q=80',
-  cta:     'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=1600&q=80',
+  cta:     heroSalon,
   nails:   'https://images.unsplash.com/photo-1604654894610-df63bc536371?auto=format&fit=crop&w=900&q=80',
   cosmeto: 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=900&q=80',
   lash:    'https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?auto=format&fit=crop&w=900&q=80',
@@ -90,8 +94,8 @@ const STYLES = `
     content: '';
     position: absolute; inset: 0;
     background:
-      linear-gradient(180deg, rgba(15,18,28,0.55) 0%, rgba(15,18,28,0.35) 35%, rgba(15,18,28,0.75) 100%),
-      radial-gradient(ellipse at 70% 20%, rgba(46,58,99,0.45), transparent 60%);
+      linear-gradient(180deg, rgba(28,32,24,0.72) 0%, rgba(28,32,24,0.55) 35%, rgba(28,32,24,0.82) 100%),
+      radial-gradient(ellipse at 70% 20%, rgba(76,84,66,0.40), transparent 60%);
   }
   @keyframes bmZoom { to { transform: scale(1); } }
 
@@ -100,37 +104,42 @@ const STYLES = `
     max-width: 1120px;
     margin: 0 auto;
     width: 100%;
+    display: grid;
+    grid-template-columns: 1.25fr 1fr;
+    gap: 3.5rem;
+    align-items: center;
   }
   .bm-hero-eyebrow {
     display: inline-flex; align-items: center; gap: 0.8rem;
     font-size: 0.7rem; font-weight: 500;
     letter-spacing: 0.34em; text-transform: uppercase;
-    color: #D4B575;
+    color: #CCA766;
     margin-bottom: 1.75rem;
     opacity: 0; animation: bmFade 0.7s ease 0.1s forwards;
   }
   .bm-hero-eyebrow::before {
     content: ''; width: 34px; height: 1px;
-    background: #D4B575; opacity: 0.7;
+    background: #CCA766; opacity: 0.7;
   }
   .bm-hero-title {
-    font-family: var(--font-display);
-    font-weight: 500;
-    font-size: clamp(3.6rem, 13vw, 8.5rem);
-    line-height: 0.92;
-    letter-spacing: -0.01em;
-    color: #fff;
     margin-bottom: 1.5rem;
     opacity: 0; animation: bmFade 0.8s ease 0.2s forwards;
   }
-  .bm-hero-title em {
+  .bm-hero-logo {
     display: block;
-    font-style: italic;
-    font-weight: 400;
-    color: #C9D3F2;
+    width: min(100%, 460px);
+    height: auto;
+  }
+  .bm-hero-tagline {
+    display: block;
+    margin-top: 1.4rem;
+    font-family: var(--font-body);
+    font-size: clamp(0.72rem, 1.6vw, 0.88rem); font-weight: 500;
+    letter-spacing: 0.32em; text-transform: uppercase;
+    color: rgba(255,255,255,0.85);
   }
   .bm-hero-sub {
-    font-size: 1.1rem; font-weight: 300;
+    font-size: 1.1rem; font-weight: 400;
     color: rgba(255,255,255,0.82);
     line-height: 1.7; max-width: 440px;
     margin-bottom: 2.5rem;
@@ -140,10 +149,21 @@ const STYLES = `
     display: flex; flex-wrap: wrap; gap: 0.9rem;
     opacity: 0; animation: bmFade 0.8s ease 0.5s forwards;
   }
+  .bm-hero-media {
+    position: relative;
+    opacity: 0; animation: bmFade 0.9s ease 0.45s forwards;
+  }
+  .bm-hero-salon {
+    display: block; width: 100%;
+    aspect-ratio: 4/5; object-fit: cover;
+    border-radius: 160px 160px 6px 6px;
+    border: 1px solid rgba(255,255,255,0.28);
+    box-shadow: 0 30px 60px rgba(0,0,0,0.35);
+  }
   .bm-btn-primary {
     display: inline-flex; align-items: center; justify-content: center; gap: 0.65rem;
     padding: 1.05rem 2.4rem; min-height: 54px;
-    background: #F7F5F0; color: #1C2438;
+    background: #F2EEE2; color: #35392E;
     border: none; border-radius: 2px;
     font-family: var(--font-body); font-size: 0.76rem; font-weight: 600;
     letter-spacing: 0.2em; text-transform: uppercase;
@@ -260,7 +280,7 @@ const STYLES = `
   .bm-serv-card:hover .bm-serv-img { transform: scale(1.06); }
   .bm-serv-imgwrap::after {
     content: ''; position: absolute; inset: 0;
-    background: linear-gradient(180deg, transparent 55%, rgba(15,18,28,0.35));
+    background: linear-gradient(180deg, transparent 55%, rgba(28,32,24,0.35));
   }
   .bm-serv-body { padding: 1.5rem 1.6rem 1.7rem; display: flex; flex-direction: column; flex: 1; }
   .bm-serv-sub {
@@ -314,7 +334,7 @@ const STYLES = `
   }
   .bm-cta-bg::after {
     content: ''; position: absolute; inset: 0;
-    background: linear-gradient(180deg, rgba(15,18,28,0.78), rgba(15,18,28,0.88));
+    background: linear-gradient(180deg, rgba(28,32,24,0.80), rgba(28,32,24,0.90));
   }
   .bm-cta-inner {
     position: relative; max-width: 720px; margin: 0 auto;
@@ -326,7 +346,7 @@ const STYLES = `
     font-size: clamp(2.4rem, 6vw, 4rem); line-height: 1.05; color: #fff;
     margin-bottom: 1.2rem;
   }
-  .bm-cta-title em { font-style: italic; font-weight: 400; color: #C9D3F2; }
+  .bm-cta-title em { font-style: italic; font-weight: 400; color: #D5DCC8; }
   .bm-cta-sub {
     font-size: 1.02rem; font-weight: 300; color: rgba(255,255,255,0.8);
     line-height: 1.7; max-width: 440px; margin-bottom: 2.5rem;
@@ -336,6 +356,8 @@ const STYLES = `
 
   /* ══════════ RESPONSIVE ══════════ */
   @media (max-width: 900px) {
+    .bm-hero-inner { grid-template-columns: 1fr; gap: 2.5rem; }
+    .bm-hero-media { display: none; }
     .bm-serv-grid { grid-template-columns: repeat(2, 1fr); }
     .bm-exp-grid  { grid-template-columns: repeat(2, 1fr); gap: 2rem; }
     .bm-about { grid-template-columns: 1fr; gap: 2.5rem; }
@@ -386,20 +408,26 @@ export default function Home() {
         <section className="bm-hero">
           <div className="bm-hero-bg" />
           <div className="bm-hero-inner">
-            <span className="bm-hero-eyebrow">Estética & Belleza</span>
-            <h1 className="bm-hero-title">
-              {nombre}
-              <em>tu momento</em>
-            </h1>
-            <p className="bm-hero-sub">
-              Un espacio dedicado a realzar tu belleza natural.
-              Reservá tu turno y dejate cuidar por profesionales.
-            </p>
-            <div className="bm-hero-actions">
-              <button className="bm-btn-primary" onClick={() => goBooking()}>
-                Reservar turno <Arrow />
-              </button>
-              <a className="bm-btn-ghost" href="#servicios">Ver servicios</a>
+            <div>
+              <span className="bm-hero-eyebrow">Centro de Estética</span>
+              <h1 className="bm-hero-title">
+                <img className="bm-hero-logo" src={logoDark} alt={nombre} />
+                <span className="bm-hero-tagline">Estética integral y bienestar</span>
+              </h1>
+              <p className="bm-hero-sub">
+                Un espacio para cuidar tu belleza natural.
+                Reservá tu turno y dejate cuidar por profesionales.
+              </p>
+              <div className="bm-hero-actions">
+                <button className="bm-btn-primary" onClick={() => goBooking()}>
+                  Reservar turno <Arrow />
+                </button>
+                <a className="bm-btn-ghost" href="#servicios">Ver servicios</a>
+              </div>
+            </div>
+            <div className="bm-hero-media">
+              <img className="bm-hero-salon" src={IMG.salon}
+                alt={`Interior del salón de ${nombre}`} />
             </div>
           </div>
           <a className="bm-scroll-cue" href="#filosofia" aria-label="Descubrí más">

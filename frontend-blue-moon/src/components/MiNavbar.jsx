@@ -2,6 +2,8 @@ import { Link, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { getSalonSlug } from '../utils/slug';
+import logoLight from '../assets/logo-light.svg';
+import logoDark from '../assets/logo-dark.svg';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
@@ -34,7 +36,6 @@ const STYLES = `
     border-bottom-color: transparent;
     box-shadow: none;
   }
-  .navbar--hero .brand-name { color: #fff; }
   .navbar--hero .brand-tag  { color: rgba(255,255,255,0.65); }
   .navbar--hero .nav-section-link,
   .navbar--hero .nav-link-plain { color: rgba(255,255,255,0.8); }
@@ -50,19 +51,14 @@ const STYLES = `
 
   .navbar-brand {
     text-decoration: none;
-    display: flex; flex-direction: column; gap: 4px;
+    display: flex; flex-direction: column; gap: 5px;
     transition: opacity 0.2s ease;
     flex-shrink: 0;
   }
   .navbar-brand:hover { opacity: 0.75; }
 
-  .brand-name {
-    font-family: var(--font-display);
-    font-size: 1.75rem; font-weight: 600;
-    color: var(--text);
-    letter-spacing: 0.005em; line-height: 0.95;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    max-width: 280px;
+  .brand-logo {
+    height: 34px; width: auto; display: block;
   }
   .brand-tag {
     font-family: var(--font-body);
@@ -108,7 +104,7 @@ const STYLES = `
     transition: background 0.2s ease, transform 0.2s ease;
   }
   .nav-book-btn:hover { background: var(--cta-hover); transform: translateY(-1px); }
-  .navbar--hero .nav-book-btn { background: #F7F5F0; color: #1C2438; }
+  .navbar--hero .nav-book-btn { background: #F2EEE2; color: #35392E; }
   .navbar--hero .nav-book-btn:hover { background: #fff; }
 
   .theme-toggle {
@@ -132,7 +128,7 @@ const STYLES = `
   }
   @media (max-width: 480px) {
     .navbar { padding: 0 1.25rem; height: 64px; }
-    .brand-name { font-size: 1.45rem; max-width: 210px; }
+    .brand-logo { height: 28px; }
     .theme-toggle { width: 36px; height: 36px; }
   }
 `;
@@ -191,8 +187,12 @@ const Navbar = () => {
       <nav className={`navbar${scrolled ? ' scrolled' : ''}${heroMode ? ' navbar--hero' : ''}`}>
 
         <Link to="/" className="navbar-brand">
-          <span className="brand-name">{displayName}</span>
-          <span className="brand-tag">Estética & Belleza</span>
+          <img
+            className="brand-logo"
+            src={heroMode || theme === 'dark' ? logoDark : logoLight}
+            alt={displayName}
+          />
+          <span className="brand-tag">Centro de Estética</span>
         </Link>
 
         {isHome && (
