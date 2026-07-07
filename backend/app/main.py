@@ -70,8 +70,9 @@ if EXTRA_ORIGINS:
 
 if PRODUCTION_DOMAIN:
     # Permite: https://stratusapp.com  y  https://cualquier-salon.stratusapp.com
+    # Solo https en producción (http se cubre con DEV_ORIGINS / EXTRA_ORIGINS si hiciera falta).
     escaped = PRODUCTION_DOMAIN.replace(".", r"\.")
-    origin_regex = rf"https?://({escaped}|[a-z0-9-]+\.{escaped})"
+    origin_regex = rf"https://({escaped}|[a-z0-9-]+\.{escaped})"
 
 app.add_middleware(
     CORSMiddleware,
