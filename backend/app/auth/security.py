@@ -6,7 +6,16 @@ from jose import jwt, JWTError
 # En producción, esta variable debe estar configurada en el entorno (ej. en Hostinger)
 SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:
-    # Solo permitir un valor por defecto en desarrollo si no es producción real
+    # En un deploy real (PRODUCTION_DOMAIN seteado) NUNCA arrancar con la clave
+    # de dev: los JWT quedarían firmados con un secreto público del repo y
+    # cualquiera podría fabricarse un token de superadmin.
+    if os.getenv("PRODUCTION_DOMAIN"):
+        raise RuntimeError(
+            "SECRET_KEY no está configurada. Definila en el entorno del backend "
+            "(Dokploy/.env). Generá una con: python -c \"import secrets; "
+            "print(secrets.token_urlsafe(64))\""
+        )
+    # Solo permitir un valor por defecto en desarrollo local
     SECRET_KEY = "dev-secret-unsafe-change-me"
 
 ALGORITHM = "HS256"

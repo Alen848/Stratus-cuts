@@ -25,8 +25,10 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: mysql+pymysql://${MYSQL_USER:-stratus}:${MYSQL_PASSWORD}@mysql/${MYSQL_DATABASE:-peluqueria}
+      SECRET_KEY: ${SECRET_KEY}
       SUPERADMIN_SETUP_SECRET: ${SUPERADMIN_SETUP_SECRET}
       PRODUCTION_DOMAIN: ${PRODUCTION_DOMAIN}
+      EXTRA_ORIGINS: ${EXTRA_ORIGINS}
       MP_ENCRYPTION_KEY: ${MP_ENCRYPTION_KEY}
       BACKEND_PUBLIC_URL: ${BACKEND_PUBLIC_URL}
     ports:
