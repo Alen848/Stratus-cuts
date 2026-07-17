@@ -19,6 +19,9 @@ COLUMNS_TO_ADD = {
         "mp_public_key":    "VARCHAR(255) NULL",
         "sena_porcentaje":  "INTEGER NOT NULL DEFAULT 0",
         "sena_obligatoria": "BOOLEAN NOT NULL DEFAULT 0",
+        "webhook_url":      "VARCHAR(300) NULL",
+        "webhook_secret":   "VARCHAR(80) NULL",
+        "webhook_activo":   "BOOLEAN NOT NULL DEFAULT 0",
     },
     "turnos": {
         "monto_total":      "FLOAT NULL",

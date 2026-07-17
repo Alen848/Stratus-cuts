@@ -20,3 +20,8 @@ class ConfigSalon(Base):
     mp_public_key     = Column(String(255), nullable=True)
     sena_porcentaje   = Column(Integer, default=0, nullable=False)      # 0-100 (% del total)
     sena_obligatoria  = Column(Boolean, default=False, nullable=False)  # si exige seña para reservar
+
+    # ── Webhooks salientes (integración con sistemas externos) ───────────────
+    webhook_url    = Column(String(300), nullable=True)   # a dónde se notifican los eventos
+    webhook_secret = Column(String(80),  nullable=True)   # secreto compartido para firmar (HMAC)
+    webhook_activo = Column(Boolean, default=False, nullable=False)

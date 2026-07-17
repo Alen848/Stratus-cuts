@@ -12,7 +12,7 @@ from app.models import (
     salon, cliente, empleado, servicio, turno,
     turno_servicio, pago, gasto, cierre_caja,
     horario_empleado, horario_salon, config_salon, bloqueo_agenda, usuario,
-    pago_salon,
+    pago_salon, api_key,
 )
 
 from app.routes.auth            import router as auth_router
@@ -29,6 +29,7 @@ from app.routes.usuarios        import router as usuarios_router
 from app.routes.public          import router as public_router
 from app.routes.superadmin      import router as superadmin_router
 from app.routes.pagos_superadmin import router as pagos_superadmin_router
+from app.routes.integracion     import router as integracion_router
 
 # Crear tablas en la base de datos (si no existen)
 Base.metadata.create_all(bind=engine)
@@ -102,6 +103,7 @@ app.include_router(bloqueos_agenda_router)
 app.include_router(usuarios_router)
 app.include_router(superadmin_router)
 app.include_router(pagos_superadmin_router)
+app.include_router(integracion_router)
 
 
 @app.get("/")

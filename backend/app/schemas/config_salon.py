@@ -18,6 +18,11 @@ class ConfigSalonUpdate(BaseModel):
     sena_porcentaje:  Optional[int]  = None
     sena_obligatoria: Optional[bool] = None
 
+    # ── Webhooks salientes (integración externa) ─────────────────────────────
+    webhook_url:    Optional[str]  = None
+    webhook_secret: Optional[str]  = None   # write-only
+    webhook_activo: Optional[bool] = None
+
 
 class ConfigSalonOut(BaseModel):
     salon_id:             int
@@ -36,6 +41,11 @@ class ConfigSalonOut(BaseModel):
     mp_public_key:    Optional[str]
     sena_porcentaje:  int
     sena_obligatoria: bool
+
+    # ── Webhooks (NUNCA se devuelve el secreto) ──────────────────────────────
+    webhook_url:        Optional[str]
+    webhook_configurado: bool         # True si hay un secreto guardado
+    webhook_activo:     bool
 
     class Config:
         from_attributes = True

@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.models.servicio import Servicio
 from app.models.turno import Turno
 from app.models.pago import Pago
-from app.services import turno_service, config_salon_service, mercadopago_service
+from app.services import turno_service, config_salon_service, mercadopago_service, webhook_service
 
 ARG_TZ = timezone(timedelta(hours=-3))
 HOLD_MINUTOS = 10  # tiempo que se mantiene el horario reservado mientras se paga
@@ -149,6 +149,8 @@ def confirmar_pago(db: Session, salon_id: int, payment_id: str, access_token: st
                 fecha_pago=_ahora(),  # hora Argentina, para imputar a la caja del día correcto
             ))
         db.commit()
+        # Webhook: la reserva online quedó en firme al pagarse la seña
+        webhook_service.emit(db, salon_id, "turno.confirmado", webhook_service.turno_payload(turno))
         return {"ok": True, "estado": "confirmado"}
 
     # Rechazado / cancelado: liberar el horario si seguía esperando pago

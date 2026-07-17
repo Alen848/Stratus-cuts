@@ -2,6 +2,7 @@ from sqlalchemy import func, or_, and_
 from sqlalchemy.orm import Session, joinedload
 from app.models import Turno, TurnoServicio, Servicio, HorarioEmpleado
 from app.services.horario_salon_service import get_horarios as get_salon_horarios
+from app.services import webhook_service
 from app.schemas.turno import TurnoCreate, TurnoUpdate
 from datetime import timedelta, date, datetime, timezone
 from fastapi import HTTPException
@@ -190,6 +191,10 @@ def create_turno(db: Session, turno: TurnoCreate, salon_id: int):
 
     db.commit()
     db.refresh(db_turno)
+
+    # Webhook: solo turnos en firme (los pendiente_pago son efímeros hasta que se paga)
+    if db_turno.estado not in ("pendiente_pago", "expirado"):
+        webhook_service.emit(db, salon_id, "turno.creado", webhook_service.turno_payload(db_turno))
     return db_turno
 
 
@@ -259,6 +264,8 @@ def update_turno(db: Session, turno_id: int, turno_update: TurnoUpdate, salon_id
 
     db.commit()
     db.refresh(db_turno)
+
+    webhook_service.emit(db, salon_id, "turno.actualizado", webhook_service.turno_payload(db_turno))
     return db_turno
 
 
@@ -281,6 +288,8 @@ def delete_turno(db: Session, turno_id: int, salon_id: int):
                 status_code=400,
                 detail="Este turno tiene pagos registrados (seña/cobro). Cancelalo en lugar de eliminarlo.",
             )
+        # Armar el payload del webhook ANTES de borrar (después ya no existe)
+        payload = webhook_service.turno_payload(db_turno)
         # Eliminar registros hijos antes de borrar el turno
         db.query(TurnoServicio).filter(TurnoServicio.turno_id == turno_id).delete(
             synchronize_session=False
@@ -290,6 +299,7 @@ def delete_turno(db: Session, turno_id: int, salon_id: int):
         )
         db.delete(db_turno)
         db.commit()
+        webhook_service.emit(db, salon_id, "turno.eliminado", payload)
     return db_turno
 
 

@@ -26,6 +26,10 @@ def get_config(db: Session, salon_id: int) -> ConfigSalonOut:
         mp_public_key=cfg.mp_public_key if cfg else None,
         sena_porcentaje=cfg.sena_porcentaje if cfg else 0,
         sena_obligatoria=cfg.sena_obligatoria if cfg else False,
+        # Webhooks — el secreto nunca se devuelve, solo si está configurado
+        webhook_url=cfg.webhook_url if cfg else None,
+        webhook_configurado=bool(cfg and cfg.webhook_secret),
+        webhook_activo=cfg.webhook_activo if cfg else False,
     )
 
 
@@ -44,6 +48,16 @@ def _apply_mp_fields(cfg: ConfigSalon, data: ConfigSalonUpdate) -> None:
     if data.mp_access_token is not None:
         token = data.mp_access_token.strip()
         cfg.mp_access_token = crypto.encrypt(token) if token else None
+
+
+def _apply_webhook_fields(cfg: ConfigSalon, data: ConfigSalonUpdate) -> None:
+    """Aplica los campos de webhooks salientes sobre el ConfigSalon."""
+    if data.webhook_url is not None:
+        cfg.webhook_url = data.webhook_url.strip() or None
+    if data.webhook_secret is not None:
+        cfg.webhook_secret = data.webhook_secret.strip() or None
+    if data.webhook_activo is not None:
+        cfg.webhook_activo = data.webhook_activo
 
 
 def update_config(db: Session, salon_id: int, data: ConfigSalonUpdate) -> ConfigSalonOut:
@@ -65,6 +79,7 @@ def update_config(db: Session, salon_id: int, data: ConfigSalonUpdate) -> Config
         cfg.max_dias_anticipacion = data.max_dias_anticipacion
         cfg.min_hs_anticipacion   = data.min_hs_anticipacion
         _apply_mp_fields(cfg, data)
+        _apply_webhook_fields(cfg, data)
     else:
         cfg = ConfigSalon(
             salon_id=salon_id,
@@ -76,6 +91,7 @@ def update_config(db: Session, salon_id: int, data: ConfigSalonUpdate) -> Config
             min_hs_anticipacion=data.min_hs_anticipacion,
         )
         _apply_mp_fields(cfg, data)
+        _apply_webhook_fields(cfg, data)
         db.add(cfg)
 
     db.commit()
