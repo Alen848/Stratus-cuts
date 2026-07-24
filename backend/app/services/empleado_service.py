@@ -38,6 +38,8 @@ def update_empleado(db: Session, empleado_id: int, empleado: EmpleadoUpdate, sal
 
 def delete_empleado(db: Session, empleado_id: int, salon_id: int):
     from app.models.turno import Turno
+    from app.models.turno_servicio import TurnoServicio
+    from app.models.pago import Pago
     from app.models.horario_empleado import HorarioEmpleado
     from app.models.bloqueo_agenda import BloqueoAgenda
 
@@ -45,22 +47,38 @@ def delete_empleado(db: Session, empleado_id: int, salon_id: int):
     if not db_empleado:
         return None
 
-    # Bloquear si tiene turnos activos o futuros
-    turno_activo = db.query(Turno).filter(
+    turnos = db.query(Turno).filter(
         Turno.salon_id == salon_id,
         Turno.empleado_id == empleado_id,
-        Turno.estado.in_(["pendiente", "confirmado"]),
-    ).first()
-    if turno_activo:
-        raise HTTPException(
-            status_code=400,
-            detail="El profesional tiene turnos pendientes o confirmados. Cancelalos antes de eliminar.",
-        )
+    ).all()
+    turno_ids = [t.id for t in turnos]
 
-    # Desasociar turnos históricos
-    db.query(Turno).filter(Turno.empleado_id == empleado_id).update(
-        {"empleado_id": None}, synchronize_session=False
-    )
+    # Proteger la caja: si algún turno tiene un pago aprobado (seña/cobro), no se puede
+    # eliminar el profesional sin borrar ese ingreso. En ese caso se corta con aviso.
+    if turno_ids:
+        tiene_pago = db.query(Pago).filter(
+            Pago.turno_id.in_(turno_ids),
+            Pago.estado == "aprobada",
+        ).first()
+        if tiene_pago:
+            raise HTTPException(
+                status_code=400,
+                detail="El profesional tiene turnos con pagos registrados (seña/cobro). "
+                       "No se puede eliminar sin borrar esos ingresos.",
+            )
+
+    # Eliminar los turnos del profesional y sus registros hijos.
+    # (empleado_id es NOT NULL, así que no se pueden "desvincular" poniéndolo en NULL.)
+    if turno_ids:
+        db.query(TurnoServicio).filter(TurnoServicio.turno_id.in_(turno_ids)).delete(
+            synchronize_session=False
+        )
+        db.query(Pago).filter(Pago.turno_id.in_(turno_ids)).delete(
+            synchronize_session=False
+        )
+        db.query(Turno).filter(Turno.id.in_(turno_ids)).delete(
+            synchronize_session=False
+        )
 
     # Eliminar horarios y bloqueos asociados
     db.query(HorarioEmpleado).filter(HorarioEmpleado.empleado_id == empleado_id).delete(
