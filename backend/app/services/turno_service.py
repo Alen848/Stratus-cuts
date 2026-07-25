@@ -290,14 +290,19 @@ def delete_turno(db: Session, turno_id: int, salon_id: int):
             )
         # Armar el payload del webhook ANTES de borrar (después ya no existe)
         payload = webhook_service.turno_payload(db_turno)
-        # Eliminar registros hijos antes de borrar el turno
+        # Eliminar registros hijos y el turno en bloque. Se usa delete() por query
+        # (no db.delete(db_turno)) a propósito: como el payload cargó la relación
+        # turno.servicios, un delete ORM del turno intentaría "desvincular" esos
+        # servicios (turno_id = NULL) sobre filas ya borradas → StaleDataError.
         db.query(TurnoServicio).filter(TurnoServicio.turno_id == turno_id).delete(
             synchronize_session=False
         )
         db.query(Pago).filter(Pago.turno_id == turno_id).delete(
             synchronize_session=False
         )
-        db.delete(db_turno)
+        db.query(Turno).filter(Turno.id == turno_id).delete(
+            synchronize_session=False
+        )
         db.commit()
         webhook_service.emit(db, salon_id, "turno.eliminado", payload)
     return db_turno
