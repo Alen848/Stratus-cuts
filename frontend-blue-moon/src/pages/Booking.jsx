@@ -15,7 +15,7 @@ export default function Booking() {
   const [loadingServicios, setLoadingServicios] = useState(true);
   const [selectedServices, setSelectedServices] = useState(preSelected);
 
-  const [formData, setFormData] = useState({ nombre: '', telefono: '' });
+  const [formData, setFormData] = useState({ nombre: '', telefono: '', email: '' });
   const [empleados, setEmpleados] = useState([]);
   const [selectedEmpleado, setSelectedEmpleado] = useState(null);
   const [selectedDate, setSelectedDate] = useState('');
@@ -120,6 +120,7 @@ export default function Booking() {
       const clienteResponse = await createCliente({
         nombre: formData.nombre,
         telefono: formData.telefono || null,
+        email: formData.email || null,
       });
       const clienteId = clienteResponse.data.id;
 
@@ -242,6 +243,14 @@ export default function Booking() {
             <label className="field-label">Teléfono <span className="field-req">*</span></label>
             <input className="field-input" type="tel" name="telefono" value={formData.telefono}
               onChange={handleChange} placeholder="2235000000" required />
+          </div>
+
+          {/* -- Email -- */}
+          <div className="field">
+            <label className="field-label">Email <span className="field-req">*</span></label>
+            <input className="field-input" type="email" name="email" value={formData.email}
+              onChange={handleChange} placeholder="tucorreo@email.com" required />
+            <span className="field-hint">Te enviamos la confirmación del turno a este correo.</span>
           </div>
 
           {/* -- Profesional -- */}

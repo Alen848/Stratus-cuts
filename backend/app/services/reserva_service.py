@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.models.servicio import Servicio
 from app.models.turno import Turno
 from app.models.pago import Pago
-from app.services import turno_service, config_salon_service, mercadopago_service, webhook_service
+from app.services import turno_service, config_salon_service, mercadopago_service, webhook_service, email_service
 
 ARG_TZ = timezone(timedelta(hours=-3))
 HOLD_MINUTOS = 10  # tiempo que se mantiene el horario reservado mientras se paga
@@ -58,6 +58,8 @@ def crear_reserva(db: Session, data, salon, config, webhook_url: str = None) -> 
         turno.sena_estado     = "no_aplica"
         db.commit()
         db.refresh(turno)
+        # Confirmación por email al instante (reserva sin seña)
+        email_service.enviar_confirmacion_turno(db, turno, salon, config)
         return {"requiere_pago": False, "turno": turno}
 
     # ── Camino con seña: crear turno en pendiente_pago + preferencia MP ──────
@@ -151,6 +153,8 @@ def confirmar_pago(db: Session, salon_id: int, payment_id: str, access_token: st
         db.commit()
         # Webhook: la reserva online quedó en firme al pagarse la seña
         webhook_service.emit(db, salon_id, "turno.confirmado", webhook_service.turno_payload(turno))
+        # Confirmación por email (recién ahora que la seña se pagó)
+        email_service.enviar_confirmacion_turno(db, turno)
         return {"ok": True, "estado": "confirmado"}
 
     # Rechazado / cancelado: liberar el horario si seguía esperando pago
