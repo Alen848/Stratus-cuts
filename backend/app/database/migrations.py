@@ -22,6 +22,10 @@ COLUMNS_TO_ADD = {
         "webhook_url":      "VARCHAR(300) NULL",
         "webhook_secret":   "VARCHAR(80) NULL",
         "webhook_activo":   "BOOLEAN NOT NULL DEFAULT 0",
+        "transferencia_activa":  "BOOLEAN NOT NULL DEFAULT 0",
+        "transferencia_cbu":     "VARCHAR(30) NULL",
+        "transferencia_alias":   "VARCHAR(100) NULL",
+        "transferencia_titular": "VARCHAR(120) NULL",
     },
     "turnos": {
         "monto_total":      "FLOAT NULL",
