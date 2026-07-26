@@ -5,29 +5,29 @@
    Mientras no estén, se usan los fallbacks (Cormorant / Quicksand) y la web no se
    rompe. Formato ideal: .woff2 (si sólo tenés .otf/.ttf, avisá y ajusto el src). */
 
-/* Houschka — texto (secundaria, para textos chicos/extensos) */
+/* Houschka Rounded — secundaria (cuerpo de texto / bloques extensos). Medium + Medium Italic. */
 @font-face {
-  font-family: 'Houschka';
-  src: url('/fonts/houschka-regular.woff2') format('woff2'),
-       url('/fonts/houschka-regular.woff')  format('woff');
-  font-weight: 400; font-style: normal; font-display: swap;
+  font-family: 'Houschka Rounded';
+  src: url('/fonts/houschka-rounded-medium.woff2') format('woff2'),
+       url('/fonts/houschka-rounded-medium.woff')  format('woff');
+  font-weight: 400 600; font-style: normal; font-display: swap;
 }
 @font-face {
-  font-family: 'Houschka';
-  src: url('/fonts/houschka-medium.woff2') format('woff2'),
-       url('/fonts/houschka-medium.woff')  format('woff');
-  font-weight: 500 600; font-style: normal; font-display: swap;
+  font-family: 'Houschka Rounded';
+  src: url('/fonts/houschka-rounded-medium-italic.woff2') format('woff2'),
+       url('/fonts/houschka-rounded-medium-italic.woff')  format('woff');
+  font-weight: 400 600; font-style: italic; font-display: swap;
 }
 
-/* Bochan — títulos (primaria serif) */
+/* Bochan Serif — primaria (titulares) */
 @font-face {
   font-family: 'Bochan';
-  src: url('/fonts/bochan.woff2') format('woff2'),
-       url('/fonts/bochan.woff')  format('woff');
+  src: url('/fonts/bochan-serif.woff2') format('woff2'),
+       url('/fonts/bochan-serif.woff')  format('woff');
   font-weight: 400 700; font-style: normal; font-display: swap;
 }
 
-/* Adelia — ornamental (sólo para algunos títulos destacados) */
+/* Adelia — primaria ornamental/script (sólo títulos destacados, con moderación) */
 @font-face {
   font-family: 'Adelia';
   src: url('/fonts/adelia.woff2') format('woff2'),
@@ -84,8 +84,8 @@
   --font-display:     'Bochan', 'Cormorant Garamond', Georgia, serif;
   /* Ornamental: Adelia, sólo para títulos destacados (usar con moderación). */
   --font-ornamental:  'Adelia', 'Bochan', 'Cormorant Garamond', cursive, serif;
-  /* Texto: Houschka (secundaria). Fallback a Quicksand. */
-  --font-body:        'Houschka', 'Quicksand', system-ui, -apple-system, sans-serif;
+  /* Texto: Houschka Rounded (secundaria). Fallback a Quicksand (rounded, muy parecida). */
+  --font-body:        'Houschka Rounded', 'Quicksand', system-ui, -apple-system, sans-serif;
   --ease:             cubic-bezier(0.16, 1, 0.3, 1);
 }
 
