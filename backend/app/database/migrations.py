@@ -26,6 +26,7 @@ COLUMNS_TO_ADD = {
         "transferencia_cbu":     "VARCHAR(30) NULL",
         "transferencia_alias":   "VARCHAR(100) NULL",
         "transferencia_titular": "VARCHAR(120) NULL",
+        "config_password_hash":  "VARCHAR(255) NULL",
     },
     "turnos": {
         "monto_total":      "FLOAT NULL",

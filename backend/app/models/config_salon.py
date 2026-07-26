@@ -27,6 +27,9 @@ class ConfigSalon(Base):
     transferencia_alias   = Column(String(100), nullable=True)   # alias bancario
     transferencia_titular = Column(String(120), nullable=True)   # nombre del titular de la cuenta
 
+    # ── Clave de acceso a Configuración (protege credenciales/CBU) ───────────
+    config_password_hash = Column(String(255), nullable=True)  # None = sin candado
+
     # ── Webhooks salientes (integración con sistemas externos) ───────────────
     webhook_url    = Column(String(300), nullable=True)   # a dónde se notifican los eventos
     webhook_secret = Column(String(80),  nullable=True)   # secreto compartido para firmar (HMAC)

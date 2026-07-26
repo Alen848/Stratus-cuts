@@ -92,6 +92,9 @@ export const horariosSalon = {
 export const configSalon = {
   get:    ()       => api.get('/config-salon/'),
   update: (data)   => api.put('/config-salon/', data),
+  // Candado de la sección Configuración
+  verifyPassword: (password)      => api.post('/config-salon/verify-password', { password }),
+  setPassword:    (current, nueva) => api.post('/config-salon/password', { current_password: current, nueva_password: nueva }),
 };
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────

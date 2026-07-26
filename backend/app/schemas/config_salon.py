@@ -29,6 +29,9 @@ class ConfigSalonUpdate(BaseModel):
     webhook_secret: Optional[str]  = None   # write-only
     webhook_activo: Optional[bool] = None
 
+    # Clave de Configuración: si hay candado activo, se exige para guardar
+    config_password: Optional[str] = None   # write-only, se verifica y no se guarda como campo
+
 
 class ConfigSalonOut(BaseModel):
     salon_id:             int
@@ -59,5 +62,18 @@ class ConfigSalonOut(BaseModel):
     webhook_configurado: bool         # True si hay un secreto guardado
     webhook_activo:     bool
 
+    # Candado de Configuración (nunca se devuelve el hash, solo si está activo)
+    config_lock_activo: bool          # True si hay una clave de configuración seteada
+
     class Config:
         from_attributes = True
+
+
+class ConfigPasswordSet(BaseModel):
+    """Setear/cambiar/quitar la clave de Configuración."""
+    current_password: Optional[str] = None   # requerida si ya hay una clave activa
+    nueva_password:   Optional[str] = None    # vacía/None = quitar el candado
+
+
+class ConfigPasswordVerify(BaseModel):
+    password: str

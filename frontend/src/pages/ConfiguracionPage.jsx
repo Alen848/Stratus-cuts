@@ -178,7 +178,7 @@ function TabHorarios({ horarios, setDia }) {
 }
 
 // ─── Sub-tab: Info del local ──────────────────────────────────────────────────
-function TabInfo({ config, setField }) {
+function TabInfo({ config, setField, configPassword }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved]   = useState(false);
   const [error, setError]   = useState('');
@@ -204,10 +204,11 @@ function TabInfo({ config, setField }) {
         reservas_online:       true,
         max_dias_anticipacion: 60,
         min_hs_anticipacion:   1,
+        config_password:       configPassword,
       });
       setSaved(true);
-    } catch {
-      setError('Error al guardar. Intentá de nuevo.');
+    } catch (e) {
+      setError(e?.response?.data?.detail || 'Error al guardar. Intentá de nuevo.');
     } finally {
       setSaving(false);
     }
@@ -280,7 +281,7 @@ function TabInfo({ config, setField }) {
 }
 
 // ─── Sub-tab: Mercado Pago ────────────────────────────────────────────────────
-function TabPagos({ config, setField }) {
+function TabPagos({ config, setField, configPassword }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved]   = useState(false);
   const [error, setError]   = useState('');
@@ -328,6 +329,7 @@ function TabPagos({ config, setField }) {
         transferencia_cbu:     config.transferencia_cbu,
         transferencia_alias:   config.transferencia_alias,
         transferencia_titular: config.transferencia_titular,
+        config_password:       configPassword,
       };
       // El token solo se envía si se ingresó uno nuevo (write-only)
       if (tokenInput.trim()) payload.mp_access_token = tokenInput.trim();
@@ -339,8 +341,8 @@ function TabPagos({ config, setField }) {
         setTokenInput('');
       }
       setSaved(true);
-    } catch {
-      setError('Error al guardar. Intentá de nuevo.');
+    } catch (e) {
+      setError(e?.response?.data?.detail || 'Error al guardar. Intentá de nuevo.');
     } finally {
       setSaving(false);
     }
@@ -482,12 +484,151 @@ function TabPagos({ config, setField }) {
   );
 }
 
+// ─── Pantalla de desbloqueo (candado de Configuración) ────────────────────────
+function UnlockScreen({ onUnlock }) {
+  const [password, setPassword] = useState('');
+  const [error, setError]       = useState('');
+  const [checking, setChecking] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    if (!password.trim()) return;
+    try {
+      setChecking(true);
+      const res = await configSalonApi.verifyPassword(password);
+      if (res.data?.ok) {
+        onUnlock(password);
+      } else {
+        setError('Clave incorrecta.');
+      }
+    } catch {
+      setError('No se pudo verificar la clave. Intentá de nuevo.');
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  return (
+    <div style={{ maxWidth: '420px', margin: '40px auto', textAlign: 'center' }}>
+      <div style={{ fontSize: '40px', marginBottom: '12px' }}>🔒</div>
+      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 400, marginBottom: '8px' }}>
+        Sección protegida
+      </h2>
+      <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '24px', lineHeight: 1.5 }}>
+        Ingresá la clave de configuración para acceder a los datos del local, Mercado Pago y transferencia.
+      </p>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <input
+          type="password"
+          autoFocus
+          autoComplete="off"
+          value={password}
+          onChange={e => { setPassword(e.target.value); setError(''); }}
+          placeholder="Clave de configuración"
+          style={{ ...inputSt, textAlign: 'center' }}
+        />
+        {error && <div style={{ fontSize: '13px', color: 'var(--danger)' }}>{error}</div>}
+        <button
+          type="submit"
+          disabled={checking || !password.trim()}
+          style={{
+            padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--gold-border)',
+            background: 'var(--gold-dim)', color: 'var(--gold)', fontSize: '14px', cursor: 'pointer',
+            fontFamily: 'var(--font-body)', fontWeight: 500, opacity: checking ? 0.6 : 1,
+          }}
+        >
+          {checking ? 'Verificando...' : 'Desbloquear'}
+        </button>
+      </form>
+    </div>
+  );
+}
+
+// ─── Sub-tab: Seguridad (clave de la sección) ─────────────────────────────────
+function TabSeguridad({ lockActivo, onLockChange, configPassword, setConfigPassword }) {
+  const [current, setCurrent] = useState('');
+  const [nueva, setNueva]     = useState('');
+  const [repetir, setRepetir] = useState('');
+  const [saving, setSaving]   = useState(false);
+  const [saved, setSaved]     = useState(false);
+  const [error, setError]     = useState('');
+
+  const handleSave = async () => {
+    setError(''); setSaved(false);
+    if (nueva && nueva !== repetir) {
+      setError('Las claves nuevas no coinciden.');
+      return;
+    }
+    if (nueva && nueva.trim().length < 4) {
+      setError('La clave debe tener al menos 4 caracteres.');
+      return;
+    }
+    try {
+      setSaving(true);
+      // current: si ya hay candado, la actual es la que se usó para desbloquear
+      await configSalonApi.setPassword(lockActivo ? (current || configPassword) : null, nueva);
+      onLockChange(!!nueva.trim());
+      setConfigPassword(nueva.trim() || '');
+      setCurrent(''); setNueva(''); setRepetir('');
+      setSaved(true);
+    } catch (e) {
+      setError(e?.response?.data?.detail || 'No se pudo guardar la clave.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div>
+      <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '8px', lineHeight: 1.5 }}>
+        Protegé esta sección con una <strong>clave</strong>. Sirve para que, aunque varias personas
+        usen la cuenta de administrador, solo quien tenga la clave pueda ver y cambiar los datos
+        sensibles (Mercado Pago, CBU/alias, datos del local).
+      </p>
+      <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '24px', lineHeight: 1.5 }}>
+        Estado actual: <strong style={{ color: lockActivo ? 'var(--gold)' : 'var(--text-secondary)' }}>
+          {lockActivo ? '🔒 Protegida' : '🔓 Sin protección'}
+        </strong>
+      </p>
+
+      {lockActivo && (
+        <FieldRow label="Clave actual" hint="Necesaria para cambiar o quitar la protección.">
+          <input type="password" autoComplete="off" value={current}
+            onChange={e => { setCurrent(e.target.value); setSaved(false); }}
+            placeholder="Clave actual" style={inputSt} />
+        </FieldRow>
+      )}
+
+      <FieldRow label={lockActivo ? 'Nueva clave' : 'Clave'} hint="Dejala vacía para quitar la protección.">
+        <input type="password" autoComplete="new-password" value={nueva}
+          onChange={e => { setNueva(e.target.value); setSaved(false); }}
+          placeholder="Mínimo 4 caracteres" style={inputSt} />
+      </FieldRow>
+
+      {nueva && (
+        <FieldRow label="Repetir clave" hint="Escribí de nuevo la clave para confirmar.">
+          <input type="password" autoComplete="new-password" value={repetir}
+            onChange={e => { setRepetir(e.target.value); setSaved(false); }}
+            placeholder="Repetí la clave" style={inputSt} />
+        </FieldRow>
+      )}
+
+      <SaveBar onSave={handleSave} saving={saving} saved={saved} error={error} />
+    </div>
+  );
+}
+
 // ─── Página principal ─────────────────────────────────────────────────────────
 export default function ConfiguracionPage() {
   const [activeTab, setActiveTab] = useState('horarios');
   const [config, setConfig]       = useState(DEFAULT_CONFIG);
   const [horarios, setHorarios]   = useState(DEFAULT_HORARIOS);
   const [loading, setLoading]     = useState(true);
+  // Candado de la sección
+  const [lockActivo, setLockActivo]         = useState(false);
+  const [unlocked, setUnlocked]             = useState(false);
+  const [configPassword, setConfigPassword] = useState('');
 
   useEffect(() => {
     Promise.all([
@@ -496,6 +637,9 @@ export default function ConfiguracionPage() {
     ]).then(([cfgRes, horRes]) => {
       if (cfgRes?.data) {
         const d = cfgRes.data;
+        const locked = !!d.config_lock_activo;
+        setLockActivo(locked);
+        setUnlocked(!locked);  // sin candado = acceso directo
         setConfig({
           nombre_salon: d.nombre_salon || '',
           telefono:     d.telefono     || '',
@@ -539,10 +683,23 @@ export default function ConfiguracionPage() {
     return <div style={{ color: 'var(--text-muted)', fontSize: '14px', padding: '20px 0' }}>Cargando configuración...</div>;
   }
 
+  // Candado activo y todavía sin desbloquear → pedir la clave
+  if (lockActivo && !unlocked) {
+    return (
+      <div style={{ maxWidth: '760px' }}>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: 400, color: 'var(--text-primary)', marginBottom: '8px' }}>
+          Configuración
+        </h2>
+        <UnlockScreen onUnlock={(pwd) => { setConfigPassword(pwd); setUnlocked(true); }} />
+      </div>
+    );
+  }
+
   const TABS = [
-    { key: 'horarios', label: 'Horarios' },
-    { key: 'info',     label: 'Info del local' },
-    { key: 'pagos',    label: 'Mercado Pago' },
+    { key: 'horarios',  label: 'Horarios' },
+    { key: 'info',      label: 'Info del local' },
+    { key: 'pagos',     label: 'Mercado Pago' },
+    { key: 'seguridad', label: '🔒 Seguridad' },
   ];
 
   return (
@@ -588,10 +745,18 @@ export default function ConfiguracionPage() {
         <TabHorarios horarios={horarios} setDia={setDia} />
       )}
       {activeTab === 'info' && (
-        <TabInfo config={config} setField={setField} />
+        <TabInfo config={config} setField={setField} configPassword={configPassword} />
       )}
       {activeTab === 'pagos' && (
-        <TabPagos config={config} setField={setField} />
+        <TabPagos config={config} setField={setField} configPassword={configPassword} />
+      )}
+      {activeTab === 'seguridad' && (
+        <TabSeguridad
+          lockActivo={lockActivo}
+          onLockChange={setLockActivo}
+          configPassword={configPassword}
+          setConfigPassword={setConfigPassword}
+        />
       )}
 
     </div>
