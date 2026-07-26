@@ -1,5 +1,40 @@
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Quicksand:wght@300;400;500;600;700&display=swap');
 
+/* ── Tipografías de marca (licenciadas — provee la diseñadora) ─────────────────
+   Colocar los archivos en  frontend-blue-moon/public/fonts/  con estos nombres.
+   Mientras no estén, se usan los fallbacks (Cormorant / Quicksand) y la web no se
+   rompe. Formato ideal: .woff2 (si sólo tenés .otf/.ttf, avisá y ajusto el src). */
+
+/* Houschka — texto (secundaria, para textos chicos/extensos) */
+@font-face {
+  font-family: 'Houschka';
+  src: url('/fonts/houschka-regular.woff2') format('woff2'),
+       url('/fonts/houschka-regular.woff')  format('woff');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Houschka';
+  src: url('/fonts/houschka-medium.woff2') format('woff2'),
+       url('/fonts/houschka-medium.woff')  format('woff');
+  font-weight: 500 600; font-style: normal; font-display: swap;
+}
+
+/* Bochan — títulos (primaria serif) */
+@font-face {
+  font-family: 'Bochan';
+  src: url('/fonts/bochan.woff2') format('woff2'),
+       url('/fonts/bochan.woff')  format('woff');
+  font-weight: 400 700; font-style: normal; font-display: swap;
+}
+
+/* Adelia — ornamental (sólo para algunos títulos destacados) */
+@font-face {
+  font-family: 'Adelia';
+  src: url('/fonts/adelia.woff2') format('woff2'),
+       url('/fonts/adelia.woff')  format('woff');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+
 /* ═══════════════════════════════════════════
    BLUE MOON — DESIGN TOKENS · Light (default)
    Manual de marca: Dorado #CCA766 · Castaña #AC9982
@@ -45,9 +80,13 @@
   --success-rgb:   79,138,107;
   --danger:        #B0413E;
 
-  --font-display:  'Cormorant Garamond', Georgia, serif;
-  --font-body:     'Quicksand', system-ui, -apple-system, sans-serif;
-  --ease:          cubic-bezier(0.16, 1, 0.3, 1);
+  /* Títulos: Bochan (primaria serif). Fallback a Cormorant hasta tener el archivo. */
+  --font-display:     'Bochan', 'Cormorant Garamond', Georgia, serif;
+  /* Ornamental: Adelia, sólo para títulos destacados (usar con moderación). */
+  --font-ornamental:  'Adelia', 'Bochan', 'Cormorant Garamond', cursive, serif;
+  /* Texto: Houschka (secundaria). Fallback a Quicksand. */
+  --font-body:        'Houschka', 'Quicksand', system-ui, -apple-system, sans-serif;
+  --ease:             cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* ═══════════════════════════════════════════

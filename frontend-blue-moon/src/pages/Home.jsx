@@ -230,7 +230,7 @@ const STYLES = `
     font-size: clamp(2.2rem, 5vw, 3.4rem); line-height: 1.08;
     letter-spacing: -0.01em; color: var(--text);
   }
-  .bm-h2 em { font-style: italic; font-weight: 400; color: var(--accent); }
+  .bm-h2 em { font-family: var(--font-ornamental); font-style: italic; font-weight: 400; color: var(--accent); }
   .bm-lead {
     font-size: 1.02rem; font-weight: 300; color: var(--text-3);
     line-height: 1.75; max-width: 480px; margin-top: 1.1rem;
@@ -363,7 +363,7 @@ const STYLES = `
     font-size: clamp(2.4rem, 6vw, 4rem); line-height: 1.05; color: #fff;
     margin-bottom: 1.2rem;
   }
-  .bm-cta-title em { font-style: italic; font-weight: 400; color: #D5DCC8; }
+  .bm-cta-title em { font-family: var(--font-ornamental); font-style: italic; font-weight: 400; color: #D5DCC8; }
   .bm-cta-sub {
     font-size: 1.02rem; font-weight: 300; color: rgba(255,255,255,0.8);
     line-height: 1.7; max-width: 440px; margin-bottom: 2.5rem;
