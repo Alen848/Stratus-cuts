@@ -14,3 +14,4 @@ from .usuario import Usuario
 from .gasto import Gasto
 from .cierre_caja import CierreCaja
 from .api_key import ApiKey
+from .comprobante import Comprobante

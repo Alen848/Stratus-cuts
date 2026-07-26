@@ -21,7 +21,7 @@ const ghostMini = {
   cursor: 'pointer', fontFamily: 'var(--font-body)', whiteSpace: 'nowrap',
 };
 
-export default function TurnoCard({ turno, onEdit, onDelete, onCobrar, onMarcar, onConfirmarSena }) {
+export default function TurnoCard({ turno, onEdit, onDelete, onCobrar, onMarcar, onConfirmarSena, onVerComprobante }) {
   const cliente  = turno.cliente  || null;
   const empleado = turno.empleado || {};
   const servicios = turno.servicios?.map(ts => ts.servicio?.nombre || ts.nombre).filter(Boolean) || [];
@@ -117,6 +117,12 @@ export default function TurnoCard({ turno, onEdit, onDelete, onCobrar, onMarcar,
 
       {/* Acciones */}
       <div className={styles.actions} style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end' }}>
+        {turno.comprobante_subido && (
+          <button onClick={() => onVerComprobante?.(turno)} title="Ver el comprobante que adjuntó el cliente"
+            style={{ ...ghostMini, display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+            📎 Ver comprobante
+          </button>
+        )}
         {senaTransferPendiente && (
           <button onClick={() => onConfirmarSena?.(turno)} title="Confirmar que la seña por transferencia se acreditó"
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid #4caf7d55', background: 'rgba(76,175,125,0.12)', color: '#4caf7d', fontSize: '12.5px', cursor: 'pointer', fontWeight: 500, fontFamily: 'var(--font-body)' }}>

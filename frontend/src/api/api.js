@@ -43,6 +43,9 @@ export const turnos = {
 
   // Confirma manualmente la seña por transferencia de un turno
   confirmarSena: (id) => api.post(`/turns/${id}/confirmar-sena`),
+
+  // Comprobante de transferencia adjuntado por el cliente (imagen/PDF, como blob)
+  getComprobante: (id) => api.get(`/turns/${id}/comprobante`, { responseType: 'blob' }),
 };
 
 // ─── Pagos ────────────────────────────────────────────────────────────────────

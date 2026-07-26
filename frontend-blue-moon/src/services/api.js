@@ -23,6 +23,16 @@ export const getDisponibilidadSemanal = (empleadoId, fechaInicio, duracion) =>
     params: { fecha_inicio: fechaInicio, ...(duracion ? { duracion } : {}) },
   });
 
+// Comprobante de transferencia (subida del cliente)
+export const subirComprobante = (turnoId, file) => {
+  const fd = new FormData();
+  fd.append('file', file);
+  // Content-Type undefined => el navegador setea multipart/form-data con boundary
+  return api.post(pub(`/turnos/${turnoId}/comprobante`), fd, {
+    headers: { 'Content-Type': undefined },
+  });
+};
+
 // Mercado Pago / seña
 export const getPagoConfig = () => api.get(pub('/pago-config'));
 export const getTurnoEstado = (turnoId) => api.get(pub(`/turnos/${turnoId}/estado`));

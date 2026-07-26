@@ -282,6 +282,7 @@ def update_turno(db: Session, turno_id: int, turno_update: TurnoUpdate, salon_id
 
 def delete_turno(db: Session, turno_id: int, salon_id: int):
     from app.models.pago import Pago
+    from app.models.comprobante import Comprobante
 
     db_turno = db.query(Turno).filter(
         Turno.id == turno_id,
@@ -309,6 +310,9 @@ def delete_turno(db: Session, turno_id: int, salon_id: int):
             synchronize_session=False
         )
         db.query(Pago).filter(Pago.turno_id == turno_id).delete(
+            synchronize_session=False
+        )
+        db.query(Comprobante).filter(Comprobante.turno_id == turno_id).delete(
             synchronize_session=False
         )
         db.query(Turno).filter(Turno.id == turno_id).delete(

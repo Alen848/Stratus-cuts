@@ -36,6 +36,7 @@ COLUMNS_TO_ADD = {
         "mp_payment_id":    "VARCHAR(50) NULL",
         "mp_preference_id": "VARCHAR(80) NULL",
         "expira_en":        "DATETIME NULL",
+        "comprobante_subido": "BOOLEAN NOT NULL DEFAULT 0",
     },
     "pagos": {
         "tipo":          "VARCHAR(20) NOT NULL DEFAULT 'saldo'",

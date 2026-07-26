@@ -138,6 +138,18 @@ export default function TurnosPage() {
     }
   };
 
+  const handleVerComprobante = async (t) => {
+    try {
+      const res = await turnosApi.getComprobante(t.id);
+      const url = URL.createObjectURL(res.data);
+      window.open(url, '_blank', 'noopener,noreferrer');
+      // Liberar el object URL después de un rato
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (e) {
+      notify(e.response?.status === 404 ? 'No hay comprobante para este turno' : 'No se pudo abrir el comprobante', 'error');
+    }
+  };
+
   const handleConfirmarSena = async (t) => {
     if (!window.confirm(`¿Confirmar que se acreditó la seña por transferencia de ${t.cliente?.nombre || 'este turno'}? Se registrará en Caja y el turno quedará confirmado.`)) return;
     try {
@@ -250,7 +262,8 @@ export default function TurnosPage() {
         <div className={styles.list}>
           {filtrados.map(t => (
             <TurnoCard key={t.id} turno={t} onEdit={openEdit} onDelete={handleDelete}
-              onCobrar={setCobroTurno} onMarcar={handleMarcar} onConfirmarSena={handleConfirmarSena} />
+              onCobrar={setCobroTurno} onMarcar={handleMarcar} onConfirmarSena={handleConfirmarSena}
+              onVerComprobante={handleVerComprobante} />
           ))}
         </div>
       )}

@@ -1,6 +1,6 @@
 import { useLocation, Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { getTurnoEstado } from '../services/api';
+import { getTurnoEstado, subirComprobante } from '../services/api';
 
 const STYLES = `
   .conf-wrap {
@@ -224,6 +224,30 @@ const Confirmation = () => {
   const [estado, setEstado] = useState(null);
   const [cargando, setCargando] = useState(!stateTurno && !!turnoIdUrl);
 
+  // Subida del comprobante de transferencia
+  const [uploadState, setUploadState] = useState('idle'); // idle | uploading | done | error
+  const [uploadErr, setUploadErr]     = useState('');
+
+  const handleComprobante = async (e, turnoId) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // permite re-elegir el mismo archivo
+    if (!file || !turnoId) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadState('error');
+      setUploadErr('El archivo supera los 5 MB.');
+      return;
+    }
+    setUploadErr('');
+    setUploadState('uploading');
+    try {
+      await subirComprobante(turnoId, file);
+      setUploadState('done');
+    } catch (err) {
+      setUploadState('error');
+      setUploadErr(err?.response?.data?.detail || 'No se pudo subir el comprobante. Probá de nuevo.');
+    }
+  };
+
   // Vuelta de Mercado Pago: consultar el estado real (el webhook puede demorar)
   useEffect(() => {
     if (stateTurno || !turnoIdUrl) return;
@@ -274,7 +298,7 @@ const Confirmation = () => {
           <div className="conf-heading">
             <h1 className="conf-title">¡Turno reservado!</h1>
             <p className="conf-subtitle">
-              Para confirmarlo, transferí la seña y envianos el comprobante por WhatsApp.
+              Para confirmarlo, transferí la seña y adjuntá el comprobante acá abajo.
               El local confirma tu turno al recibirlo.
             </p>
           </div>
@@ -290,22 +314,50 @@ const Confirmation = () => {
             {bankRow('Resto en el local', money(tr.saldo_pendiente))}
           </div>
 
-          <a
-            className="conf-cta"
-            href={waHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem',
-              background: '#25D366', color: '#0b1f14', border: 'none',
-              padding: '0.9rem 1.6rem', borderRadius: '8px', fontWeight: 600, letterSpacing: '0.02em',
-            }}
-          >
-            <svg viewBox="0 0 32 32" width="20" height="20" aria-hidden="true">
-              <path fill="currentColor" d="M16.04 3.2C9.03 3.2 3.33 8.9 3.33 15.9c0 2.24.59 4.42 1.7 6.35L3.2 28.8l6.72-1.76a12.66 12.66 0 0 0 6.12 1.56h.01c7.01 0 12.71-5.7 12.71-12.7 0-3.4-1.32-6.59-3.72-8.99a12.63 12.63 0 0 0-9-3.71Zm7.8 15.37c-.32-.16-1.88-.93-2.17-1.03-.29-.11-.5-.16-.71.16-.21.32-.82 1.03-1 1.24-.18.21-.37.24-.68.08-.32-.16-1.34-.49-2.55-1.57-.94-.84-1.58-1.88-1.77-2.2-.18-.32-.02-.49.14-.65.14-.14.32-.37.48-.55.16-.18.21-.32.32-.53.11-.21.05-.4-.03-.56-.08-.16-.71-1.71-.97-2.34-.26-.62-.52-.53-.71-.54l-.61-.01c-.21 0-.55.08-.84.4-.29.32-1.1 1.08-1.1 2.63 0 1.55 1.13 3.05 1.29 3.26.16.21 2.22 3.39 5.38 4.75.75.32 1.34.52 1.8.66.76.24 1.44.21 1.99.13.61-.09 1.88-.77 2.14-1.51.26-.74.26-1.38.18-1.51-.08-.13-.29-.21-.61-.37Z" />
-            </svg>
-            Adjuntar comprobante
-          </a>
+          {uploadState === 'done' ? (
+            <div style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem',
+              padding: '1rem 1.4rem', borderRadius: '8px', width: '100%',
+              background: 'rgba(var(--success-rgb),0.10)', border: '1px solid rgba(var(--success-rgb),0.28)',
+            }}>
+              <strong style={{ color: 'var(--text)' }}>✅ ¡Comprobante enviado!</strong>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-3)', textAlign: 'center' }}>
+                El local va a verificar tu transferencia y confirmar el turno. ¡Gracias!
+              </span>
+            </div>
+          ) : (
+            <>
+              <label
+                className="conf-cta"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem',
+                  cursor: uploadState === 'uploading' ? 'default' : 'pointer',
+                  opacity: uploadState === 'uploading' ? 0.65 : 1, width: '100%',
+                }}
+              >
+                {uploadState === 'uploading' ? 'Subiendo comprobante…' : '📎 Adjuntar comprobante'}
+                <input
+                  type="file"
+                  accept="image/*,application/pdf"
+                  onChange={(e) => handleComprobante(e, tr.turno_id)}
+                  disabled={uploadState === 'uploading'}
+                  style={{ display: 'none' }}
+                />
+              </label>
+              {uploadState === 'error' && (
+                <span style={{ fontSize: '0.82rem', color: 'var(--danger, #c0392b)', textAlign: 'center' }}>
+                  {uploadErr}
+                </span>
+              )}
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-4)', textAlign: 'center' }}>
+                Subí una foto o PDF del comprobante (hasta 5 MB). ¿Preferís WhatsApp?{' '}
+                <a href={waHref} target="_blank" rel="noopener noreferrer"
+                   style={{ color: 'var(--accent)', textDecoration: 'underline' }}>
+                  Enviarlo por acá
+                </a>.
+              </span>
+            </>
+          )}
 
           <Link to="/" className="conf-cta" style={{ background: 'transparent' }}>Volver al inicio</Link>
         </div>

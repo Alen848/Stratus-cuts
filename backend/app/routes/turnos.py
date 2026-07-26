@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 from typing import List
 from datetime import date as DateType
@@ -6,6 +6,7 @@ from datetime import date as DateType
 from app.database.connection import get_db
 from app.auth.dependencies import get_current_user, require_admin
 from app.models.usuario import Usuario
+from app.models.comprobante import Comprobante
 from app.services import turno_service
 from app.schemas.turno import Turno, TurnoCreate, TurnoUpdate
 
@@ -98,6 +99,26 @@ def delete_turno(
     if not deleted:
         raise HTTPException(status_code=404, detail="Turno no encontrado")
     return {"detail": "Turno eliminado correctamente"}
+
+
+@router.get("/{turno_id}/comprobante")
+def get_comprobante(
+    turno_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    """Devuelve el comprobante de transferencia adjuntado al turno (imagen o PDF)."""
+    comp = db.query(Comprobante).filter(
+        Comprobante.turno_id == turno_id,
+        Comprobante.salon_id == current_user.salon_id,
+    ).first()
+    if not comp:
+        raise HTTPException(status_code=404, detail="No hay comprobante para este turno.")
+    return Response(
+        content=comp.data,
+        media_type=comp.content_type or "application/octet-stream",
+        headers={"Content-Disposition": f'inline; filename="{comp.filename or "comprobante"}"'},
+    )
 
 
 @router.post("/{turno_id}/confirmar-sena", response_model=Turno)

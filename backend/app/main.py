@@ -12,7 +12,7 @@ from app.models import (
     salon, cliente, empleado, servicio, turno,
     turno_servicio, pago, gasto, cierre_caja,
     horario_empleado, horario_salon, config_salon, bloqueo_agenda, usuario,
-    pago_salon, api_key,
+    pago_salon, api_key, comprobante,
 )
 
 from app.routes.auth            import router as auth_router

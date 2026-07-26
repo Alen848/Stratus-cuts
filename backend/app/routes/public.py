@@ -4,7 +4,7 @@ Prefijo: /public/{slug}/...
 El slug identifica el salón.
 """
 import os
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import List
 from datetime import date as DateType, datetime, timezone, timedelta
@@ -13,6 +13,7 @@ from app.database.connection import get_db
 from app.models.salon import Salon
 from app.models.config_salon import ConfigSalon
 from app.models.turno import Turno
+from app.models.comprobante import Comprobante
 from app.services import (
     empleado_service, servicio_service, cliente_service, turno_service,
     reserva_service, config_salon_service,
@@ -194,6 +195,47 @@ async def public_mp_webhook(slug: str, request: Request, db: Session = Depends(g
     except Exception:
         # Devolver 200 igual para que MP no reintente en loop; ya quedó logueable
         pass
+    return {"ok": True}
+
+
+MAX_COMPROBANTE_BYTES = 5 * 1024 * 1024  # 5 MB
+
+
+@router.post("/{slug}/turnos/{turno_id}/comprobante")
+@limiter.limit("10/minute")
+async def public_subir_comprobante(
+    request: Request, slug: str, turno_id: int,
+    file: UploadFile = File(...), db: Session = Depends(get_db),
+):
+    """El cliente adjunta el comprobante de la transferencia de la seña."""
+    salon = _get_salon(slug, db)
+    turno = db.query(Turno).filter(Turno.id == turno_id, Turno.salon_id == salon.id).first()
+    if not turno:
+        raise HTTPException(status_code=404, detail="Turno no encontrado.")
+    # Solo se admite para reservas con seña por transferencia aún pendiente
+    if (turno.metodo_pago or "").lower() != "transferencia" or turno.sena_estado != "pendiente":
+        raise HTTPException(status_code=400, detail="Este turno no admite comprobante de transferencia.")
+
+    ct = (file.content_type or "").lower()
+    if not (ct.startswith("image/") or ct == "application/pdf"):
+        raise HTTPException(status_code=400, detail="El archivo debe ser una imagen o un PDF.")
+
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="El archivo está vacío.")
+    if len(data) > MAX_COMPROBANTE_BYTES:
+        raise HTTPException(status_code=400, detail="El archivo supera los 5 MB.")
+
+    # Upsert: un comprobante por turno (si vuelve a subir, se reemplaza)
+    comp = db.query(Comprobante).filter(Comprobante.turno_id == turno.id).first()
+    if not comp:
+        comp = Comprobante(turno_id=turno.id, salon_id=salon.id)
+        db.add(comp)
+    comp.filename     = (file.filename or "comprobante")[:255]
+    comp.content_type = ct[:100]
+    comp.data         = data
+    turno.comprobante_subido = True
+    db.commit()
     return {"ok": True}
 
 
