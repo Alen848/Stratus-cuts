@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, Float, String, Boolean, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from app.database.connection import Base
+from app.models.empleado_servicio import empleado_servicios
 
 class Empleado(Base):
     __tablename__ = "empleados"
@@ -23,3 +24,9 @@ class Empleado(Base):
     horarios = relationship("HorarioEmpleado", back_populates="empleado")
     bloqueos = relationship("BloqueoAgenda", back_populates="empleado")
     usuario = relationship("Usuario", back_populates="empleado", uselist=False)
+    # Servicios que realiza este profesional (M2M). Vacío = hace todos.
+    servicios = relationship("Servicio", secondary=empleado_servicios, backref="empleados")
+
+    @property
+    def servicio_ids(self):
+        return [s.id for s in self.servicios]

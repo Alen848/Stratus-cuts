@@ -2,6 +2,7 @@ from .salon import Salon
 from .cliente import Cliente
 from .empleado import Empleado
 from .servicio import Servicio
+from .empleado_servicio import empleado_servicios
 from .turno import Turno
 from .turno_servicio import TurnoServicio
 from .pago import Pago

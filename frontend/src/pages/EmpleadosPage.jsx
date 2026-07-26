@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useEmpleados } from '../hooks/useEmpleados';
+import { useServicios } from '../hooks/useServicios';
 import { useTurnos }    from '../hooks/useTurnos';
 import { useApp }       from '../context/AppContext';
 import { gastos as gastosApi } from '../api/api';
@@ -664,6 +665,7 @@ function VistaComisiones({ empleados, turnos, loading, editEmpleado }) {
 ════════════════════════════════════════════ */
 export default function EmpleadosPage() {
   const { empleados, loading, addEmpleado, editEmpleado, removeEmpleado } = useEmpleados();
+  const { servicios } = useServicios();
   const { turnos }  = useTurnos();
   const { notify }  = useApp();
 
@@ -741,6 +743,7 @@ export default function EmpleadosPage() {
         onClose={() => setModalOpen(false)}
         onSubmit={handleSubmit}
         empleado={editingEmpleado}
+        servicios={servicios}
       />
 
       <HorariosModal

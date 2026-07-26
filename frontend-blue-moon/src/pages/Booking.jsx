@@ -72,6 +72,28 @@ export default function Booking() {
     );
   };
 
+  // Solo mostramos los profesionales que realizan TODOS los servicios elegidos.
+  // Un empleado sin servicios asignados (servicio_ids vacío) hace todos.
+  const selectedServiceIds = selectedServices.map(s => s.id);
+  const puedeRealizar = (emp) => {
+    const ids = emp.servicio_ids || [];
+    if (ids.length === 0) return true;
+    return selectedServiceIds.every(id => ids.includes(id));
+  };
+  const empleadosDisponibles = empleados.filter(puedeRealizar);
+
+  // Si el profesional elegido deja de poder hacer los servicios seleccionados,
+  // lo deseleccionamos para no dejar una combinación inválida.
+  useEffect(() => {
+    if (selectedEmpleado && !puedeRealizar(selectedEmpleado)) {
+      setSelectedEmpleado(null);
+      setSelectedDate('');
+      setSelectedTime('');
+      setAvailableSlots([]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedServices]);
+
   const totalPrecio = selectedServices.reduce((sum, s) => sum + Number(s.precio), 0);
   const totalDuracion = selectedServices.reduce((sum, s) => sum + s.duracion_minutos, 0);
 
@@ -264,9 +286,13 @@ export default function Booking() {
               <span className="slots-placeholder" style={{ padding: '1rem 0', textAlign: 'left' }}>
                 No hay profesionales disponibles
               </span>
+            ) : empleadosDisponibles.length === 0 ? (
+              <span className="slots-placeholder" style={{ padding: '1rem 0', textAlign: 'left' }}>
+                Ningún profesional realiza todos los servicios seleccionados. Probá quitando alguno.
+              </span>
             ) : (
               <div className="empleado-grid">
-                {empleados.map(emp => (
+                {empleadosDisponibles.map(emp => (
                   <button
                     key={emp.id}
                     type="button"
