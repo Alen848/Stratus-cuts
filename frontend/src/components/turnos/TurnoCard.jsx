@@ -21,7 +21,7 @@ const ghostMini = {
   cursor: 'pointer', fontFamily: 'var(--font-body)', whiteSpace: 'nowrap',
 };
 
-export default function TurnoCard({ turno, onEdit, onDelete, onCobrar, onMarcar }) {
+export default function TurnoCard({ turno, onEdit, onDelete, onCobrar, onMarcar, onConfirmarSena }) {
   const cliente  = turno.cliente  || null;
   const empleado = turno.empleado || {};
   const servicios = turno.servicios?.map(ts => ts.servicio?.nombre || ts.nombre).filter(Boolean) || [];
@@ -31,6 +31,11 @@ export default function TurnoCard({ turno, onEdit, onDelete, onCobrar, onMarcar 
   const saldo      = turno.saldo != null ? turno.saldo : null;
   const completado = turno.estado === 'completado';
   const senaPagada = turno.sena_estado === 'pagada' && (turno.monto_sena || 0) > 0;
+  // Seña por transferencia esperando que la secretaria confirme la acreditación
+  const senaTransferPendiente =
+    turno.sena_estado === 'pendiente' &&
+    (turno.metodo_pago || '').toLowerCase() === 'transferencia' &&
+    (turno.monto_sena || 0) > 0;
   // Cobrable = turno activo en el local con saldo pendiente
   const cobrable   = ['pendiente', 'confirmado'].includes(turno.estado) && (saldo == null || saldo > 0);
 
@@ -88,6 +93,11 @@ export default function TurnoCard({ turno, onEdit, onDelete, onCobrar, onMarcar 
           {senaPagada && !completado && (
             <span style={chip('rgba(76,175,125,0.14)', '#4caf7d')}>Seña ✓ {formatCurrency(turno.monto_sena)}</span>
           )}
+          {senaTransferPendiente && (
+            <span style={chip('rgba(224,163,58,0.16)', '#e0a33a')}>
+              🏦 Seña transf. pendiente {formatCurrency(turno.monto_sena)}
+            </span>
+          )}
           {cobrable && saldo != null && saldo > 0 && (
             <span style={chip('rgba(224,163,58,0.16)', '#e0a33a')}>Restan {formatCurrency(saldo)}</span>
           )}
@@ -107,6 +117,12 @@ export default function TurnoCard({ turno, onEdit, onDelete, onCobrar, onMarcar 
 
       {/* Acciones */}
       <div className={styles.actions} style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end' }}>
+        {senaTransferPendiente && (
+          <button onClick={() => onConfirmarSena?.(turno)} title="Confirmar que la seña por transferencia se acreditó"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid #4caf7d55', background: 'rgba(76,175,125,0.12)', color: '#4caf7d', fontSize: '12.5px', cursor: 'pointer', fontWeight: 500, fontFamily: 'var(--font-body)' }}>
+            ✓ Confirmar seña
+          </button>
+        )}
         {cobrable && (
           <button onClick={() => onCobrar?.(turno)} title="Cobrar y completar"
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--gold-border)', background: 'var(--gold-dim)', color: 'var(--gold)', fontSize: '12.5px', cursor: 'pointer', fontWeight: 500, fontFamily: 'var(--font-body)' }}>

@@ -132,10 +132,26 @@ def public_create_turno(request: Request, slug: str, turno: ReservaPublicaCreate
     if not resultado["requiere_pago"]:
         return resultado["turno"]
 
-    # Con seña: el frontend debe redirigir a init_point para pagar
     t = resultado["turno"]
+
+    # Seña por transferencia: el turno queda reservado; devolvemos los datos bancarios
+    # para que el cliente transfiera y mande el comprobante por WhatsApp.
+    if resultado.get("metodo") == "transferencia":
+        return {
+            "requiere_pago": True,
+            "metodo": "transferencia",
+            "turno_id": t.id,
+            "estado": t.estado,
+            "monto_total": resultado["monto_total"],
+            "monto_sena": resultado["monto_sena"],
+            "saldo_pendiente": resultado["saldo_pendiente"],
+            "transferencia": resultado["transferencia"],
+        }
+
+    # Con seña por tarjeta: el frontend debe redirigir a init_point para pagar
     return {
         "requiere_pago": True,
+        "metodo": "tarjeta",
         "turno_id": t.id,
         "estado": t.estado,
         "init_point": resultado["init_point"],
@@ -188,11 +204,25 @@ def public_pago_config(slug: str, db: Session = Depends(get_db)):
     cfg = db.query(ConfigSalon).filter(ConfigSalon.salon_id == salon.id).first()
     token = config_salon_service.get_mp_access_token(db, salon.id)
     porcentaje = (cfg.sena_porcentaje if cfg else 0) or 0
-    habilitado = bool(cfg and cfg.mp_activo and token and porcentaje > 0)
+
+    mp_habilitado = bool(cfg and cfg.mp_activo and token and porcentaje > 0)
+    transferencia_habilitada = bool(
+        cfg and cfg.transferencia_activa and cfg.transferencia_cbu and porcentaje > 0
+    )
+    # 'habilitado' = hay ALGÚN método de seña disponible (compat con el front)
+    habilitado = mp_habilitado or transferencia_habilitada
+
     return {
         "habilitado": habilitado,
         "sena_porcentaje": porcentaje,
         "sena_obligatoria": bool(cfg and cfg.sena_obligatoria),
+        # Métodos de seña disponibles
+        "mp_habilitado": mp_habilitado,
+        "transferencia_habilitada": transferencia_habilitada,
+        # Datos bancarios para mostrar (solo si transferencia está habilitada)
+        "transferencia_cbu": (cfg.transferencia_cbu if transferencia_habilitada else None),
+        "transferencia_alias": (cfg.transferencia_alias if transferencia_habilitada else None),
+        "transferencia_titular": (cfg.transferencia_titular if transferencia_habilitada else None),
     }
 
 

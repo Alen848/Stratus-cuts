@@ -7,6 +7,7 @@ import { useApp }       from '../context/AppContext';
 import TurnoCard   from '../components/turnos/TurnoCard';
 import TurnoModal  from '../components/turnos/TurnoModal';
 import PagoModal   from '../components/turnos/PagoModal';
+import { turnos as turnosApi } from '../api/api';
 import Button      from '../components/ui/Button';
 import EmptyState  from '../components/ui/EmptyState';
 import styles      from '../styles/pages/TurnosPage.module.css';
@@ -137,6 +138,17 @@ export default function TurnosPage() {
     }
   };
 
+  const handleConfirmarSena = async (t) => {
+    if (!window.confirm(`¿Confirmar que se acreditó la seña por transferencia de ${t.cliente?.nombre || 'este turno'}? Se registrará en Caja y el turno quedará confirmado.`)) return;
+    try {
+      await turnosApi.confirmarSena(t.id);
+      notify('Seña confirmada y registrada en Caja ✓');
+      if (refetch) refetch();
+    } catch (e) {
+      notify(e.response?.data?.detail || 'No se pudo confirmar la seña', 'error');
+    }
+  };
+
   const handleDelete = async (id) => {
     if (!window.confirm('¿Eliminar este turno?')) return;
     try {
@@ -238,7 +250,7 @@ export default function TurnosPage() {
         <div className={styles.list}>
           {filtrados.map(t => (
             <TurnoCard key={t.id} turno={t} onEdit={openEdit} onDelete={handleDelete}
-              onCobrar={setCobroTurno} onMarcar={handleMarcar} />
+              onCobrar={setCobroTurno} onMarcar={handleMarcar} onConfirmarSena={handleConfirmarSena} />
           ))}
         </div>
       )}

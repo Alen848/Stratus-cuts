@@ -25,6 +25,11 @@ const DEFAULT_CONFIG = {
   mp_public_key:    '',
   sena_porcentaje:  0,
   sena_obligatoria: false,
+  // Seña por transferencia
+  transferencia_activa:  false,
+  transferencia_cbu:     '',
+  transferencia_alias:   '',
+  transferencia_titular: '',
 };
 
 function timeToStr(t) {
@@ -298,6 +303,14 @@ function TabPagos({ config, setField }) {
       setError('Si la seña es obligatoria, el porcentaje debe ser mayor a 0.');
       return;
     }
+    if (config.transferencia_activa && !String(config.transferencia_cbu || '').trim()) {
+      setError('Para activar la seña por transferencia, ingresá el CBU/CVU.');
+      return;
+    }
+    if (config.transferencia_activa && pct <= 0) {
+      setError('Para cobrar seña por transferencia, el porcentaje debe ser mayor a 0.');
+      return;
+    }
     try {
       setSaving(true);
       const payload = {
@@ -310,6 +323,11 @@ function TabPagos({ config, setField }) {
         mp_public_key:    config.mp_public_key,
         sena_porcentaje:  pct,
         sena_obligatoria: config.sena_obligatoria,
+        // Seña por transferencia
+        transferencia_activa:  config.transferencia_activa,
+        transferencia_cbu:     config.transferencia_cbu,
+        transferencia_alias:   config.transferencia_alias,
+        transferencia_titular: config.transferencia_titular,
       };
       // El token solo se envía si se ingresó uno nuevo (write-only)
       if (tokenInput.trim()) payload.mp_access_token = tokenInput.trim();
@@ -406,6 +424,59 @@ function TabPagos({ config, setField }) {
         </div>
       </FieldRow>
 
+      <div style={{ borderTop: '1px solid var(--border)', margin: '28px 0 20px' }} />
+
+      <h3 style={{ fontSize: '15px', fontFamily: 'var(--font-display)', margin: '0 0 6px' }}>
+        Seña por transferencia
+      </h3>
+      <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '20px', lineHeight: 1.5 }}>
+        Alternativa a la tarjeta: el cliente ve tu CBU/Alias, transfiere y manda el comprobante por WhatsApp.
+        La seña queda <strong>pendiente</strong> hasta que la confirmás desde <strong>Turnos</strong>.
+        Usa el mismo porcentaje de seña de arriba.
+      </p>
+
+      <FieldRow label="Activar transferencia" hint="Ofrece la transferencia como método de seña en la reserva online.">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <Toggle value={config.transferencia_activa} onChange={v => { setField('transferencia_activa', v); setSaved(false); }} />
+          <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+            {config.transferencia_activa ? 'Activa' : 'Inactiva'}
+          </span>
+        </div>
+      </FieldRow>
+
+      <FieldRow label="CBU / CVU" hint="Se muestra al cliente para que transfiera la seña.">
+        <input
+          type="text"
+          autoComplete="off"
+          value={config.transferencia_cbu}
+          onChange={e => { setField('transferencia_cbu', e.target.value); setSaved(false); }}
+          placeholder="0000003100000000000000"
+          style={inputSt}
+        />
+      </FieldRow>
+
+      <FieldRow label="Alias" hint="Alias bancario (más fácil de copiar para el cliente).">
+        <input
+          type="text"
+          autoComplete="off"
+          value={config.transferencia_alias}
+          onChange={e => { setField('transferencia_alias', e.target.value); setSaved(false); }}
+          placeholder="blue.moon.salon"
+          style={inputSt}
+        />
+      </FieldRow>
+
+      <FieldRow label="Titular de la cuenta" hint="Nombre que figura en la cuenta (opcional).">
+        <input
+          type="text"
+          autoComplete="off"
+          value={config.transferencia_titular}
+          onChange={e => { setField('transferencia_titular', e.target.value); setSaved(false); }}
+          placeholder="Blue Moon Centro de Estética"
+          style={inputSt}
+        />
+      </FieldRow>
+
       <SaveBar onSave={handleSave} saving={saving} saved={saved} error={error} />
     </div>
   );
@@ -438,6 +509,10 @@ export default function ConfiguracionPage() {
           mp_public_key:    d.mp_public_key || '',
           sena_porcentaje:  d.sena_porcentaje ?? 0,
           sena_obligatoria: d.sena_obligatoria ?? false,
+          transferencia_activa:  d.transferencia_activa ?? false,
+          transferencia_cbu:     d.transferencia_cbu     || '',
+          transferencia_alias:   d.transferencia_alias   || '',
+          transferencia_titular: d.transferencia_titular || '',
         });
       }
       if (horRes?.data?.length > 0) {

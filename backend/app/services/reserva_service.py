@@ -45,12 +45,52 @@ def crear_reserva(db: Session, data, salon, config, webhook_url: str = None) -> 
     obligatoria = bool(getattr(config, "sena_obligatoria", False))
     token       = config_salon_service.get_mp_access_token(db, salon.id)
     quiere_pagar = bool(getattr(data, "pagar_sena", False))
+    metodo      = (getattr(data, "metodo_sena", "tarjeta") or "tarjeta").lower()
 
     sena = calcular_sena(total, porcentaje)
-    requiere_pago = bool(mp_activo and token and sena > 0 and (obligatoria or quiere_pagar))
+
+    # Métodos de seña disponibles según la config del salón
+    mp_disponible        = bool(mp_activo and token)
+    transferencia_activa = bool(getattr(config, "transferencia_activa", False) and getattr(config, "transferencia_cbu", None))
+    hay_metodo           = mp_disponible or transferencia_activa
+
+    # ¿Aplica seña? Hay porcentaje, algún método, y (es obligatoria o el cliente la eligió)
+    aplica_sena = bool(sena > 0 and hay_metodo and (obligatoria or quiere_pagar))
+
+    # Método efectivo: si pidió tarjeta pero MP no está y sí hay transferencia, cae a transferencia.
+    if metodo == "transferencia" and not transferencia_activa:
+        metodo = "tarjeta"
+    if metodo == "tarjeta" and not mp_disponible and transferencia_activa:
+        metodo = "transferencia"
+
+    # ── Camino transferencia: turno reservado, seña pendiente de confirmación ─
+    if aplica_sena and metodo == "transferencia":
+        data.estado = "pendiente"  # retiene el slot y queda visible en el admin (no se auto-borra)
+        turno = turno_service.create_turno(db, data, salon_id=salon.id)
+        turno.monto_total     = total
+        turno.monto_sena      = sena
+        turno.saldo_pendiente = round(total - sena, 2)
+        turno.sena_estado     = "pendiente"
+        turno.metodo_pago     = "transferencia"
+        turno.expira_en       = None
+        db.commit()
+        db.refresh(turno)
+        return {
+            "requiere_pago": True,
+            "metodo": "transferencia",
+            "turno": turno,
+            "monto_total": total,
+            "monto_sena": sena,
+            "saldo_pendiente": turno.saldo_pendiente,
+            "transferencia": {
+                "cbu":     getattr(config, "transferencia_cbu", None),
+                "alias":   getattr(config, "transferencia_alias", None),
+                "titular": getattr(config, "transferencia_titular", None),
+            },
+        }
 
     # ── Camino sin pago: turno normal (comportamiento de siempre) ────────────
-    if not requiere_pago:
+    if not aplica_sena:
         turno = turno_service.create_turno(db, data, salon_id=salon.id)
         turno.monto_total     = total
         turno.monto_sena      = 0

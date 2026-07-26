@@ -40,6 +40,9 @@ export const turnos = {
   // Retorna disponibilidad semanal: { '2024-12-01': [{hora, disponible, ...}], ... }
   getDisponibilidadSemanal: (empleadoId, fechaInicio) =>
     api.get(`/turns/disponibilidad-semanal/${empleadoId}`, { params: { fecha_inicio: fechaInicio } }),
+
+  // Confirma manualmente la seña por transferencia de un turno
+  confirmarSena: (id) => api.post(`/turns/${id}/confirmar-sena`),
 };
 
 // ─── Pagos ────────────────────────────────────────────────────────────────────

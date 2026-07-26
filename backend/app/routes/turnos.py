@@ -99,6 +99,19 @@ def delete_turno(
     return {"detail": "Turno eliminado correctamente"}
 
 
+@router.post("/{turno_id}/confirmar-sena", response_model=Turno)
+def confirmar_sena_transferencia(
+    turno_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(require_admin),
+):
+    """Confirma manualmente la seña por transferencia de un turno (secretaria)."""
+    turno = turno_service.confirmar_sena_transferencia(db, turno_id, salon_id=current_user.salon_id)
+    if not turno:
+        raise HTTPException(status_code=404, detail="Turno no encontrado")
+    return turno
+
+
 @router.patch("/{turno_id}/reminder-sent")
 def mark_reminder_sent(
     turno_id: int,

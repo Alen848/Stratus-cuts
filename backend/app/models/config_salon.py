@@ -21,6 +21,12 @@ class ConfigSalon(Base):
     sena_porcentaje   = Column(Integer, default=0, nullable=False)      # 0-100 (% del total)
     sena_obligatoria  = Column(Boolean, default=False, nullable=False)  # si exige seña para reservar
 
+    # ── Seña por transferencia bancaria (confirmación manual de la secretaria) ─
+    transferencia_activa  = Column(Boolean, default=False, nullable=False)  # ofrecer transferencia como método de seña
+    transferencia_cbu     = Column(String(30),  nullable=True)   # CBU/CVU (se muestra al cliente)
+    transferencia_alias   = Column(String(100), nullable=True)   # alias bancario
+    transferencia_titular = Column(String(120), nullable=True)   # nombre del titular de la cuenta
+
     # ── Webhooks salientes (integración con sistemas externos) ───────────────
     webhook_url    = Column(String(300), nullable=True)   # a dónde se notifican los eventos
     webhook_secret = Column(String(80),  nullable=True)   # secreto compartido para firmar (HMAC)

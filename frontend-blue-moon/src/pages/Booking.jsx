@@ -28,11 +28,18 @@ export default function Booking() {
 
   // Seña / Mercado Pago
   const [pagoConfig, setPagoConfig] = useState({ habilitado: false, sena_porcentaje: 0, sena_obligatoria: false });
-  const [metodoPago, setMetodoPago] = useState('sena'); // 'sena' | 'local' (solo si la seña es opcional)
+  const [metodoPago, setMetodoPago] = useState('sena');        // 'sena' | 'local' (solo si la seña es opcional)
+  const [metodoSena, setMetodoSena] = useState('tarjeta');     // 'tarjeta' | 'transferencia'
 
   useEffect(() => {
     getPagoConfig()
-      .then(r => setPagoConfig(r.data || { habilitado: false }))
+      .then(r => {
+        const cfg = r.data || { habilitado: false };
+        setPagoConfig(cfg);
+        // Método de seña por defecto: tarjeta si hay MP, si no transferencia.
+        if (cfg.mp_habilitado) setMetodoSena('tarjeta');
+        else if (cfg.transferencia_habilitada) setMetodoSena('transferencia');
+      })
       .catch(() => setPagoConfig({ habilitado: false, sena_porcentaje: 0, sena_obligatoria: false }));
   }, []);
 
@@ -157,13 +164,36 @@ export default function Booking() {
         empleado_id: selectedEmpleado.id,
         servicios_ids: selectedServices.map(s => s.id),
         pagar_sena: pagaSena,
+        metodo_sena: metodoSena,
         return_url: `${window.location.origin}/confirmation`,
       };
 
       const turnoResponse = await createTurno(turnoData);
       const data = turnoResponse.data;
 
-      // Si requiere pago de seña, el backend devuelve el link de Mercado Pago
+      // Seña por transferencia: mostramos datos bancarios + WhatsApp
+      if (data?.requiere_pago && data?.metodo === 'transferencia') {
+        navigate('/confirmation', {
+          state: {
+            transferencia: {
+              ...data.transferencia,
+              monto_sena: data.monto_sena,
+              saldo_pendiente: data.saldo_pendiente,
+              monto_total: data.monto_total,
+              turno_id: data.turno_id,
+              // Datos para el mensaje de WhatsApp
+              cliente: formData.nombre,
+              fecha: formattedSelectedDate,
+              hora: selectedTime,
+              profesional: selectedEmpleado?.nombre,
+              servicios: selectedServices.map(s => s.nombre).join(', '),
+            },
+          },
+        });
+        return;
+      }
+
+      // Seña por tarjeta: el backend devuelve el link de Mercado Pago
       if (data?.requiere_pago && data?.init_point) {
         window.location.href = data.init_point;
         return;
@@ -453,6 +483,35 @@ export default function Booking() {
                   </button>
                 </div>
               )}
+
+              {/* Método de la seña: tarjeta vs transferencia */}
+              {pagaSena && pagoConfig.transferencia_habilitada && (
+                pagoConfig.mp_habilitado ? (
+                  <div className="sena-choices" style={{ marginTop: '0.75rem' }}>
+                    <button
+                      type="button"
+                      className={`sena-choice${metodoSena === 'tarjeta' ? ' sc-selected' : ''}`}
+                      onClick={() => setMetodoSena('tarjeta')}
+                    >
+                      <span className="sc-title">💳 Tarjeta / Mercado Pago</span>
+                      <span className="sc-sub">Pagás la seña online al instante</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`sena-choice${metodoSena === 'transferencia' ? ' sc-selected' : ''}`}
+                      onClick={() => setMetodoSena('transferencia')}
+                    >
+                      <span className="sc-title">🏦 Transferencia</span>
+                      <span className="sc-sub">Te mostramos CBU y alias, y enviás el comprobante</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="sena-box" style={{ marginTop: '0.75rem' }}>
+                    La seña se abona por <strong>transferencia</strong>. En el siguiente paso te mostramos
+                    el <strong>CBU y el alias</strong>, y enviás el comprobante por WhatsApp.
+                  </div>
+                )
+              )}
             </div>
           )}
 
@@ -464,7 +523,9 @@ export default function Booking() {
             {loading
               ? 'Procesando...'
               : pagaSena
-                ? `Pagar seña $${montoSena.toLocaleString('es-AR')}`
+                ? (metodoSena === 'transferencia'
+                    ? `Reservar y transferir seña $${montoSena.toLocaleString('es-AR')}`
+                    : `Pagar seña $${montoSena.toLocaleString('es-AR')}`)
                 : 'Confirmar turno'}
           </button>
         </form>

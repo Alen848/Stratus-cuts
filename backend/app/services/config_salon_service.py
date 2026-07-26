@@ -26,6 +26,11 @@ def get_config(db: Session, salon_id: int) -> ConfigSalonOut:
         mp_public_key=cfg.mp_public_key if cfg else None,
         sena_porcentaje=cfg.sena_porcentaje if cfg else 0,
         sena_obligatoria=cfg.sena_obligatoria if cfg else False,
+        # Seña por transferencia (los datos bancarios se muestran al cliente)
+        transferencia_activa=cfg.transferencia_activa if cfg else False,
+        transferencia_cbu=cfg.transferencia_cbu if cfg else None,
+        transferencia_alias=cfg.transferencia_alias if cfg else None,
+        transferencia_titular=cfg.transferencia_titular if cfg else None,
         # Webhooks — el secreto nunca se devuelve, solo si está configurado
         webhook_url=cfg.webhook_url if cfg else None,
         webhook_configurado=bool(cfg and cfg.webhook_secret),
@@ -48,6 +53,18 @@ def _apply_mp_fields(cfg: ConfigSalon, data: ConfigSalonUpdate) -> None:
     if data.mp_access_token is not None:
         token = data.mp_access_token.strip()
         cfg.mp_access_token = crypto.encrypt(token) if token else None
+
+
+def _apply_transferencia_fields(cfg: ConfigSalon, data: ConfigSalonUpdate) -> None:
+    """Aplica los datos de seña por transferencia sobre el ConfigSalon."""
+    if data.transferencia_activa is not None:
+        cfg.transferencia_activa = data.transferencia_activa
+    if data.transferencia_cbu is not None:
+        cfg.transferencia_cbu = data.transferencia_cbu.strip() or None
+    if data.transferencia_alias is not None:
+        cfg.transferencia_alias = data.transferencia_alias.strip() or None
+    if data.transferencia_titular is not None:
+        cfg.transferencia_titular = data.transferencia_titular.strip() or None
 
 
 def _apply_webhook_fields(cfg: ConfigSalon, data: ConfigSalonUpdate) -> None:
@@ -79,6 +96,7 @@ def update_config(db: Session, salon_id: int, data: ConfigSalonUpdate) -> Config
         cfg.max_dias_anticipacion = data.max_dias_anticipacion
         cfg.min_hs_anticipacion   = data.min_hs_anticipacion
         _apply_mp_fields(cfg, data)
+        _apply_transferencia_fields(cfg, data)
         _apply_webhook_fields(cfg, data)
     else:
         cfg = ConfigSalon(
@@ -91,6 +109,7 @@ def update_config(db: Session, salon_id: int, data: ConfigSalonUpdate) -> Config
             min_hs_anticipacion=data.min_hs_anticipacion,
         )
         _apply_mp_fields(cfg, data)
+        _apply_transferencia_fields(cfg, data)
         _apply_webhook_fields(cfg, data)
         db.add(cfg)
 

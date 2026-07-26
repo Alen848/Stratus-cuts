@@ -18,6 +18,12 @@ class ConfigSalonUpdate(BaseModel):
     sena_porcentaje:  Optional[int]  = None
     sena_obligatoria: Optional[bool] = None
 
+    # ── Seña por transferencia ───────────────────────────────────────────────
+    transferencia_activa:  Optional[bool] = None
+    transferencia_cbu:     Optional[str]  = None
+    transferencia_alias:   Optional[str]  = None
+    transferencia_titular: Optional[str]  = None
+
     # ── Webhooks salientes (integración externa) ─────────────────────────────
     webhook_url:    Optional[str]  = None
     webhook_secret: Optional[str]  = None   # write-only
@@ -41,6 +47,12 @@ class ConfigSalonOut(BaseModel):
     mp_public_key:    Optional[str]
     sena_porcentaje:  int
     sena_obligatoria: bool
+
+    # ── Seña por transferencia (los datos bancarios sí se muestran) ──────────
+    transferencia_activa:  bool
+    transferencia_cbu:     Optional[str]
+    transferencia_alias:   Optional[str]
+    transferencia_titular: Optional[str]
 
     # ── Webhooks (NUNCA se devuelve el secreto) ──────────────────────────────
     webhook_url:        Optional[str]

@@ -308,6 +308,50 @@ def delete_turno(db: Session, turno_id: int, salon_id: int):
     return db_turno
 
 
+def confirmar_sena_transferencia(db: Session, turno_id: int, salon_id: int):
+    """
+    La secretaria confirma que la seña por transferencia se acreditó.
+    Registra el ingreso en Caja (método Transferencia), pone el turno en
+    'confirmado' y dispara el email de confirmación. Idempotente.
+    """
+    from app.models.pago import Pago
+    from app.services import email_service
+
+    turno = get_turno(db, turno_id, salon_id)
+    if not turno:
+        return None
+
+    # Idempotencia: ya estaba confirmada
+    if turno.sena_estado == "pagada":
+        return turno
+
+    if (turno.metodo_pago or "").lower() != "transferencia" or (turno.monto_sena or 0) <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Este turno no tiene una seña por transferencia pendiente.",
+        )
+
+    ahora = datetime.now(ARG_TZ).replace(tzinfo=None)
+    db.add(Pago(
+        turno_id=turno.id,
+        monto=turno.monto_sena or 0,
+        metodo_pago="Transferencia",
+        tipo="sena",
+        estado="aprobada",
+        observaciones="Seña por transferencia (confirmada por el local)",
+        fecha_pago=ahora,
+    ))
+    turno.estado      = "confirmado"
+    turno.sena_estado = "pagada"
+    turno.expira_en   = None
+    db.commit()
+    db.refresh(turno)
+
+    webhook_service.emit(db, salon_id, "turno.confirmado", webhook_service.turno_payload(turno))
+    email_service.enviar_confirmacion_turno(db, turno)
+    return turno
+
+
 # ─── Disponibilidad Semanal ──────────────────────────────────────────────────
 
 def get_horarios_semanales(db: Session, empleado_id: int, fecha_inicio: date, salon_id: int):
