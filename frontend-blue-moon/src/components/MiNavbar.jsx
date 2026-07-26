@@ -1,6 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { useTheme } from '../context/ThemeContext';
 import { getSalonSlug } from '../utils/slug';
 import logoLight from '../assets/logo-light.svg';
 import logoDark from '../assets/logo-dark.svg';
@@ -41,13 +40,6 @@ const STYLES = `
   .navbar--hero .nav-link-plain { color: rgba(255,255,255,0.8); }
   .navbar--hero .nav-section-link:hover,
   .navbar--hero .nav-link-plain:hover { color: #fff; background: rgba(255,255,255,0.1); }
-  .navbar--hero .theme-toggle {
-    color: rgba(255,255,255,0.85);
-    border-color: rgba(255,255,255,0.3);
-  }
-  .navbar--hero .theme-toggle:hover {
-    color: #fff; border-color: #fff; background: rgba(255,255,255,0.1);
-  }
 
   .navbar-brand {
     text-decoration: none;
@@ -107,20 +99,6 @@ const STYLES = `
   .navbar--hero .nav-book-btn { background: #F2EEE2; color: #35392E; }
   .navbar--hero .nav-book-btn:hover { background: #fff; }
 
-  .theme-toggle {
-    display: flex; align-items: center; justify-content: center;
-    width: 40px; height: 40px;
-    border: 1px solid var(--border-md); border-radius: 50%;
-    background: transparent; cursor: pointer;
-    color: var(--text-3);
-    transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
-  }
-  .theme-toggle:hover {
-    color: var(--accent);
-    border-color: var(--border-accent);
-    background: var(--hover);
-  }
-
   @media (max-width: 860px) {
     .navbar { padding: 0 1.5rem; }
     .navbar-center { display: none; }
@@ -129,36 +107,12 @@ const STYLES = `
   @media (max-width: 480px) {
     .navbar { padding: 0 1.25rem; height: 64px; }
     .brand-logo { height: 28px; }
-    .theme-toggle { width: 36px; height: 36px; }
   }
 `;
-
-const SunIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="5" />
-    <line x1="12" y1="1" x2="12" y2="3" />
-    <line x1="12" y1="21" x2="12" y2="23" />
-    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-    <line x1="1" y1="12" x2="3" y2="12" />
-    <line x1="21" y1="12" x2="23" y2="12" />
-    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-  </svg>
-);
-
-const MoonIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-  </svg>
-);
 
 const Navbar = () => {
   const location = useLocation();
   const isHome = location.pathname === '/';
-  const { theme, toggle } = useTheme();
   const [scrolled, setScrolled] = useState(false);
   const [salonNombre, setSalonNombre] = useState('');
 
@@ -189,7 +143,7 @@ const Navbar = () => {
         <Link to="/" className="navbar-brand">
           <img
             className="brand-logo"
-            src={heroMode || theme === 'dark' ? logoDark : logoLight}
+            src={heroMode ? logoDark : logoLight}
             alt={displayName}
           />
           <span className="brand-tag">Centro de Estética</span>
@@ -205,13 +159,6 @@ const Navbar = () => {
         <div className="navbar-right">
           {!isHome && <Link to="/" className="nav-link-plain">Inicio</Link>}
           <Link to="/booking" className="nav-book-btn">Reservar</Link>
-          <button
-            className="theme-toggle"
-            onClick={toggle}
-            aria-label={theme === 'light' ? 'Activar modo oscuro' : 'Activar modo claro'}
-          >
-            {theme === 'light' ? <MoonIcon /> : <SunIcon />}
-          </button>
         </div>
 
       </nav>

@@ -1,26 +1,12 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { useEffect } from 'react';
 
-const ThemeContext = createContext();
-
+// El tema del sitio está fijo en "claro". El usuario no puede cambiarlo.
 export function ThemeProvider({ children }) {
-  const [theme, setTheme] = useState(() => {
-    const saved = localStorage.getItem('theme');
-    if (saved) return saved;
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  });
-
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('theme', theme);
-  }, [theme]);
+    document.documentElement.setAttribute('data-theme', 'light');
+    // Limpiar cualquier preferencia guardada de versiones anteriores
+    localStorage.removeItem('theme');
+  }, []);
 
-  const toggle = () => setTheme(t => t === 'light' ? 'dark' : 'light');
-
-  return (
-    <ThemeContext.Provider value={{ theme, toggle }}>
-      {children}
-    </ThemeContext.Provider>
-  );
+  return children;
 }
-
-export const useTheme = () => useContext(ThemeContext);
