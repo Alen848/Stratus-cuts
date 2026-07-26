@@ -57,6 +57,9 @@ export default function Booking() {
       .finally(() => setLoadingEmpleados(false));
   }, []);
 
+  const totalPrecio   = selectedServices.reduce((sum, s) => sum + Number(s.precio), 0);
+  const totalDuracion = selectedServices.reduce((sum, s) => sum + s.duracion_minutos, 0);
+
   useEffect(() => {
     if (!selectedEmpleado || !selectedDate) {
       setAvailableSlots([]);
@@ -65,11 +68,13 @@ export default function Booking() {
     }
     setLoadingSlots(true);
     setSelectedTime('');
-    getDisponibilidadSemanal(selectedEmpleado.id, selectedDate)
+    // La disponibilidad depende de la duración total de los servicios elegidos:
+    // un horario solo está libre si entra el servicio completo sin pisar otro turno.
+    getDisponibilidadSemanal(selectedEmpleado.id, selectedDate, totalDuracion)
       .then(r => setAvailableSlots(r.data?.[selectedDate] || []))
       .catch(() => setAvailableSlots([]))
       .finally(() => setLoadingSlots(false));
-  }, [selectedEmpleado, selectedDate]);
+  }, [selectedEmpleado, selectedDate, totalDuracion]);
 
   const toggleServicio = (service) => {
     setSelectedServices(prev =>
@@ -100,9 +105,6 @@ export default function Booking() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedServices]);
-
-  const totalPrecio = selectedServices.reduce((sum, s) => sum + Number(s.precio), 0);
-  const totalDuracion = selectedServices.reduce((sum, s) => sum + s.duracion_minutos, 0);
 
   // Seña
   const senaPorcentaje = pagoConfig.sena_porcentaje || 0;

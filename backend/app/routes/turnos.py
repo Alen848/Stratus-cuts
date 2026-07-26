@@ -35,11 +35,12 @@ def get_recordatorios(
 def get_disponibilidad_semanal(
     empleado_id: int,
     fecha_inicio: DateType,
+    duracion: int = None,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
     return turno_service.get_horarios_semanales(
-        db, empleado_id, fecha_inicio, salon_id=current_user.salon_id
+        db, empleado_id, fecha_inicio, salon_id=current_user.salon_id, duracion=duracion
     )
 
 

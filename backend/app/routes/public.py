@@ -71,10 +71,13 @@ def public_disponibilidad(
     slug: str,
     empleado_id: int,
     fecha_inicio: DateType,
+    duracion: int = None,
     db: Session = Depends(get_db),
 ):
     salon = _get_salon(slug, db)
-    return turno_service.get_horarios_semanales(db, empleado_id, fecha_inicio, salon_id=salon.id)
+    return turno_service.get_horarios_semanales(
+        db, empleado_id, fecha_inicio, salon_id=salon.id, duracion=duracion
+    )
 
 
 @router.post("/{slug}/clientes")

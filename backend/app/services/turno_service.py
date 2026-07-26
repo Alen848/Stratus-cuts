@@ -139,6 +139,17 @@ def create_turno(db: Session, turno: TurnoCreate, salon_id: int):
     nuevo_fin    = nuevo_inicio + timedelta(minutes=total_duracion)
     dia_del_turno = nuevo_inicio.date()
 
+    # 2b. El turno no puede terminar después del cierre del salón (defensa de fondo:
+    # la disponibilidad ya no ofrece esos horarios, pero esto cubre llamadas directas).
+    salon_horarios = {h.dia_semana: h for h in get_salon_horarios(db, salon_id)}
+    h_dia = salon_horarios.get(nuevo_inicio.weekday())
+    if h_dia is not None and h_dia.activo and nuevo_fin.date() == dia_del_turno and nuevo_fin.time() > h_dia.hora_cierre:
+        raise HTTPException(
+            status_code=400,
+            detail=f"El servicio ({total_duracion} min) no entra antes del cierre "
+                   f"({h_dia.hora_cierre.strftime('%H:%M')}). Elegí un horario más temprano.",
+        )
+
     # 3. Verificar conflictos de empleado
     turnos_empleado = db.query(Turno).filter(
         Turno.salon_id == salon_id,
@@ -354,7 +365,7 @@ def confirmar_sena_transferencia(db: Session, turno_id: int, salon_id: int):
 
 # ─── Disponibilidad Semanal ──────────────────────────────────────────────────
 
-def get_horarios_semanales(db: Session, empleado_id: int, fecha_inicio: date, salon_id: int):
+def get_horarios_semanales(db: Session, empleado_id: int, fecha_inicio: date, salon_id: int, duracion: int = None):
     # Liberar holds de seña vencidos para que no aparezcan como ocupados
     expirar_turnos_vencidos(db, salon_id)
 
@@ -410,9 +421,13 @@ def get_horarios_semanales(db: Session, empleado_id: int, fecha_inicio: date, sa
             func.date(Turno.fecha_hora) == fecha_actual,
         ).all()
 
-        INTERVALO = 15
-        while actual + timedelta(minutes=INTERVALO) <= fin:
-            slot_fin = actual + timedelta(minutes=INTERVALO)
+        INTERVALO = 60  # granularidad de inicio: los turnos se ofrecen cada 1 hora
+        # La ventana a chequear = duración del servicio elegido (si no vino, 1 hora).
+        # Así un horario solo está "libre" si entra el servicio COMPLETO sin pisar
+        # otro turno, y no se ofrecen horarios que terminarían pasado el cierre.
+        ventana = duracion if (duracion and duracion > 0) else INTERVALO
+        while actual + timedelta(minutes=ventana) <= fin:
+            slot_fin = actual + timedelta(minutes=ventana)
             turno_existente = None
             for t in turnos_dia:
                 t_inicio = to_argentina_naive(t.fecha_hora)

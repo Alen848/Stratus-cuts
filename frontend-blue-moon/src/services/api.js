@@ -18,8 +18,10 @@ export const getEmpleados = () => api.get(pub('/empleados'));
 export const createCliente = (clienteData) => api.post(pub('/clientes'), clienteData);
 export const createTurno = (turnoData) => api.post(pub('/turnos'), turnoData);
 
-export const getDisponibilidadSemanal = (empleadoId, fechaInicio) =>
-  api.get(pub(`/disponibilidad/${empleadoId}`), { params: { fecha_inicio: fechaInicio } });
+export const getDisponibilidadSemanal = (empleadoId, fechaInicio, duracion) =>
+  api.get(pub(`/disponibilidad/${empleadoId}`), {
+    params: { fecha_inicio: fechaInicio, ...(duracion ? { duracion } : {}) },
+  });
 
 // Mercado Pago / seña
 export const getPagoConfig = () => api.get(pub('/pago-config'));
