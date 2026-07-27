@@ -36,6 +36,7 @@ const SERVICIOS = [
     sub: 'Manicura & Nail Art',
     desc: 'Esmaltado semipermanente, kapping y diseños personalizados. Manos impecables que lucen durante semanas.',
     img: IMG.nails,
+    imgPos: 'center 40%',  // baja el encuadre para que las uñas queden completas
   },
   {
     id: 'cosmetologia',
@@ -504,6 +505,7 @@ export default function Home() {
               <button key={s.id} className="bm-serv-card" onClick={goBooking}>
                 <div className="bm-serv-imgwrap">
                   <img className="bm-serv-img" src={s.img}
+                    style={{ objectPosition: s.imgPos || 'center' }}
                     alt={`${s.nombre} — ${s.sub} en Blue Moon`} loading="lazy" />
                 </div>
                 <div className="bm-serv-body">
