@@ -6,6 +6,12 @@ import heroSalon from '../assets/hero-salon.jpg';
 import logoDark from '../assets/logo-dark.svg';
 import aboutFilosofia from '../assets/about-filosofia.jpg';
 import servCosmetologia from '../assets/servicios/cosmetologia.jpeg';
+import servNails from '../assets/servicios/nails.jpeg';
+import servLash from '../assets/servicios/lash.jpeg';
+import servMasajes from '../assets/servicios/masajes.jpeg';
+import servLaser from '../assets/servicios/laser.jpeg';
+import servCejas from '../assets/servicios/cejas.jpeg';
+import servClinica from '../assets/servicios/clinica.jpeg';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
@@ -14,13 +20,13 @@ const IMG = {
   salon:   heroSalon,
   about:   aboutFilosofia,
   cta:     heroSalon,
-  nails:   'https://images.unsplash.com/photo-1604654894610-df63bc536371?auto=format&fit=crop&w=900&q=80',
+  nails:   servNails,
   cosmeto: servCosmetologia,
-  lash:    'https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?auto=format&fit=crop&w=900&q=80',
-  masajes: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=900&q=80',
-  laser:   'https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&w=900&q=80',
-  cejas:   'https://images.unsplash.com/photo-1589710751893-f9a6770ad71b?auto=format&fit=crop&w=900&q=80',
-  clinica: 'https://images.unsplash.com/photo-1552693673-1bf958298935?auto=format&fit=crop&w=900&q=80',
+  lash:    servLash,
+  masajes: servMasajes,
+  laser:   servLaser,
+  cejas:   servCejas,
+  clinica: servClinica,
 };
 
 const SERVICIOS = [
