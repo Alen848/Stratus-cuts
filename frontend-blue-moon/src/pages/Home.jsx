@@ -5,6 +5,7 @@ import heroMoodboard from '../assets/hero-moodboard.jpg';
 import heroSalon from '../assets/hero-salon.jpg';
 import logoDark from '../assets/logo-dark.svg';
 import aboutFilosofia from '../assets/about-filosofia.jpg';
+import servCosmetologia from '../assets/servicios/cosmetologia.jpeg';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
@@ -14,7 +15,7 @@ const IMG = {
   about:   aboutFilosofia,
   cta:     heroSalon,
   nails:   'https://images.unsplash.com/photo-1604654894610-df63bc536371?auto=format&fit=crop&w=900&q=80',
-  cosmeto: 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=900&q=80',
+  cosmeto: servCosmetologia,
   lash:    'https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?auto=format&fit=crop&w=900&q=80',
   masajes: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=900&q=80',
   laser:   'https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&w=900&q=80',
