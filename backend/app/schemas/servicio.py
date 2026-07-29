@@ -6,6 +6,7 @@ class ServicioBase(BaseModel):
     descripcion:      Optional[str] = Field(None, max_length=500)
     duracion_minutos: int
     precio:           float
+    categoria_id:     Optional[int] = None
 
 class ServicioCreate(ServicioBase):
     pass
@@ -15,6 +16,7 @@ class ServicioUpdate(BaseModel):
     descripcion:      Optional[str]   = None
     duracion_minutos: Optional[int]   = None
     precio:           Optional[float] = None
+    categoria_id:     Optional[int]   = None
 
 class Servicio(ServicioBase):
     id: int

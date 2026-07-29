@@ -16,10 +16,11 @@ from app.models.turno import Turno
 from app.models.comprobante import Comprobante
 from app.services import (
     empleado_service, servicio_service, cliente_service, turno_service,
-    reserva_service, config_salon_service,
+    reserva_service, config_salon_service, categoria_servicio_service,
 )
 from app.schemas.empleado import Empleado
 from app.schemas.servicio import Servicio
+from app.schemas.categoria_servicio import CategoriaServicio
 from app.schemas.cliente import ClienteCreate
 from app.schemas.reserva import ReservaPublicaCreate
 from app.limiter import limiter
@@ -65,6 +66,13 @@ def public_empleados(slug: str, db: Session = Depends(get_db)):
 def public_servicios(slug: str, db: Session = Depends(get_db)):
     salon = _get_salon(slug, db)
     return servicio_service.get_servicios(db, salon_id=salon.id)
+
+
+@router.get("/{slug}/categorias", response_model=List[CategoriaServicio])
+def public_categorias(slug: str, db: Session = Depends(get_db)):
+    """Categorías (agrupadores) de servicios, ordenadas para mostrar en la reserva."""
+    salon = _get_salon(slug, db)
+    return categoria_servicio_service.get_categorias(db, salon_id=salon.id)
 
 
 @router.get("/{slug}/disponibilidad/{empleado_id}")

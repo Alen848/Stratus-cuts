@@ -1,6 +1,7 @@
 from .salon import Salon
 from .cliente import Cliente
 from .empleado import Empleado
+from .categoria_servicio import CategoriaServicio
 from .servicio import Servicio
 from .empleado_servicio import empleado_servicios
 from .turno import Turno

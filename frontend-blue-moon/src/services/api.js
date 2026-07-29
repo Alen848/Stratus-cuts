@@ -14,6 +14,7 @@ const api = axios.create({
 const pub = (path) => `/public/${getSalonSlug()}${path}`;
 
 export const getServicios = () => api.get(pub('/servicios'));
+export const getCategorias = () => api.get(pub('/categorias'));
 export const getEmpleados = () => api.get(pub('/empleados'));
 export const createCliente = (clienteData) => api.post(pub('/clientes'), clienteData);
 export const createTurno = (turnoData) => api.post(pub('/turnos'), turnoData);

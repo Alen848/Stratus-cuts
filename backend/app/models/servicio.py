@@ -10,10 +10,12 @@ class Servicio(Base):
 
     id               = Column(Integer, primary_key=True, index=True)
     salon_id         = Column(Integer, ForeignKey("salones.id"), nullable=False, index=True)
+    categoria_id     = Column(Integer, ForeignKey("categorias_servicio.id"), nullable=True, index=True)
     nombre           = Column(String(100), nullable=False)
     descripcion      = Column(String(255))
     duracion_minutos = Column(Integer, nullable=False)
     precio           = Column(Float, nullable=False)
 
     # Relaciones
-    turnos = relationship("TurnoServicio", back_populates="servicio")
+    turnos    = relationship("TurnoServicio", back_populates="servicio")
+    categoria = relationship("CategoriaServicio", back_populates="servicios")

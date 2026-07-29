@@ -3,9 +3,9 @@ import Modal from '../ui/Modal';
 import Input from '../ui/Input';
 import Button from '../ui/Button';
 
-const defaultForm = { nombre: '', descripcion: '', precio: '', duracion_minutos: '' };
+const defaultForm = { nombre: '', descripcion: '', precio: '', duracion_minutos: '', categoria_id: '' };
 
-export default function ServicioModal({ isOpen, onClose, onSubmit, servicio = null }) {
+export default function ServicioModal({ isOpen, onClose, onSubmit, servicio = null, categorias = [], categoriaIdPorDefecto = null }) {
   const [form, setForm]       = useState(defaultForm);
   const [loading, setLoading] = useState(false);
   const isEdit = Boolean(servicio);
@@ -17,11 +17,15 @@ export default function ServicioModal({ isOpen, onClose, onSubmit, servicio = nu
         descripcion:      servicio.descripcion      || '',
         precio:           String(servicio.precio    ?? ''),
         duracion_minutos: String(servicio.duracion_minutos ?? ''),
+        categoria_id:     servicio.categoria_id ? String(servicio.categoria_id) : '',
       });
     } else {
-      setForm(defaultForm);
+      setForm({
+        ...defaultForm,
+        categoria_id: categoriaIdPorDefecto ? String(categoriaIdPorDefecto) : '',
+      });
     }
-  }, [servicio, isOpen]);
+  }, [servicio, isOpen, categoriaIdPorDefecto]);
 
   const set = (field, value) => setForm(f => ({ ...f, [field]: value }));
 
@@ -33,6 +37,7 @@ export default function ServicioModal({ isOpen, onClose, onSubmit, servicio = nu
         ...form,
         precio:           Number(form.precio),
         duracion_minutos: Number(form.duracion_minutos),
+        categoria_id:     form.categoria_id ? Number(form.categoria_id) : null,
       });
       onClose();
     } catch {
@@ -52,6 +57,17 @@ export default function ServicioModal({ isOpen, onClose, onSubmit, servicio = nu
           required
           placeholder="Ej: Corte de cabello"
         />
+        <Input
+          label="Categoría"
+          as="select"
+          value={form.categoria_id}
+          onChange={e => set('categoria_id', e.target.value)}
+        >
+          <option value="">Sin categoría (se muestra suelto)</option>
+          {categorias.map(c => (
+            <option key={c.id} value={c.id}>{c.nombre}</option>
+          ))}
+        </Input>
         <Input
           label="Descripción"
           as="textarea"

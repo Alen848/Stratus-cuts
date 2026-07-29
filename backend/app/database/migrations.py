@@ -46,6 +46,10 @@ COLUMNS_TO_ADD = {
     "cierres_caja": {
         "total_mercadopago": "FLOAT NOT NULL DEFAULT 0",
     },
+    "servicios": {
+        # Agrupador opcional: los servicios sin categoría se muestran sueltos
+        "categoria_id": "INTEGER NULL",
+    },
 }
 
 

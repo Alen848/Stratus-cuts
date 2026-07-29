@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { createCliente, createTurno, getEmpleados, getServicios, getDisponibilidadSemanal, getPagoConfig } from '../services/api';
+import { createCliente, createTurno, getEmpleados, getServicios, getCategorias, getDisponibilidadSemanal, getPagoConfig } from '../services/api';
 import '../styles/booking.css';
 
 
@@ -12,8 +12,11 @@ export default function Booking() {
     || (location.state?.selectedService ? [location.state.selectedService] : []);
 
   const [servicios, setServicios] = useState([]);
+  const [categorias, setCategorias] = useState([]);
   const [loadingServicios, setLoadingServicios] = useState(true);
   const [selectedServices, setSelectedServices] = useState(preSelected);
+  // Categoría desplegada en el acordeón (null = ninguna)
+  const [openCategoria, setOpenCategoria] = useState(null);
 
   const [formData, setFormData] = useState({ nombre: '', telefono: '', email: '' });
   const [empleados, setEmpleados] = useState([]);
@@ -44,9 +47,11 @@ export default function Booking() {
   }, []);
 
   useEffect(() => {
-    getServicios()
-      .then(r => setServicios(r.data || []))
-      .catch(() => setServicios([]))
+    Promise.all([
+      getServicios().then(r => r.data || []).catch(() => []),
+      getCategorias().then(r => r.data || []).catch(() => []),
+    ])
+      .then(([servs, cats]) => { setServicios(servs); setCategorias(cats); })
       .finally(() => setLoadingServicios(false));
   }, []);
 
@@ -83,6 +88,26 @@ export default function Booking() {
         : [...prev, service]
     );
   };
+
+  // Los servicios se muestran agrupados: primero la categoría (sin precio) y,
+  // al desplegarla, los servicios concretos con su precio y duración.
+  const gruposServicios = categorias
+    .map(cat => ({ categoria: cat, items: servicios.filter(s => s.categoria_id === cat.id) }))
+    .filter(g => g.items.length > 0);
+
+  const categoriaIdsConItems = new Set(gruposServicios.map(g => g.categoria.id));
+  // Servicios sin categoría (o con una categoría que ya no existe): se muestran sueltos
+  const serviciosSueltos = servicios.filter(
+    s => !s.categoria_id || !categoriaIdsConItems.has(s.categoria_id)
+  );
+
+  // Si llegamos con un servicio preseleccionado, abrimos su categoría
+  useEffect(() => {
+    if (openCategoria !== null || preSelected.length === 0) return;
+    const conCategoria = preSelected.find(s => s.categoria_id);
+    if (conCategoria) setOpenCategoria(conCategoria.categoria_id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categorias]);
 
   // Solo mostramos los profesionales que realizan TODOS los servicios elegidos.
   // Un empleado sin servicios asignados (servicio_ids vacío) hace todos.
@@ -221,6 +246,32 @@ export default function Booking() {
       })
     : null;
 
+  const renderServicioItem = (s, dentroDeCategoria) => {
+    const checked = !!selectedServices.find(ss => ss.id === s.id);
+    return (
+      <button
+        key={s.id}
+        type="button"
+        className={`servicio-item${checked ? ' si-selected' : ''}${dentroDeCategoria ? ' si-sub' : ''}`}
+        onClick={() => toggleServicio(s)}
+      >
+        <div className={`si-check${checked ? ' si-checked' : ''}`}>
+          <svg viewBox="0 0 12 12" className="si-check-icon">
+            <polyline points="2 6 5 9 10 3" />
+          </svg>
+        </div>
+        <div className="si-info">
+          <span className="si-name">{s.nombre}</span>
+          {s.descripcion && <span className="si-desc">{s.descripcion}</span>}
+        </div>
+        <div className="si-right">
+          <span className="si-price">${s.precio}</span>
+          <span className="si-dur">{s.duracion_minutos} min</span>
+        </div>
+      </button>
+    );
+  };
+
   const slotHintStart = availableSlots[0]?.hora;
   const slotHintEnd = availableSlots[availableSlots.length - 1]?.hora;
 
@@ -247,31 +298,48 @@ export default function Booking() {
               </span>
             ) : (
               <div className="servicio-list">
-                {servicios.map(s => {
-                  const checked = !!selectedServices.find(ss => ss.id === s.id);
+                {gruposServicios.map(({ categoria, items }) => {
+                  const abierta = openCategoria === categoria.id;
+                  const elegidos = items.filter(
+                    i => selectedServices.some(s => s.id === i.id)
+                  ).length;
                   return (
-                    <button
-                      key={s.id}
-                      type="button"
-                      className={`servicio-item${checked ? ' si-selected' : ''}`}
-                      onClick={() => toggleServicio(s)}
-                    >
-                      <div className={`si-check${checked ? ' si-checked' : ''}`}>
-                        <svg viewBox="0 0 12 12" className="si-check-icon">
-                          <polyline points="2 6 5 9 10 3" />
-                        </svg>
-                      </div>
-                      <div className="si-info">
-                        <span className="si-name">{s.nombre}</span>
-                        {s.descripcion && <span className="si-desc">{s.descripcion}</span>}
-                      </div>
-                      <div className="si-right">
-                        <span className="si-price">${s.precio}</span>
-                        <span className="si-dur">{s.duracion_minutos} min</span>
-                      </div>
-                    </button>
+                    <div key={`cat-${categoria.id}`} className={`servicio-cat${abierta ? ' sc-open' : ''}`}>
+                      <button
+                        type="button"
+                        className="servicio-cat-head"
+                        aria-expanded={abierta}
+                        onClick={() => setOpenCategoria(abierta ? null : categoria.id)}
+                      >
+                        <div className="si-info">
+                          <span className="si-name">{categoria.nombre}</span>
+                          <span className="si-desc">
+                            {categoria.descripcion
+                              || `${items.length} ${items.length === 1 ? 'opción' : 'opciones'}`}
+                          </span>
+                        </div>
+                        <div className="sc-right">
+                          {elegidos > 0 && (
+                            <span className="sc-badge">
+                              {elegidos} {elegidos === 1 ? 'elegido' : 'elegidos'}
+                            </span>
+                          )}
+                          <svg viewBox="0 0 12 12" className="sc-chevron">
+                            <polyline points="3 4.5 6 8 9 4.5" />
+                          </svg>
+                        </div>
+                      </button>
+
+                      {abierta && (
+                        <div className="servicio-sublist">
+                          {items.map(s => renderServicioItem(s, true))}
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
+
+                {serviciosSueltos.map(s => renderServicioItem(s, false))}
               </div>
             )}
             {selectedServices.length > 0 && (

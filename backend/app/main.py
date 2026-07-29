@@ -9,7 +9,7 @@ from app.limiter import limiter
 
 # Importar todos los modelos para que SQLAlchemy los reconozca
 from app.models import (
-    salon, cliente, empleado, servicio, turno,
+    salon, cliente, empleado, categoria_servicio, servicio, turno,
     turno_servicio, pago, gasto, cierre_caja,
     horario_empleado, horario_salon, config_salon, bloqueo_agenda, usuario,
     pago_salon, api_key, comprobante,
@@ -19,6 +19,7 @@ from app.routes.auth            import router as auth_router
 from app.routes.clientes        import router as clientes_router
 from app.routes.empleados       import router as empleados_router
 from app.routes.servicios       import router as servicios_router
+from app.routes.categorias_servicio import router as categorias_servicio_router
 from app.routes.turnos          import router as turns_router
 from app.routes.pagos           import pagos_router, gastos_router, caja_router
 from app.routes.horarios_empleado import router as horarios_empleado_router
@@ -92,6 +93,7 @@ app.include_router(public_router)
 app.include_router(clientes_router)
 app.include_router(empleados_router)
 app.include_router(servicios_router)
+app.include_router(categorias_servicio_router)
 app.include_router(turns_router)
 app.include_router(pagos_router)
 app.include_router(gastos_router)
