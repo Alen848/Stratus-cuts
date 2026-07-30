@@ -1,6 +1,7 @@
 import { useLocation, Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { getTurnoEstado, subirComprobante } from '../services/api';
+import { money } from '../utils/format';
 
 const STYLES = `
   .conf-wrap {
@@ -177,7 +178,8 @@ const fmtFecha = (iso) => {
   const d = new Date(String(iso).replace('T', ' ').split('.')[0]);
   return isNaN(d) ? '—' : d.toLocaleString('es-AR', { dateStyle: 'full', timeStyle: 'short' });
 };
-const money = (n) => (n == null ? null : `$${Number(n).toLocaleString('es-AR')}`);
+// El formato de importes vive en utils/format para que la reserva y la
+// confirmación muestren siempre lo mismo.
 const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : '');
 
 function Card({ icon, title, subtitle, rows }) {

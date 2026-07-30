@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { createCliente, createTurno, getEmpleados, getServicios, getCategorias, getDisponibilidadSemanal, getPagoConfig } from '../services/api';
+import { money } from '../utils/format';
 import '../styles/booking.css';
 
 
@@ -265,7 +266,7 @@ export default function Booking() {
           {s.descripcion && <span className="si-desc">{s.descripcion}</span>}
         </div>
         <div className="si-right">
-          <span className="si-price">${s.precio}</span>
+          <span className="si-price">{money(s.precio)}</span>
           <span className="si-dur">{s.duracion_minutos} min</span>
         </div>
       </button>
@@ -348,7 +349,7 @@ export default function Booking() {
                   {selectedServices.length} {selectedServices.length === 1 ? 'servicio' : 'servicios'}
                   {' · '}{totalDuracion} min
                 </span>
-                <span className="ss-total">${totalPrecio}</span>
+                <span className="ss-total">{money(totalPrecio)}</span>
               </div>
             )}
           </div>
@@ -530,8 +531,8 @@ export default function Booking() {
 
               {pagoConfig.sena_obligatoria ? (
                 <div className="sena-box">
-                  Para confirmar tu turno se abona una <strong>seña de ${montoSena.toLocaleString('es-AR')}</strong>
-                  {' '}({senaPorcentaje}%). El resto (${saldoLocal.toLocaleString('es-AR')}) lo pagás en el local.
+                  Para confirmar tu turno se abona una <strong>seña de {money(montoSena)}</strong>
+                  {' '}({senaPorcentaje}%). El resto ({money(saldoLocal)}) lo pagás en el local.
                 </div>
               ) : (
                 <div className="sena-choices">
@@ -541,7 +542,7 @@ export default function Booking() {
                     onClick={() => setMetodoPago('sena')}
                   >
                     <span className="sc-title">Pagar seña ahora</span>
-                    <span className="sc-sub">${montoSena.toLocaleString('es-AR')} ({senaPorcentaje}%) · resto en el local</span>
+                    <span className="sc-sub">{money(montoSena)} ({senaPorcentaje}%) · resto en el local</span>
                   </button>
                   <button
                     type="button"
@@ -594,8 +595,8 @@ export default function Booking() {
               ? 'Procesando...'
               : pagaSena
                 ? (metodoSena === 'transferencia'
-                    ? `Reservar y transferir seña $${montoSena.toLocaleString('es-AR')}`
-                    : `Pagar seña $${montoSena.toLocaleString('es-AR')}`)
+                    ? `Reservar y transferir seña ${money(montoSena)}`
+                    : `Pagar seña ${money(montoSena)}`)
                 : 'Confirmar turno'}
           </button>
         </form>
