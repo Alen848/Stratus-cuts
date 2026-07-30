@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useEmpleados } from '../hooks/useEmpleados';
 import { useServicios } from '../hooks/useServicios';
+import { useCategorias } from '../hooks/useCategorias';
 import { useTurnos }    from '../hooks/useTurnos';
 import { useApp }       from '../context/AppContext';
 import { gastos as gastosApi } from '../api/api';
@@ -37,9 +38,25 @@ function precioTurno(turno) {
 /* ════════════════════════════════════════════
    Vista: Equipo
 ════════════════════════════════════════════ */
-function VistaEquipo({ empleados, loading, turnos, onAdd, onEdit, onHorarios, onDelete }) {
+function VistaEquipo({ empleados, loading, turnos, servicios, categorias, onAdd, onEdit, onHorarios, onDelete }) {
   const turnosPorEmpleado = (id) =>
     turnos.filter(t => t.empleado_id === id && t.estado !== 'cancelado').length;
+
+  // Resumen de qué hace cada profesional, agrupado por categoría:
+  // "Depilación 3/5 · Uñas 2/2". Sin nada asignado, hace todo.
+  const resumenServicios = (emp) => {
+    const ids = emp.servicio_ids || [];
+    if (ids.length === 0) return null;
+    const grupos = [
+      ...categorias.map(c => ({ nombre: c.nombre, items: servicios.filter(s => s.categoria_id === c.id) })),
+      { nombre: 'Sin categoría', items: servicios.filter(s => !s.categoria_id) },
+    ];
+    return grupos
+      .map(g => ({ nombre: g.nombre, marcados: g.items.filter(s => ids.includes(s.id)).length, total: g.items.length }))
+      .filter(g => g.marcados > 0)
+      .map(g => `${g.nombre} ${g.marcados}/${g.total}`)
+      .join(' · ');
+  };
 
   if (loading) return (
     <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)' }}>Cargando...</div>
@@ -85,6 +102,12 @@ function VistaEquipo({ empleados, loading, turnos, onAdd, onEdit, onHorarios, on
                 <span style={{ color: 'var(--text-muted)' }}>✆</span> {e.telefono}
               </div>
             )}
+            <div style={{ display: 'flex', gap: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+              <span style={{ color: 'var(--text-muted)' }}>◆</span>
+              {resumenServicios(e) || (
+                <span style={{ color: 'var(--text-muted)' }}>Todos los servicios</span>
+              )}
+            </div>
           </div>
 
           <div style={{ display: 'flex', gap: '8px', marginTop: '4px', flexWrap: 'wrap' }}>
@@ -666,6 +689,7 @@ function VistaComisiones({ empleados, turnos, loading, editEmpleado }) {
 export default function EmpleadosPage() {
   const { empleados, loading, addEmpleado, editEmpleado, removeEmpleado } = useEmpleados();
   const { servicios } = useServicios();
+  const { categorias } = useCategorias();
   const { turnos }  = useTurnos();
   const { notify }  = useApp();
 
@@ -721,6 +745,7 @@ export default function EmpleadosPage() {
 
       {vista === 'equipo' && (
         <VistaEquipo
+          servicios={servicios} categorias={categorias}
           empleados={empleados} loading={loading}
           turnos={turnos} onAdd={openCreate}
           onEdit={openEdit} onHorarios={openHorarios} onDelete={handleDelete}
@@ -744,6 +769,7 @@ export default function EmpleadosPage() {
         onSubmit={handleSubmit}
         empleado={editingEmpleado}
         servicios={servicios}
+        categorias={categorias}
       />
 
       <HorariosModal

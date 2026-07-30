@@ -8,7 +8,9 @@ const defaultForm = {
   servicio_ids: [],
 };
 
-export default function EmpleadoModal({ isOpen, onClose, onSubmit, empleado = null, servicios = [] }) {
+export default function EmpleadoModal({
+  isOpen, onClose, onSubmit, empleado = null, servicios = [], categorias = [],
+}) {
   const [form, setForm]       = useState(defaultForm);
   const [loading, setLoading] = useState(false);
   const isEdit = Boolean(empleado);
@@ -36,6 +38,31 @@ export default function EmpleadoModal({ isOpen, onClose, onSubmit, empleado = nu
       ? f.servicio_ids.filter(x => x !== id)
       : [...f.servicio_ids, id],
   }));
+
+  // Marca o desmarca de una todos los servicios de una categoría
+  const toggleGrupo = (idsDelGrupo, todosMarcados) => setForm(f => ({
+    ...f,
+    servicio_ids: todosMarcados
+      ? f.servicio_ids.filter(x => !idsDelGrupo.includes(x))
+      : [...new Set([...f.servicio_ids, ...idsDelGrupo])],
+  }));
+
+  // Los servicios se muestran agrupados por categoría: el dueño puede marcar
+  // una categoría entera o elegir servicio por servicio dentro de ella.
+  const grupos = [
+    ...categorias.map(cat => ({
+      key: `cat-${cat.id}`,
+      nombre: cat.nombre,
+      items: servicios.filter(s => s.categoria_id === cat.id),
+    })),
+    {
+      key: 'sin-categoria',
+      nombre: 'Sin categoría',
+      items: servicios.filter(s => !s.categoria_id),
+    },
+  ].filter(g => g.items.length > 0);
+
+  const totalSeleccionados = form.servicio_ids.length;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -82,30 +109,82 @@ export default function EmpleadoModal({ isOpen, onClose, onSubmit, empleado = nu
             </p>
           ) : (
             <>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                {servicios.map(s => {
-                  const active = form.servicio_ids.includes(s.id);
+              <div style={{
+                maxHeight: '280px', overflowY: 'auto',
+                display: 'flex', flexDirection: 'column', gap: '14px',
+                border: '1px solid var(--border)', borderRadius: 'var(--radius-md, 8px)',
+                padding: '12px',
+              }}>
+                {grupos.map(({ key, nombre, items }) => {
+                  const idsDelGrupo = items.map(s => s.id);
+                  const marcados = idsDelGrupo.filter(id => form.servicio_ids.includes(id)).length;
+                  const todos = marcados === idsDelGrupo.length;
+
                   return (
-                    <button
-                      key={s.id}
-                      type="button"
-                      onClick={() => toggleServicio(s.id)}
-                      style={{
-                        padding: '6px 12px', borderRadius: '99px', fontSize: '12px',
-                        cursor: 'pointer', fontFamily: 'var(--font-body)', transition: 'all 0.15s',
-                        border: active ? '1px solid var(--gold-border)' : '1px solid var(--border)',
-                        background: active ? 'var(--gold-dim)' : 'transparent',
-                        color: active ? 'var(--gold)' : 'var(--text-muted)',
-                      }}
-                    >
-                      {active ? '✓ ' : ''}{s.nombre}
-                    </button>
+                    <div key={key}>
+                      <div style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        gap: '10px', marginBottom: '8px',
+                      }}>
+                        <span style={{ fontSize: '12px', fontWeight: 600 }}>
+                          {nombre}
+                          <span style={{ marginLeft: '8px', fontSize: '11px', color: 'var(--text-muted)', fontWeight: 400 }}>
+                            {marcados} de {idsDelGrupo.length}
+                          </span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => toggleGrupo(idsDelGrupo, todos)}
+                          style={{
+                            background: 'none', border: 'none', cursor: 'pointer',
+                            fontSize: '11px', color: 'var(--gold)', padding: '2px 4px',
+                            fontFamily: 'var(--font-body)',
+                          }}
+                        >
+                          {todos ? 'Quitar todos' : 'Marcar todos'}
+                        </button>
+                      </div>
+
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                        {items.map(s => {
+                          const active = form.servicio_ids.includes(s.id);
+                          return (
+                            <button
+                              key={s.id}
+                              type="button"
+                              onClick={() => toggleServicio(s.id)}
+                              style={{
+                                padding: '6px 12px', borderRadius: '99px', fontSize: '12px',
+                                cursor: 'pointer', fontFamily: 'var(--font-body)', transition: 'all 0.15s',
+                                border: active ? '1px solid var(--gold-border)' : '1px solid var(--border)',
+                                background: active ? 'var(--gold-dim)' : 'transparent',
+                                color: active ? 'var(--gold)' : 'var(--text-muted)',
+                              }}
+                            >
+                              {active ? '✓ ' : ''}{s.nombre}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                   );
                 })}
               </div>
+
               <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px', lineHeight: 1.5 }}>
-                Si no seleccionás ninguno, se asume que realiza <strong style={{ color: 'var(--text-secondary)' }}>todos</strong> los servicios.
-                En la reserva online, el cliente solo verá a este profesional para los servicios marcados.
+                {totalSeleccionados === 0 ? (
+                  <>
+                    Sin nada marcado, este profesional aparece en{' '}
+                    <strong style={{ color: 'var(--text-secondary)' }}>todos</strong> los servicios.
+                    Marcá solo los que realiza para que el cliente no lo vea en el resto.
+                  </>
+                ) : (
+                  <>
+                    Realiza <strong style={{ color: 'var(--text-secondary)' }}>{totalSeleccionados}</strong>
+                    {' '}de {servicios.length} servicios. En la reserva online, el cliente solo lo va a
+                    ver disponible para esos.
+                  </>
+                )}
               </p>
             </>
           )}
