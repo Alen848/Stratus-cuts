@@ -12,7 +12,7 @@ class Servicio(Base):
     salon_id         = Column(Integer, ForeignKey("salones.id"), nullable=False, index=True)
     categoria_id     = Column(Integer, ForeignKey("categorias_servicio.id"), nullable=True, index=True)
     nombre           = Column(String(100), nullable=False)
-    descripcion      = Column(String(255))
+    descripcion      = Column(String(1000))
     duracion_minutos = Column(Integer, nullable=False)
     precio           = Column(Float, nullable=False)
 

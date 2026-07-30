@@ -134,7 +134,10 @@ export default function ServiciosPage() {
         {CATEGORY_ICONS[i % CATEGORY_ICONS.length]}
       </span>
       <div style={{ fontWeight: 500, fontSize: '13px' }}>{s.nombre}</div>
-      <div style={{ fontSize: '12px', color: 'var(--text-secondary)', paddingRight: '16px' }}>
+      <div style={{
+        fontSize: '12px', color: 'var(--text-secondary)', paddingRight: '16px',
+        whiteSpace: 'pre-line', lineHeight: 1.5,   // respeta los saltos de línea del dueño
+      }}>
         {s.descripcion || '—'}
       </div>
       <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>

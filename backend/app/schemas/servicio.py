@@ -3,7 +3,7 @@ from typing import Optional
 
 class ServicioBase(BaseModel):
     nombre:           str           = Field(max_length=100)
-    descripcion:      Optional[str] = Field(None, max_length=500)
+    descripcion:      Optional[str] = Field(None, max_length=1000)
     duracion_minutos: int
     precio:           float
     categoria_id:     Optional[int] = None
