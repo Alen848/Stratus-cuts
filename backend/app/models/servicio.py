@@ -19,3 +19,8 @@ class Servicio(Base):
     # Relaciones
     turnos    = relationship("TurnoServicio", back_populates="servicio")
     categoria = relationship("CategoriaServicio", back_populates="servicios")
+    # `empleados` lo define Empleado.servicios con backref (M2M empleado_servicios)
+
+    @property
+    def empleado_ids(self):
+        return [e.id for e in self.empleados]

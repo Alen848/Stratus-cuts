@@ -31,9 +31,25 @@ def _validar_categoria(db: Session, categoria_id, salon_id: int):
         raise HTTPException(status_code=400, detail="La categoría indicada no existe.")
 
 
+def _empleados_del_salon(db: Session, empleado_ids, salon_id: int):
+    """Objetos Empleado del salón cuyos ids se pasan (ignora los ajenos)."""
+    from app.models.empleado import Empleado
+
+    if not empleado_ids:
+        return []
+    return db.query(Empleado).filter(
+        Empleado.salon_id == salon_id,
+        Empleado.id.in_(empleado_ids),
+    ).all()
+
+
 def create_servicio(db: Session, servicio: ServicioCreate, salon_id: int):
     _validar_categoria(db, servicio.categoria_id, salon_id)
-    db_servicio = Servicio(salon_id=salon_id, **servicio.model_dump())
+    data = servicio.model_dump()
+    empleado_ids = data.pop("empleado_ids", None)
+    db_servicio = Servicio(salon_id=salon_id, **data)
+    if empleado_ids:
+        db_servicio.empleados = _empleados_del_salon(db, empleado_ids, salon_id)
     db.add(db_servicio)
     db.commit()
     db.refresh(db_servicio)
@@ -47,6 +63,10 @@ def update_servicio(db: Session, servicio_id: int, servicio: ServicioUpdate, sal
     cambios = servicio.model_dump(exclude_unset=True)
     if "categoria_id" in cambios:
         _validar_categoria(db, cambios["categoria_id"], salon_id)
+    # Solo tocar la asignación de profesionales si vino explícita en el payload
+    empleado_ids = cambios.pop("empleado_ids", None)
+    if empleado_ids is not None:
+        db_servicio.empleados = _empleados_del_salon(db, empleado_ids, salon_id)
     for key, value in cambios.items():
         setattr(db_servicio, key, value)
     db.commit()

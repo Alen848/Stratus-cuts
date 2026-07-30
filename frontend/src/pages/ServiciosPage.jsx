@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useServicios }  from '../hooks/useServicios';
 import { useCategorias } from '../hooks/useCategorias';
+import { useEmpleados }  from '../hooks/useEmpleados';
 import { useApp }        from '../context/AppContext';
 import ServicioModal  from '../components/servicios/ServicioModal';
 import CategoriaModal from '../components/servicios/CategoriaModal';
@@ -18,6 +19,7 @@ export default function ServiciosPage() {
     categorias, loading: loadingCategorias,
     addCategoria, editCategoria, removeCategoria,
   } = useCategorias();
+  const { empleados, refetch: refetchEmpleados } = useEmpleados();
   const { notify } = useApp();
 
   const [modalOpen, setModalOpen]                 = useState(false);
@@ -49,6 +51,9 @@ export default function ServiciosPage() {
         await addServicio(data);
         notify('Servicio creado');
       }
+      // Asignar profesionales cambia sus servicio_ids: hay que releerlos para
+      // que el aviso de "pasa a hacer solo lo asignado" siga siendo correcto.
+      await refetchEmpleados();
     } catch (e) {
       const msg = e?.response?.data?.detail || 'Error al guardar el servicio';
       notify(msg, 'error');
@@ -251,6 +256,7 @@ export default function ServiciosPage() {
         servicio={editingServicio}
         categorias={categorias}
         categoriaIdPorDefecto={categoriaDestino}
+        empleados={empleados}
       />
 
       <CategoriaModal
