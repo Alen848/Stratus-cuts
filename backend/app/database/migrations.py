@@ -37,6 +37,8 @@ COLUMNS_TO_ADD = {
         "mp_preference_id": "VARCHAR(80) NULL",
         "expira_en":        "DATETIME NULL",
         "comprobante_subido": "BOOLEAN NOT NULL DEFAULT 0",
+        "creado_en":          "DATETIME NULL",
+        "sena_recordatorio_sent": "BOOLEAN NOT NULL DEFAULT 0",
     },
     "pagos": {
         "tipo":          "VARCHAR(20) NOT NULL DEFAULT 'saldo'",

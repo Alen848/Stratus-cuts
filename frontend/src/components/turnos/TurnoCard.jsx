@@ -42,6 +42,18 @@ export default function TurnoCard({ turno, onEdit, onDelete, onCobrar, onMarcar,
   // Si el cliente lo mandó por WhatsApp en vez de subirlo, el salón lo adjunta acá.
   const esTransferencia = (turno.metodo_pago || '').toLowerCase() === 'transferencia';
 
+  // Hace cuánto espera la seña. Los turnos anteriores a esta función no tienen
+  // creado_en, así que ahí mostramos el estado sin el tiempo.
+  const esperaSena = (() => {
+    if (turno.sena_estado !== 'pendiente') return null;
+    if (!turno.creado_en) return 'Seña pendiente';
+    const horas = Math.floor((Date.now() - new Date(turno.creado_en).getTime()) / 3600000);
+    if (isNaN(horas) || horas < 1) return 'Seña pendiente · recién';
+    if (horas < 24) return `Seña pendiente · hace ${horas} h`;
+    const dias = Math.floor(horas / 24);
+    return `Seña pendiente · hace ${dias} ${dias === 1 ? 'día' : 'días'}`;
+  })();
+
   const walkinTelefono = (() => {
     if (!isWalkin || !turno.observaciones) return null;
     const match = turno.observaciones.match(/Tel:\s*([\d]+)/);
@@ -106,6 +118,9 @@ export default function TurnoCard({ turno, onEdit, onDelete, onCobrar, onMarcar,
           )}
           {completado && (
             <span style={chip('rgba(76,175,125,0.14)', '#4caf7d')}>Pagado ✓</span>
+          )}
+          {esperaSena && (
+            <span style={chip('rgba(224,163,58,0.16)', '#e0a33a')}>⏳ {esperaSena}</span>
           )}
         </div>
         {servicios.length > 0 && (

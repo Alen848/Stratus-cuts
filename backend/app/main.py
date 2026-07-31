@@ -108,6 +108,14 @@ app.include_router(pagos_superadmin_router)
 app.include_router(integracion_router)
 
 
+@app.on_event("startup")
+async def _arrancar_tareas_de_fondo():
+    """Recordatorio del comprobante de la seña (ver sena_recordatorio_service)."""
+    import asyncio
+    from app.services.sena_recordatorio_service import loop_recordatorios
+    asyncio.create_task(loop_recordatorios())
+
+
 @app.get("/")
 def root():
     return {"message": "API Turnera funcionando v2"}

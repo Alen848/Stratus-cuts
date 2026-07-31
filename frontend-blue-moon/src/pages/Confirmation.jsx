@@ -1,6 +1,6 @@
 import { useLocation, Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { getTurnoEstado, subirComprobante } from '../services/api';
+import { getTurnoEstado, subirComprobante, getPagoConfig } from '../services/api';
 import { money } from '../utils/format';
 
 const STYLES = `
@@ -224,6 +224,9 @@ const Confirmation = () => {
 
   const [estado, setEstado] = useState(null);
   const [cargando, setCargando] = useState(!stateTurno && !!turnoIdUrl);
+  // Cuando el cliente vuelve desde el email a subir el comprobante, reconstruimos
+  // los datos de transferencia a partir del turno + la config pública del salón.
+  const [transferDesdeUrl, setTransferDesdeUrl] = useState(null);
 
   // Subida del comprobante de transferencia
   const [uploadState, setUploadState] = useState('idle'); // idle | uploading | done | error
@@ -272,9 +275,35 @@ const Confirmation = () => {
     return () => { cancelled = true; };
   }, [turnoIdUrl, stateTurno]);
 
+  // Link del email: turno por transferencia con la seña sin acreditar => que
+  // pueda subir el comprobante, con los datos bancarios a la vista.
+  useEffect(() => {
+    if (!estado || !turnoIdUrl) return;
+    const esTransferPendiente =
+      (estado.metodo_pago || '').toLowerCase() === 'transferencia' &&
+      estado.sena_estado === 'pendiente' &&
+      !estado.comprobante_subido;
+    if (!esTransferPendiente) { setTransferDesdeUrl(null); return; }
+    getPagoConfig()
+      .then(r => {
+        const cfg = r.data || {};
+        setTransferDesdeUrl({
+          turno_id: Number(turnoIdUrl),
+          cbu: cfg.transferencia_cbu,
+          alias: cfg.transferencia_alias,
+          titular: cfg.transferencia_titular,
+          monto_sena: estado.monto_sena,
+          saldo_pendiente: estado.saldo_pendiente,
+          monto_total: estado.monto_total,
+        });
+      })
+      .catch(() => setTransferDesdeUrl(null));
+  }, [estado, turnoIdUrl]);
+
   // ── Modo 0: seña por transferencia (datos bancarios + subida del comprobante) ──
-  if (stateTransfer) {
-    const tr = stateTransfer;
+  // Se llega recién reservado (stateTransfer) o desde el link del email (transferDesdeUrl).
+  if (stateTransfer || transferDesdeUrl) {
+    const tr = stateTransfer || transferDesdeUrl;
 
     const bankRow = (label, value) => value ? (
       <div className="conf-row">

@@ -12,7 +12,7 @@ import Button      from '../components/ui/Button';
 import EmptyState  from '../components/ui/EmptyState';
 import styles      from '../styles/pages/TurnosPage.module.css';
 
-const FILTROS = ['todos', 'pendiente', 'confirmado', 'completado', 'cancelado'];
+const FILTROS = ['todos', 'pendiente', 'confirmado', 'completado', 'cancelado', 'seña pendiente'];
 
 function formatDayLabel(date) {
   return date.toLocaleDateString('es-AR', {
@@ -60,11 +60,19 @@ export default function TurnosPage() {
   const isToday = selectedDate === toLocalDateStr(new Date());
 
   const filtrados = useMemo(() => {
+    // "Seña pendiente" es transversal: muestra los turnos de cualquier fecha que
+    // esperan el comprobante, para no tener que recorrer día por día.
+    const soloSenaPendiente = filtroEstado === 'seña pendiente';
+
     let list = [...turnos]
-      .filter(t => turnoLocalDate(t.fecha_hora) === selectedDate)
+      .filter(t => soloSenaPendiente || turnoLocalDate(t.fecha_hora) === selectedDate)
       .sort((a, b) => new Date(a.fecha_hora) - new Date(b.fecha_hora));
 
-    if (filtroEstado !== 'todos') list = list.filter(t => t.estado === filtroEstado);
+    if (soloSenaPendiente) {
+      list = list.filter(t => t.sena_estado === 'pendiente' && t.estado !== 'cancelado');
+    } else if (filtroEstado !== 'todos') {
+      list = list.filter(t => t.estado === filtroEstado);
+    }
 
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -278,8 +286,12 @@ export default function TurnosPage() {
       ) : filtrados.length === 0 ? (
         <EmptyState
           icon="◷"
-          title={`Sin turnos el ${formatDayLabel(new Date(selectedDate + 'T00:00:00'))}`}
-          description="No hay turnos que coincidan con los filtros seleccionados para este día."
+          title={filtroEstado === 'seña pendiente'
+            ? 'Sin señas pendientes'
+            : `Sin turnos el ${formatDayLabel(new Date(selectedDate + 'T00:00:00'))}`}
+          description={filtroEstado === 'seña pendiente'
+            ? 'No hay turnos esperando el comprobante de la transferencia.'
+            : 'No hay turnos que coincidan con los filtros seleccionados para este día.'}
           action={<Button variant="primary" onClick={openCreate}>Crear turno</Button>}
         />
       ) : (

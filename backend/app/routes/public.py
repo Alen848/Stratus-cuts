@@ -147,7 +147,7 @@ def public_create_turno(request: Request, slug: str, turno: ReservaPublicaCreate
     t = resultado["turno"]
 
     # Seña por transferencia: el turno queda reservado; devolvemos los datos bancarios
-    # para que el cliente transfiera y mande el comprobante por WhatsApp.
+    # para que el cliente transfiera y suba el comprobante en la confirmación.
     if resultado.get("metodo") == "transferencia":
         return {
             "requiere_pago": True,
@@ -290,6 +290,9 @@ def public_estado_turno(slug: str, turno_id: int, db: Session = Depends(get_db))
     return {
         "estado": t.estado,
         "sena_estado": t.sena_estado,
+        # Para que el link del email de "falta tu comprobante" sepa qué mostrar
+        "metodo_pago": t.metodo_pago,
+        "comprobante_subido": bool(t.comprobante_subido),
         "monto_total": t.monto_total,
         "monto_sena": t.monto_sena,
         "saldo_pendiente": t.saldo_pendiente,

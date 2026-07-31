@@ -188,6 +188,7 @@ def create_turno(db: Session, turno: TurnoCreate, salon_id: int):
         observaciones=turno.observaciones,
         cliente_id=turno.cliente_id,
         empleado_id=turno.empleado_id,
+        creado_en=datetime.now(ARG_TZ).replace(tzinfo=None),
     )
     db.add(db_turno)
     db.flush()
@@ -481,6 +482,9 @@ def get_recordatorios(
     ).filter(
         Turno.salon_id == salon_id,
         Turno.estado.in_(["pendiente", "confirmado"]),
+        # Sin la seña acreditada el turno no está firme: no se le recuerda al
+        # cliente un turno que todavía no pagó.
+        Turno.sena_estado != "pendiente",
         Turno.fecha_hora >= ahora,
         Turno.fecha_hora <= limite,
         Turno.reminder_pre_sent == False,
