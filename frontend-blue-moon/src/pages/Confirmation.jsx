@@ -212,8 +212,7 @@ function Card({ icon, title, subtitle, rows }) {
   );
 }
 
-// Mismo número que la burbuja de WhatsApp del sitio (wa.me: 54 9 223 6919766)
-const WHATSAPP_NUMERO = '5492236919766';
+
 
 const Confirmation = () => {
   const location = useLocation();
@@ -273,17 +272,9 @@ const Confirmation = () => {
     return () => { cancelled = true; };
   }, [turnoIdUrl, stateTurno]);
 
-  // ── Modo 0: seña por transferencia (datos bancarios + WhatsApp) ──
+  // ── Modo 0: seña por transferencia (datos bancarios + subida del comprobante) ──
   if (stateTransfer) {
     const tr = stateTransfer;
-    const mensaje =
-      `Hola! Quiero enviar el comprobante de la seña de mi turno 😊\n` +
-      `• Nombre: ${tr.cliente || ''}\n` +
-      `• Fecha: ${tr.fecha || ''}${tr.hora ? ` a las ${tr.hora} hs` : ''}\n` +
-      `• Profesional: ${tr.profesional || ''}\n` +
-      `• Servicio: ${tr.servicios || ''}\n` +
-      `• Seña: ${money(tr.monto_sena) || ''}`;
-    const waHref = `https://wa.me/${WHATSAPP_NUMERO}?text=${encodeURIComponent(mensaje)}`;
 
     const bankRow = (label, value) => value ? (
       <div className="conf-row">
@@ -352,11 +343,8 @@ const Confirmation = () => {
                 </span>
               )}
               <span style={{ fontSize: '0.78rem', color: 'var(--text-4)', textAlign: 'center' }}>
-                Subí una foto o PDF del comprobante (hasta 5 MB). ¿Preferís WhatsApp?{' '}
-                <a href={waHref} target="_blank" rel="noopener noreferrer"
-                   style={{ color: 'var(--accent)', textDecoration: 'underline' }}>
-                  Enviarlo por acá
-                </a>.
+                Subí una foto o PDF del comprobante (hasta 5 MB). Tu turno queda
+                confirmado cuando el local verifique la transferencia.
               </span>
             </>
           )}

@@ -199,7 +199,7 @@ export default function Booking() {
       const turnoResponse = await createTurno(turnoData);
       const data = turnoResponse.data;
 
-      // Seña por transferencia: mostramos datos bancarios + WhatsApp
+      // Seña por transferencia: mostramos datos bancarios y pedimos el comprobante
       if (data?.requiere_pago && data?.metodo === 'transferencia') {
         navigate('/confirmation', {
           state: {
@@ -209,7 +209,7 @@ export default function Booking() {
               saldo_pendiente: data.saldo_pendiente,
               monto_total: data.monto_total,
               turno_id: data.turno_id,
-              // Datos para el mensaje de WhatsApp
+              // Datos del turno para mostrarlos en la confirmación
               cliente: formData.nombre,
               fecha: formattedSelectedDate,
               hora: selectedTime,
@@ -573,13 +573,13 @@ export default function Booking() {
                       onClick={() => setMetodoSena('transferencia')}
                     >
                       <span className="sc-title">🏦 Transferencia</span>
-                      <span className="sc-sub">Te mostramos CBU y alias, y enviás el comprobante</span>
+                      <span className="sc-sub">Te mostramos CBU y alias, y subís el comprobante acá mismo</span>
                     </button>
                   </div>
                 ) : (
                   <div className="sena-box" style={{ marginTop: '0.75rem' }}>
                     La seña se abona por <strong>transferencia</strong>. En el siguiente paso te mostramos
-                    el <strong>CBU y el alias</strong>, y enviás el comprobante por WhatsApp.
+                    el <strong>CBU y el alias</strong>, y adjuntás el comprobante en la misma página.
                   </div>
                 )
               )}
