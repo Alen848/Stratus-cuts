@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useTurnos }    from '../hooks/useTurnos';
 import { useClientes }  from '../hooks/useClientes';
 import { useEmpleados } from '../hooks/useEmpleados';
@@ -150,6 +150,30 @@ export default function TurnosPage() {
     }
   };
 
+  // Adjuntar el comprobante que el cliente mandó por WhatsApp
+  const fileInputRef = useRef(null);
+  const [turnoComprobante, setTurnoComprobante] = useState(null);
+
+  const handleAdjuntarComprobante = (t) => {
+    setTurnoComprobante(t);
+    fileInputRef.current?.click();
+  };
+
+  const handleArchivoElegido = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';           // permite volver a elegir el mismo archivo
+    if (!file || !turnoComprobante) return;
+    try {
+      await turnosApi.subirComprobante(turnoComprobante.id, file);
+      notify('Comprobante adjuntado');
+      await refetch();
+    } catch (err) {
+      notify(err.response?.data?.detail || 'No se pudo adjuntar el comprobante', 'error');
+    } finally {
+      setTurnoComprobante(null);
+    }
+  };
+
   const handleConfirmarSena = async (t) => {
     if (!window.confirm(`¿Confirmar que se acreditó la seña por transferencia de ${t.cliente?.nombre || 'este turno'}? Se registrará en Caja y el turno quedará confirmado.`)) return;
     try {
@@ -263,10 +287,19 @@ export default function TurnosPage() {
           {filtrados.map(t => (
             <TurnoCard key={t.id} turno={t} onEdit={openEdit} onDelete={handleDelete}
               onCobrar={setCobroTurno} onMarcar={handleMarcar} onConfirmarSena={handleConfirmarSena}
-              onVerComprobante={handleVerComprobante} />
+              onVerComprobante={handleVerComprobante}
+              onAdjuntarComprobante={handleAdjuntarComprobante} />
           ))}
         </div>
       )}
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*,application/pdf"
+        style={{ display: 'none' }}
+        onChange={handleArchivoElegido}
+      />
 
       <TurnoModal
         isOpen={modalOpen}

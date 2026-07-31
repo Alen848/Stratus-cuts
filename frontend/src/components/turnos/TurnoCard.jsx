@@ -21,7 +21,7 @@ const ghostMini = {
   cursor: 'pointer', fontFamily: 'var(--font-body)', whiteSpace: 'nowrap',
 };
 
-export default function TurnoCard({ turno, onEdit, onDelete, onCobrar, onMarcar, onConfirmarSena, onVerComprobante }) {
+export default function TurnoCard({ turno, onEdit, onDelete, onCobrar, onMarcar, onConfirmarSena, onVerComprobante, onAdjuntarComprobante }) {
   const cliente  = turno.cliente  || null;
   const empleado = turno.empleado || {};
   const servicios = turno.servicios?.map(ts => ts.servicio?.nombre || ts.nombre).filter(Boolean) || [];
@@ -38,6 +38,9 @@ export default function TurnoCard({ turno, onEdit, onDelete, onCobrar, onMarcar,
     (turno.monto_sena || 0) > 0;
   // Cobrable = turno activo en el local con saldo pendiente
   const cobrable   = ['pendiente', 'confirmado'].includes(turno.estado) && (saldo == null || saldo > 0);
+  // Turno pagado por transferencia: siempre debería tener un comprobante a mano.
+  // Si el cliente lo mandó por WhatsApp en vez de subirlo, el salón lo adjunta acá.
+  const esTransferencia = (turno.metodo_pago || '').toLowerCase() === 'transferencia';
 
   const walkinTelefono = (() => {
     if (!isWalkin || !turno.observaciones) return null;
@@ -117,10 +120,17 @@ export default function TurnoCard({ turno, onEdit, onDelete, onCobrar, onMarcar,
 
       {/* Acciones */}
       <div className={styles.actions} style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end' }}>
-        {turno.comprobante_subido && (
-          <button onClick={() => onVerComprobante?.(turno)} title="Ver el comprobante que adjuntó el cliente"
+        {turno.comprobante_subido ? (
+          <button onClick={() => onVerComprobante?.(turno)} title="Ver el comprobante de la transferencia"
             style={{ ...ghostMini, display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
             📎 Ver comprobante
+          </button>
+        ) : esTransferencia && (
+          <button onClick={() => onAdjuntarComprobante?.(turno)}
+            title="El cliente no lo subió al sitio: adjuntá el que te mandó por WhatsApp"
+            style={{ ...ghostMini, display: 'inline-flex', alignItems: 'center', gap: '5px',
+                     color: 'var(--text-muted)', borderStyle: 'dashed' }}>
+            ＋ Adjuntar comprobante
           </button>
         )}
         {senaTransferPendiente && (

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Response, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import List
 from datetime import date as DateType
@@ -7,6 +7,7 @@ from app.database.connection import get_db
 from app.auth.dependencies import get_current_user, require_admin
 from app.models.usuario import Usuario
 from app.models.comprobante import Comprobante
+from app.models.turno import Turno as TurnoModel
 from app.services import turno_service
 from app.schemas.turno import Turno, TurnoCreate, TurnoUpdate
 
@@ -119,6 +120,53 @@ def get_comprobante(
         media_type=comp.content_type or "application/octet-stream",
         headers={"Content-Disposition": f'inline; filename="{comp.filename or "comprobante"}"'},
     )
+
+
+MAX_COMPROBANTE_BYTES = 5 * 1024 * 1024  # 5 MB
+
+
+@router.post("/{turno_id}/comprobante")
+async def subir_comprobante(
+    turno_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    """
+    El salón adjunta el comprobante de la transferencia.
+
+    Sirve para el caso habitual: el cliente manda el comprobante por WhatsApp
+    (que es lo que le pide la pantalla de confirmación) y no lo sube al sitio,
+    así que la secretaria lo carga desde el panel para que quede en el turno.
+    """
+    turno = db.query(TurnoModel).filter(
+        TurnoModel.id == turno_id,
+        TurnoModel.salon_id == current_user.salon_id,
+    ).first()
+    if not turno:
+        raise HTTPException(status_code=404, detail="Turno no encontrado.")
+
+    ct = (file.content_type or "").lower()
+    if not (ct.startswith("image/") or ct == "application/pdf"):
+        raise HTTPException(status_code=400, detail="El archivo debe ser una imagen o un PDF.")
+
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="El archivo está vacío.")
+    if len(data) > MAX_COMPROBANTE_BYTES:
+        raise HTTPException(status_code=400, detail="El archivo supera los 5 MB.")
+
+    # Upsert: un comprobante por turno (si se vuelve a subir, se reemplaza)
+    comp = db.query(Comprobante).filter(Comprobante.turno_id == turno.id).first()
+    if not comp:
+        comp = Comprobante(turno_id=turno.id, salon_id=current_user.salon_id)
+        db.add(comp)
+    comp.filename     = (file.filename or "comprobante")[:255]
+    comp.content_type = ct[:100]
+    comp.data         = data
+    turno.comprobante_subido = True
+    db.commit()
+    return {"ok": True}
 
 
 @router.post("/{turno_id}/confirmar-sena", response_model=Turno)

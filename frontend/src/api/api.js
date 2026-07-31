@@ -46,6 +46,14 @@ export const turnos = {
 
   // Comprobante de transferencia adjuntado por el cliente (imagen/PDF, como blob)
   getComprobante: (id) => api.get(`/turns/${id}/comprobante`, { responseType: 'blob' }),
+
+  // El salón adjunta el comprobante que le mandaron por WhatsApp
+  subirComprobante: (id, file) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    // Content-Type undefined => el navegador pone multipart/form-data con boundary
+    return api.post(`/turns/${id}/comprobante`, fd, { headers: { 'Content-Type': undefined } });
+  },
 };
 
 // ─── Pagos ────────────────────────────────────────────────────────────────────
