@@ -21,3 +21,22 @@ class CategoriaServicio(Base):
 
     # Relaciones
     servicios = relationship("Servicio", back_populates="categoria")
+    # Si existe, esta categoría es un "evento especial" (ver models/evento.py)
+    evento = relationship(
+        "Evento", back_populates="categoria",
+        uselist=False, cascade="all, delete-orphan",
+    )
+
+    @property
+    def es_evento(self):
+        return self.evento is not None
+
+    @property
+    def fechas_especiales(self):
+        """Días en los que se realiza. Vacío = no es un evento."""
+        return [f.fecha for f in self.evento.fechas] if self.evento else []
+
+    @property
+    def intervalo_minutos(self):
+        """Cada cuántos minutos se ofrece un turno. None = el default del salón."""
+        return self.evento.intervalo_minutos if self.evento else None

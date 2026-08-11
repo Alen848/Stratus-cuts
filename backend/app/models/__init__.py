@@ -3,7 +3,7 @@ from .cliente import Cliente
 from .empleado import Empleado
 from .categoria_servicio import CategoriaServicio
 from .servicio import Servicio
-from .servicio_fecha_especial import ServicioFechaEspecial
+from .evento import Evento, EventoFecha
 from .empleado_servicio import empleado_servicios
 from .turno import Turno
 from .turno_servicio import TurnoServicio

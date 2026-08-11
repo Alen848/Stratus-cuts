@@ -66,31 +66,42 @@ export default function Booking() {
   const totalPrecio   = selectedServices.reduce((sum, s) => sum + Number(s.precio), 0);
   const totalDuracion = selectedServices.reduce((sum, s) => sum + s.duracion_minutos, 0);
 
-  // ── Servicios de fecha especial ────────────────────────────────────────────
-  // Un servicio con `fechas_especiales` cargadas solo se dicta esos días (ej: una
-  // jornada al mes). Si el cliente eligió alguno, la lista de días se recorta a
-  // sus fechas; el resto del flujo (elegir horario) queda igual.
   const hoyISO = (() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   })();
 
-  const serviciosEspeciales = selectedServices.filter(
-    s => (s.fechas_especiales || []).length > 0
+  // ── Eventos especiales ─────────────────────────────────────────────────────
+  // Un evento es una categoría marcada como tal: se hace solo ciertos días y sus
+  // servicios son las variantes que se pueden reservar esa jornada. Las fechas y
+  // el intervalo entre turnos son de la categoría, no de cada variante.
+  const catsEvento = categorias.filter(
+    c => c.es_evento && (c.fechas_especiales || []).some(f => f >= hoyISO)
   );
 
-  // Con varios servicios especiales elegidos, solo sirven los días que comparten.
-  const fechasEspeciales = serviciosEspeciales.length === 0
+  const gruposEvento = catsEvento
+    .map(cat => ({ categoria: cat, items: servicios.filter(s => s.categoria_id === cat.id) }))
+    .filter(g => g.items.length > 0);
+
+  const idsCategoriaEvento = new Set(categorias.filter(c => c.es_evento).map(c => c.id));
+  const esServicioDeEvento = (s) => idsCategoriaEvento.has(s.categoria_id);
+
+  // Categorías de evento a las que pertenece lo que el cliente ya eligió
+  const catsEventoElegidas = catsEvento.filter(
+    c => selectedServices.some(s => s.categoria_id === c.id)
+  );
+
+  // Con dos eventos distintos elegidos, solo sirven los días que comparten
+  const fechasEvento = catsEventoElegidas.length === 0
     ? null
-    : serviciosEspeciales
-        .map(s => s.fechas_especiales)
+    : catsEventoElegidas
+        .map(c => c.fechas_especiales)
         .reduce((comunes, fechas) => comunes.filter(f => fechas.includes(f)))
         .filter(f => f >= hoyISO)
         .sort();
 
-  const hayEventoEspecial = fechasEspeciales !== null;
-  // Elegidos dos eventos que no coinciden en ningún día, o cuyas fechas ya pasaron
-  const sinFechasCompatibles = hayEventoEspecial && fechasEspeciales.length === 0;
+  const hayEventoElegido    = fechasEvento !== null;
+  const sinFechasCompatibles = hayEventoElegido && fechasEvento.length === 0;
 
   useEffect(() => {
     if (!selectedEmpleado || !selectedDate) {
@@ -102,11 +113,16 @@ export default function Booking() {
     setSelectedTime('');
     // La disponibilidad depende de la duración total de los servicios elegidos:
     // un horario solo está libre si entra el servicio completo sin pisar otro turno.
-    getDisponibilidadSemanal(selectedEmpleado.id, selectedDate, totalDuracion)
+    // Además mandamos un servicio para que el backend sepa el intervalo de la
+    // grilla: en un evento los turnos pueden salir cada 20 min y no cada hora.
+    getDisponibilidadSemanal(
+      selectedEmpleado.id, selectedDate, totalDuracion, selectedServices[0]?.id
+    )
       .then(r => setAvailableSlots(r.data?.[selectedDate] || []))
       .catch(() => setAvailableSlots([]))
       .finally(() => setLoadingSlots(false));
-  }, [selectedEmpleado, selectedDate, totalDuracion]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedEmpleado, selectedDate, totalDuracion, selectedServices]);
 
   const toggleServicio = (service) => {
     setSelectedServices(prev =>
@@ -116,17 +132,12 @@ export default function Booking() {
     );
   };
 
-  // Los eventos especiales tienen su propia sección destacada arriba de todo y no
-  // entran en las categorías. Si no tienen ninguna fecha futura no se muestran:
-  // ofrecer algo que no se puede reservar solo lleva a un callejón sin salida.
-  const eventos = servicios.filter(
-    s => (s.fechas_especiales || []).some(f => f >= hoyISO)
-  );
-  const serviciosNormales = servicios.filter(s => !(s.fechas_especiales || []).length);
-
   // El resto se muestra agrupado: primero la categoría (sin precio) y,
   // al desplegarla, los servicios concretos con su precio y duración.
+  const serviciosNormales = servicios.filter(s => !esServicioDeEvento(s));
+
   const gruposServicios = categorias
+    .filter(cat => !cat.es_evento)
     .map(cat => ({ categoria: cat, items: serviciosNormales.filter(s => s.categoria_id === cat.id) }))
     .filter(g => g.items.length > 0);
 
@@ -166,11 +177,11 @@ export default function Booking() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedServices]);
 
-  // Si al cambiar los servicios la fecha elegida deja de ser válida (pasó a ser
-  // un evento especial, o cambió a otro con otras fechas), la limpiamos.
+  // Si al cambiar los servicios la fecha elegida deja de ser válida (pasó a haber
+  // un evento con otras fechas), la limpiamos para no dejar una combinación rota.
   useEffect(() => {
     if (!selectedDate) return;
-    if (hayEventoEspecial && !fechasEspeciales.includes(selectedDate)) {
+    if (hayEventoElegido && !fechasEvento.includes(selectedDate)) {
       setSelectedDate('');
       setSelectedTime('');
       setAvailableSlots([]);
@@ -319,41 +330,6 @@ export default function Booking() {
     );
   };
 
-  // Card de un evento especial: además del precio, lo importante es cuándo se hace.
-  const renderEventoItem = (s) => {
-    const checked  = !!selectedServices.find(ss => ss.id === s.id);
-    const proximas = (s.fechas_especiales || []).filter(f => f >= hoyISO);
-    const fmt = (iso) => new Date(`${iso}T12:00:00`)
-      .toLocaleDateString('es-AR', { day: 'numeric', month: 'long' });
-    return (
-      <button
-        key={s.id}
-        type="button"
-        className={`evento-item${checked ? ' ei-selected' : ''}`}
-        onClick={() => toggleServicio(s)}
-      >
-        <div className={`si-check${checked ? ' si-checked' : ''}`}>
-          <svg viewBox="0 0 12 12" className="si-check-icon">
-            <polyline points="2 6 5 9 10 3" />
-          </svg>
-        </div>
-        <div className="si-info">
-          <span className="si-name">{s.nombre}</span>
-          <span className="ei-fecha">
-            {proximas.length === 1
-              ? `Próxima fecha: ${fmt(proximas[0])}`
-              : `Próximas fechas: ${proximas.slice(0, 3).map(fmt).join(' · ')}`}
-          </span>
-          {s.descripcion && <span className="si-desc">{s.descripcion}</span>}
-        </div>
-        <div className="si-right">
-          <span className="si-price">{money(s.precio)}</span>
-          <span className="si-dur">{s.duracion_minutos} min</span>
-        </div>
-      </button>
-    );
-  };
-
   const slotHintStart = availableSlots[0]?.hora;
   const slotHintEnd = availableSlots[availableSlots.length - 1]?.hora;
 
@@ -380,20 +356,30 @@ export default function Booking() {
               </span>
             ) : (
               <div className="servicio-list">
-                {/* Eventos especiales: sección propia, siempre visible, arriba de todo */}
-                {eventos.length > 0 && (
-                  <div className="evento-bloque">
-                    <div className="eb-head">
-                      <span className="eb-tag">◈ Eventos especiales</span>
-                      <span className="eb-sub">
-                        {eventos.length === 1
-                          ? 'Se realiza solo en fechas puntuales'
-                          : 'Se realizan solo en fechas puntuales'}
-                      </span>
+                {/* Eventos especiales: sección propia arriba, siempre desplegada */}
+                {gruposEvento.map(({ categoria, items }) => {
+                  const proximas = (categoria.fechas_especiales || [])
+                    .filter(f => f >= hoyISO);
+                  const fmt = (iso) => new Date(`${iso}T12:00:00`)
+                    .toLocaleDateString('es-AR', { day: 'numeric', month: 'long' });
+                  return (
+                    <div key={`ev-${categoria.id}`} className="evento-bloque">
+                      <div className="eb-head">
+                        <span className="eb-tag">◈ Evento especial</span>
+                        <span className="eb-nombre">{categoria.nombre}</span>
+                        <span className="eb-fecha">
+                          {proximas.length === 1
+                            ? `Solo el ${fmt(proximas[0])}`
+                            : `Solo el ${proximas.slice(0, 3).map(fmt).join(' · ')}`}
+                        </span>
+                        {categoria.descripcion && (
+                          <span className="eb-sub">{categoria.descripcion}</span>
+                        )}
+                      </div>
+                      {items.map(s => renderServicioItem(s, true))}
                     </div>
-                    {eventos.map(renderEventoItem)}
-                  </div>
-                )}
+                  );
+                })}
 
                 {gruposServicios.map(({ categoria, items }) => {
                   const abierta = openCategoria === categoria.id;
@@ -510,13 +496,13 @@ export default function Booking() {
           <div className="field">
             <label className="field-label">Fecha <span className="field-req">*</span></label>
 
-            {hayEventoEspecial && !sinFechasCompatibles && (
+            {hayEventoElegido && !sinFechasCompatibles && (
               <div className="evento-aviso">
                 <span className="ev-tag">◈ Fecha especial</span>
                 <span className="ev-text">
-                  {serviciosEspeciales.map(s => s.nombre).join(' y ')}
-                  {serviciosEspeciales.length === 1 ? ' se realiza' : ' se realizan'} solo
-                  {fechasEspeciales.length === 1 ? ' este día' : ' estos días'}.
+                  {catsEventoElegidas.map(c => c.nombre).join(' y ')}
+                  {catsEventoElegidas.length === 1 ? ' se realiza' : ' se realizan'} solo
+                  {fechasEvento.length === 1 ? ' este día' : ' estos días'}.
                   Elegí la fecha y después tu horario.
                 </span>
               </div>
@@ -528,14 +514,13 @@ export default function Booking() {
               </span>
             ) : sinFechasCompatibles ? (
               <span className="field-hint" style={{ padding: '0.6rem 0' }}>
-                {serviciosEspeciales.length > 1
-                  ? 'Los servicios que elegiste se hacen en fechas distintas y no coinciden. Reservalos por separado.'
-                  : 'Todavía no hay próximas fechas cargadas para este servicio. Escribinos y te avisamos.'}
+                Los servicios que elegiste pertenecen a eventos que se hacen en fechas
+                distintas y no coinciden. Reservalos por separado.
               </span>
             ) : (
               <div className="day-strip">
-                {(hayEventoEspecial
-                  ? fechasEspeciales
+                {(hayEventoElegido
+                  ? fechasEvento
                   : Array.from({ length: 30 }, (_, i) => {
                       const d = new Date();
                       d.setDate(d.getDate() + i);
@@ -552,7 +537,7 @@ export default function Booking() {
                     <button
                       key={iso}
                       type="button"
-                      className={`day-pill${isSelected ? ' dp-selected' : ''}${isToday ? ' dp-today' : ''}${hayEventoEspecial ? ' dp-evento' : ''}`}
+                      className={`day-pill${isSelected ? ' dp-selected' : ''}${isToday ? ' dp-today' : ''}${hayEventoElegido ? ' dp-evento' : ''}`}
                       onClick={() => handleDateChange(iso)}
                     >
                       <span className="dp-weekday">{dayName}</span>

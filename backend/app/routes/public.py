@@ -81,11 +81,20 @@ def public_disponibilidad(
     empleado_id: int,
     fecha_inicio: DateType,
     duracion: int = None,
+    servicio_id: int = None,
     db: Session = Depends(get_db),
 ):
+    """
+    `servicio_id` es opcional y solo se usa para saber cada cuántos minutos
+    ofrecer turnos: los eventos especiales pueden tener un intervalo más corto
+    que la hora habitual. El intervalo se resuelve acá y no se acepta del
+    cliente, para que no puedan pedir una grilla arbitraria.
+    """
     salon = _get_salon(slug, db)
+    intervalo = turno_service.get_intervalo_servicio(db, servicio_id, salon.id)
     return turno_service.get_horarios_semanales(
-        db, empleado_id, fecha_inicio, salon_id=salon.id, duracion=duracion
+        db, empleado_id, fecha_inicio, salon_id=salon.id,
+        duracion=duracion, intervalo=intervalo,
     )
 
 

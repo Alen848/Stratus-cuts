@@ -10,9 +10,6 @@ class ServicioBase(BaseModel):
     categoria_id:     Optional[int] = None
     # Profesionales que realizan este servicio (lado inverso de empleado.servicio_ids)
     empleado_ids:     List[int]     = []
-    # Fechas puntuales en las que se dicta. Vacío = disponible siempre.
-    # Con fechas cargadas, el servicio SOLO se puede reservar en esos días.
-    fechas_especiales: List[DateType] = []
 
 class ServicioCreate(ServicioBase):
     pass
@@ -24,12 +21,13 @@ class ServicioUpdate(BaseModel):
     precio:           Optional[float] = None
     categoria_id:     Optional[int]   = None
     empleado_ids:     Optional[List[int]] = None
-    fechas_especiales: Optional[List[DateType]] = None
 
 class Servicio(ServicioBase):
     id: int
-    # Derivado: True si tiene fechas cargadas (lo usa el front para marcarlo)
-    es_evento_especial: bool = False
+    # Derivados de la categoría: si es un evento especial, el servicio solo se
+    # reserva en esas fechas. Son de solo lectura — se editan desde la categoría.
+    es_evento_especial: bool           = False
+    fechas_especiales:  List[DateType] = []
 
     class Config:
         from_attributes = True

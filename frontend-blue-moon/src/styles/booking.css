@@ -535,40 +535,40 @@
   text-transform: uppercase;
   color: var(--gold);
 }
-.eb-sub {
-  font-size: 0.72rem;
-  font-weight: 300;
-  color: var(--text-3);
+.eb-nombre {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  color: var(--text);
+  line-height: 1.2;
 }
-
-.evento-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-  padding: 1.1rem 0.85rem;
-  border: none;
-  border-bottom: 1px solid rgba(var(--gold-rgb),0.16);
-  background: transparent;
-  cursor: pointer;
-  text-align: left;
-  font-family: var(--font-body);
-  width: 100%;
-  transition: background 0.2s ease;
-  min-height: 60px;
-}
-.evento-item:last-child { border-bottom: none; }
-.evento-item:hover { background: rgba(var(--gold-rgb),0.07); }
-.evento-item.ei-selected { background: rgba(var(--gold-rgb),0.13); }
-
 /* La fecha es el dato que define al evento: se lee antes que la descripción. */
-.ei-fecha {
-  display: block;
-  margin-top: 0.25rem;
-  font-size: 0.74rem;
+.eb-fecha {
+  font-size: 0.76rem;
   font-weight: 500;
   color: var(--gold);
   line-height: 1.45;
 }
+.eb-sub {
+  font-size: 0.72rem;
+  font-weight: 300;
+  color: var(--text-3);
+  white-space: pre-line;
+  line-height: 1.5;
+}
+
+/* Las variantes del evento reusan .servicio-item, pero sobre fondo dorado */
+.evento-bloque .servicio-item {
+  border-bottom: 1px solid rgba(var(--gold-rgb),0.16);
+}
+.evento-bloque .servicio-item:first-child { border-top: none; }
+.evento-bloque .servicio-item:last-child  { border-bottom: none; }
+.evento-bloque .servicio-item:hover        { background: rgba(var(--gold-rgb),0.07); }
+.evento-bloque .servicio-item.si-selected  { background: rgba(var(--gold-rgb),0.13); }
+.evento-bloque .si-check.si-checked {
+  background: var(--gold);
+  border-color: var(--gold);
+}
+.evento-bloque .si-price { color: var(--gold); }
 
 /* -- Time slots -- */
 .time-section { display: flex; flex-direction: column; gap: 0.55rem; }

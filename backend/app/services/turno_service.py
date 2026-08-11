@@ -14,6 +14,10 @@ ARG_TZ = timezone(timedelta(hours=-3))
 # Estados que liberan el horario (no ocupan slot ni generan conflicto)
 ESTADOS_LIBERAN_SLOT = ("cancelado", "expirado")
 
+# Cada cuántos minutos se ofrece un turno de arranque, salvo que un evento
+# especial defina el suyo propio.
+INTERVALO_DEFAULT = 60
+
 
 def to_argentina_naive(dt: datetime) -> datetime:
     """Convierte cualquier datetime a hora Argentina sin timezone (naive)."""
@@ -370,7 +374,32 @@ def confirmar_sena_transferencia(db: Session, turno_id: int, salon_id: int):
 
 # ─── Disponibilidad Semanal ──────────────────────────────────────────────────
 
-def get_horarios_semanales(db: Session, empleado_id: int, fecha_inicio: date, salon_id: int, duracion: int = None):
+def get_intervalo_servicio(db: Session, servicio_id: int, salon_id: int) -> int:
+    """
+    Cada cuántos minutos se ofrece un turno de arranque para este servicio.
+
+    Por defecto 60 (un turno por hora, como siempre). Si el servicio pertenece a
+    una categoría marcada como evento, manda el intervalo de esa jornada: así el
+    dueño puede meter, por ejemplo, turnos cada 20 minutos ese día puntual.
+
+    Se resuelve en el backend a propósito y no se acepta como parámetro del
+    cliente, para que nadie pueda pedir un intervalo arbitrario.
+    """
+    if not servicio_id:
+        return INTERVALO_DEFAULT
+    servicio = db.query(Servicio).filter(
+        Servicio.id == servicio_id,
+        Servicio.salon_id == salon_id,
+    ).first()
+    if not servicio or not servicio.categoria:
+        return INTERVALO_DEFAULT
+    return servicio.categoria.intervalo_minutos or INTERVALO_DEFAULT
+
+
+def get_horarios_semanales(
+    db: Session, empleado_id: int, fecha_inicio: date, salon_id: int,
+    duracion: int = None, intervalo: int = None,
+):
     # Liberar holds de seña vencidos para que no aparezcan como ocupados
     expirar_turnos_vencidos(db, salon_id)
 
@@ -426,7 +455,8 @@ def get_horarios_semanales(db: Session, empleado_id: int, fecha_inicio: date, sa
             func.date(Turno.fecha_hora) == fecha_actual,
         ).all()
 
-        INTERVALO = 60  # granularidad de inicio: los turnos se ofrecen cada 1 hora
+        # Granularidad de inicio: 1 hora por defecto, o lo que defina el evento.
+        INTERVALO = intervalo if (intervalo and intervalo > 0) else INTERVALO_DEFAULT
         # La ventana a chequear = duración del servicio elegido (si no vino, 1 hora).
         # Así un horario solo está "libre" si entra el servicio COMPLETO sin pisar
         # otro turno, y no se ofrecen horarios que terminarían pasado el cierre.

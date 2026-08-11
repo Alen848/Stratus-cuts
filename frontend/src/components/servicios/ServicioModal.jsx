@@ -5,26 +5,15 @@ import Button from '../ui/Button';
 
 const defaultForm = {
   nombre: '', descripcion: '', precio: '', duracion_minutos: '', categoria_id: '',
-  empleado_ids: [], fechas_especiales: [],
+  empleado_ids: [],
 };
-
-const hoyISO = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
-
-const fechaLegible = (iso) =>
-  new Date(`${iso}T12:00:00`).toLocaleDateString('es-AR', {
-    weekday: 'short', day: 'numeric', month: 'long', year: 'numeric',
-  });
 
 export default function ServicioModal({
   isOpen, onClose, onSubmit, servicio = null, categorias = [],
-  categoriaIdPorDefecto = null, empleados = [], modoEvento = false,
+  categoriaIdPorDefecto = null, empleados = [],
 }) {
   const [form, setForm]       = useState(defaultForm);
   const [loading, setLoading] = useState(false);
-  const [nuevaFecha, setNuevaFecha] = useState('');
   const isEdit = Boolean(servicio);
 
   useEffect(() => {
@@ -36,7 +25,6 @@ export default function ServicioModal({
         duracion_minutos: String(servicio.duracion_minutos ?? ''),
         categoria_id:     servicio.categoria_id ? String(servicio.categoria_id) : '',
         empleado_ids:     servicio.empleado_ids || [],
-        fechas_especiales: servicio.fechas_especiales || [],
       });
     } else {
       setForm({
@@ -44,33 +32,9 @@ export default function ServicioModal({
         categoria_id: categoriaIdPorDefecto ? String(categoriaIdPorDefecto) : '',
       });
     }
-    setNuevaFecha('');
   }, [servicio, isOpen, categoriaIdPorDefecto]);
 
   const set = (field, value) => setForm(f => ({ ...f, [field]: value }));
-
-  const agregarFecha = () => {
-    if (!nuevaFecha || form.fechas_especiales.includes(nuevaFecha)) return;
-    setForm(f => ({
-      ...f,
-      fechas_especiales: [...f.fechas_especiales, nuevaFecha].sort(),
-    }));
-    setNuevaFecha('');
-  };
-
-  const quitarFecha = (fecha) => setForm(f => ({
-    ...f,
-    fechas_especiales: f.fechas_especiales.filter(x => x !== fecha),
-  }));
-
-  // Fechas ya pasadas: se siguen mostrando (son historial) pero atenuadas,
-  // porque un cliente ya no puede reservar en ellas.
-  const esPasada = (iso) => iso < hoyISO();
-
-  // Un evento sin fechas sería indistinguible de un servicio normal: lo exigimos.
-  const faltanFechas = modoEvento && form.fechas_especiales.length === 0;
-  const sinFechasFuturas =
-    form.fechas_especiales.length > 0 && form.fechas_especiales.every(esPasada);
 
   const toggleEmpleado = (id) => setForm(f => ({
     ...f,
@@ -96,11 +60,8 @@ export default function ServicioModal({
         ...form,
         precio:           Number(form.precio),
         duracion_minutos: Number(form.duracion_minutos),
-        // Un evento no vive dentro de una categoría: tiene su propia sección,
-        // tanto en este panel como en la página de reservas.
-        categoria_id:     modoEvento ? null : (form.categoria_id ? Number(form.categoria_id) : null),
+        categoria_id:     form.categoria_id ? Number(form.categoria_id) : null,
         empleado_ids:     form.empleado_ids,
-        fechas_especiales: form.fechas_especiales,
       });
       onClose();
     } catch {
@@ -111,48 +72,26 @@ export default function ServicioModal({
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={
-        modoEvento
-          ? (isEdit ? 'Editar evento especial' : 'Nuevo evento especial')
-          : (isEdit ? 'Editar servicio' : 'Nuevo servicio')
-      }
-    >
+    <Modal isOpen={isOpen} onClose={onClose} title={isEdit ? 'Editar servicio' : 'Nuevo servicio'}>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-        {modoEvento && (
-          <p style={{
-            fontSize: '11px', color: 'var(--text-muted)', margin: 0, lineHeight: 1.6,
-            background: 'var(--gold-dim)', border: '1px solid var(--gold-border)',
-            padding: '10px 12px', borderRadius: '6px',
-          }}>
-            ◈ Un <strong>evento especial</strong> es un servicio que se hace solo ciertos días
-            (ej: una jornada de láser al mes). El cliente lo va a ver en una sección propia
-            y solo va a poder reservarlo en las fechas que cargues acá abajo.
-          </p>
-        )}
-
         <Input
-          label={modoEvento ? 'Nombre del evento' : 'Nombre del servicio'}
+          label="Nombre del servicio"
           value={form.nombre}
           onChange={e => set('nombre', e.target.value)}
           required
-          placeholder={modoEvento ? 'Ej: Jornada de depilación láser' : 'Ej: Corte de cabello'}
+          placeholder="Ej: Corte de cabello"
         />
-        {!modoEvento && (
-          <Input
-            label="Categoría"
-            as="select"
-            value={form.categoria_id}
-            onChange={e => set('categoria_id', e.target.value)}
-          >
-            <option value="">Sin categoría (se muestra suelto)</option>
-            {categorias.map(c => (
-              <option key={c.id} value={c.id}>{c.nombre}</option>
-            ))}
-          </Input>
-        )}
+        <Input
+          label="Categoría"
+          as="select"
+          value={form.categoria_id}
+          onChange={e => set('categoria_id', e.target.value)}
+        >
+          <option value="">Sin categoría (se muestra suelto)</option>
+          {categorias.map(c => (
+            <option key={c.id} value={c.id}>{c.nombre}</option>
+          ))}
+        </Input>
         <Input
           label="Descripción"
           as="textarea"
@@ -242,94 +181,10 @@ export default function ServicioModal({
           )}
         </div>
 
-        {/* Fechas del evento: solo en modo evento, el servicio normal no las tiene */}
-        {modoEvento && (
-        <div>
-          <label style={{
-            display: 'block', fontSize: '12px', marginBottom: '4px',
-            color: 'var(--text-secondary)', letterSpacing: '0.02em',
-          }}>
-            Fechas en las que se realiza <span style={{ color: 'var(--gold)' }}>*</span>
-          </label>
-          <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: '0 0 8px', lineHeight: 1.5 }}>
-            Cargá una o varias. Podés dejar programadas las próximas jornadas de una vez.
-          </p>
-
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-            <div style={{ flex: 1 }}>
-              <Input
-                type="date"
-                min={hoyISO()}
-                value={nuevaFecha}
-                onChange={e => setNuevaFecha(e.target.value)}
-              />
-            </div>
-            <Button variant="ghost" type="button" onClick={agregarFecha} disabled={!nuevaFecha}>
-              + Agregar
-            </Button>
-          </div>
-
-          {form.fechas_especiales.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '10px' }}>
-              {form.fechas_especiales.map(f => {
-                const pasada = esPasada(f);
-                return (
-                  <div
-                    key={f}
-                    style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      gap: '10px', padding: '7px 10px', borderRadius: '6px',
-                      border: '1px solid var(--border)',
-                      background: 'var(--bg-hover)',
-                      opacity: pasada ? 0.55 : 1,
-                    }}
-                  >
-                    <span style={{ fontSize: '12px', color: pasada ? 'var(--text-muted)' : 'var(--gold)' }}>
-                      {fechaLegible(f)}{pasada ? ' · ya pasó' : ''}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => quitarFecha(f)}
-                      title="Quitar esta fecha"
-                      style={{
-                        border: 'none', background: 'transparent', cursor: 'pointer',
-                        color: 'var(--text-muted)', fontSize: '13px', lineHeight: 1, padding: '2px 4px',
-                      }}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {form.fechas_especiales.length === 0 && (
-            <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px', lineHeight: 1.5 }}>
-              Un evento necesita al menos una fecha para poder guardarse.
-            </p>
-          )}
-
-          {sinFechasFuturas && (
-            <p style={{
-              fontSize: '11px', color: 'var(--warning, #d99a3a)', marginTop: '8px',
-              lineHeight: 1.5, background: 'var(--bg-hover)', padding: '8px 10px', borderRadius: '6px',
-            }}>
-              ⚠ Todas las fechas cargadas ya pasaron. Mientras no agregues una futura,
-              el evento no se le muestra al cliente.
-            </p>
-          )}
-        </div>
-        )}
-
         <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '4px' }}>
           <Button variant="ghost" onClick={onClose} type="button">Cancelar</Button>
-          <Button variant="primary" type="submit" disabled={loading || faltanFechas}>
-            {loading
-              ? '...'
-              : isEdit
-                ? 'Guardar cambios'
-                : modoEvento ? 'Crear evento' : 'Crear servicio'}
+          <Button variant="primary" type="submit" disabled={loading}>
+            {loading ? '...' : isEdit ? 'Guardar cambios' : 'Crear servicio'}
           </Button>
         </div>
       </form>

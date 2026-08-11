@@ -19,9 +19,15 @@ export const getEmpleados = () => api.get(pub('/empleados'));
 export const createCliente = (clienteData) => api.post(pub('/clientes'), clienteData);
 export const createTurno = (turnoData) => api.post(pub('/turnos'), turnoData);
 
-export const getDisponibilidadSemanal = (empleadoId, fechaInicio, duracion) =>
+// `servicioId` solo sirve para que el backend sepa cada cuántos minutos ofrecer
+// turnos: un evento especial puede tener un intervalo más corto que la hora.
+export const getDisponibilidadSemanal = (empleadoId, fechaInicio, duracion, servicioId) =>
   api.get(pub(`/disponibilidad/${empleadoId}`), {
-    params: { fecha_inicio: fechaInicio, ...(duracion ? { duracion } : {}) },
+    params: {
+      fecha_inicio: fechaInicio,
+      ...(duracion ? { duracion } : {}),
+      ...(servicioId ? { servicio_id: servicioId } : {}),
+    },
   });
 
 // Comprobante de transferencia (subida del cliente)

@@ -2,7 +2,6 @@ from datetime import date as DateType
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 from app.models.servicio import Servicio
-from app.models.servicio_fecha_especial import ServicioFechaEspecial
 from app.schemas.servicio import ServicioCreate, ServicioUpdate
 
 
@@ -45,27 +44,13 @@ def _empleados_del_salon(db: Session, empleado_ids, salon_id: int):
     ).all()
 
 
-def _set_fechas_especiales(db_servicio: Servicio, fechas, salon_id: int):
-    """
-    Reemplaza las fechas especiales del servicio por las recibidas.
-    Lista vacía = el servicio vuelve a estar disponible siempre.
-    """
-    unicas = sorted({f for f in (fechas or [])})
-    db_servicio.fechas_especiales_rel = [
-        ServicioFechaEspecial(salon_id=salon_id, fecha=f) for f in unicas
-    ]
-
-
 def create_servicio(db: Session, servicio: ServicioCreate, salon_id: int):
     _validar_categoria(db, servicio.categoria_id, salon_id)
     data = servicio.model_dump()
     empleado_ids = data.pop("empleado_ids", None)
-    fechas = data.pop("fechas_especiales", None)
     db_servicio = Servicio(salon_id=salon_id, **data)
     if empleado_ids:
         db_servicio.empleados = _empleados_del_salon(db, empleado_ids, salon_id)
-    if fechas:
-        _set_fechas_especiales(db_servicio, fechas, salon_id)
     db.add(db_servicio)
     db.commit()
     db.refresh(db_servicio)
@@ -83,10 +68,6 @@ def update_servicio(db: Session, servicio_id: int, servicio: ServicioUpdate, sal
     empleado_ids = cambios.pop("empleado_ids", None)
     if empleado_ids is not None:
         db_servicio.empleados = _empleados_del_salon(db, empleado_ids, salon_id)
-    # Ídem con las fechas especiales: si no vinieron, quedan como estaban
-    fechas = cambios.pop("fechas_especiales", None)
-    if fechas is not None:
-        _set_fechas_especiales(db_servicio, fechas, salon_id)
     for key, value in cambios.items():
         setattr(db_servicio, key, value)
     db.commit()
@@ -116,7 +97,8 @@ def validar_fechas_especiales(db: Session, servicios_ids, fecha: DateType, salon
             continue  # servicio normal: disponible siempre
         if fecha not in fechas:
             proximas = [f for f in fechas if f >= DateType.today()]
-            detalle = f'"{s.nombre}" solo se realiza en fechas puntuales.'
+            evento = s.categoria.nombre if s.categoria else s.nombre
+            detalle = f'"{evento}" solo se realiza en fechas puntuales.'
             if proximas:
                 legibles = ", ".join(f.strftime("%d/%m/%Y") for f in proximas[:3])
                 detalle += f" Próximas fechas disponibles: {legibles}."
