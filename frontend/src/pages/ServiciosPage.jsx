@@ -138,7 +138,22 @@ export default function ServiciosPage() {
       <span style={{ color: 'var(--gold)', fontSize: '16px' }}>
         {CATEGORY_ICONS[i % CATEGORY_ICONS.length]}
       </span>
-      <div style={{ fontWeight: 500, fontSize: '13px' }}>{s.nombre}</div>
+      <div style={{ fontWeight: 500, fontSize: '13px' }}>
+        {s.nombre}
+        {s.es_evento_especial && (
+          <span
+            title={`Solo reservable en: ${(s.fechas_especiales || []).map(f => new Date(`${f}T12:00:00`).toLocaleDateString('es-AR')).join(', ')}`}
+            style={{
+              marginLeft: '8px', fontSize: '10px', fontWeight: 400,
+              padding: '2px 7px', borderRadius: '99px',
+              border: '1px solid var(--gold-border)', background: 'var(--gold-dim)',
+              color: 'var(--gold)', whiteSpace: 'nowrap',
+            }}
+          >
+            ◈ {(s.fechas_especiales || []).filter(f => f >= new Date().toISOString().slice(0, 10)).length} fecha(s)
+          </span>
+        )}
+      </div>
       <div style={{
         fontSize: '12px', color: 'var(--text-secondary)', paddingRight: '16px',
         whiteSpace: 'pre-line', lineHeight: 1.5,   // respeta los saltos de línea del dueño

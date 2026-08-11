@@ -131,6 +131,11 @@ def public_create_turno(request: Request, slug: str, turno: ReservaPublicaCreate
             detail=f"No se pueden reservar turnos con más de {max_dias} días de anticipación.",
         )
 
+    # Servicios de "fecha especial": solo se reservan en sus días puntuales
+    servicio_service.validar_fechas_especiales(
+        db, turno.servicios_ids, fecha_turno.date(), salon.id
+    )
+
     # La notification_url debe ser pública y HTTPS. Detrás de un proxy,
     # request.base_url puede ser incorrecta, por eso priorizamos BACKEND_PUBLIC_URL.
     base = (os.getenv("BACKEND_PUBLIC_URL") or str(request.base_url)).rstrip("/")

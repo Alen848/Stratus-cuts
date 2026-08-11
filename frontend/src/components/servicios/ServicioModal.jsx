@@ -5,8 +5,18 @@ import Button from '../ui/Button';
 
 const defaultForm = {
   nombre: '', descripcion: '', precio: '', duracion_minutos: '', categoria_id: '',
-  empleado_ids: [],
+  empleado_ids: [], fechas_especiales: [],
 };
+
+const hoyISO = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+const fechaLegible = (iso) =>
+  new Date(`${iso}T12:00:00`).toLocaleDateString('es-AR', {
+    weekday: 'short', day: 'numeric', month: 'long', year: 'numeric',
+  });
 
 export default function ServicioModal({
   isOpen, onClose, onSubmit, servicio = null, categorias = [],
@@ -14,6 +24,7 @@ export default function ServicioModal({
 }) {
   const [form, setForm]       = useState(defaultForm);
   const [loading, setLoading] = useState(false);
+  const [nuevaFecha, setNuevaFecha] = useState('');
   const isEdit = Boolean(servicio);
 
   useEffect(() => {
@@ -25,6 +36,7 @@ export default function ServicioModal({
         duracion_minutos: String(servicio.duracion_minutos ?? ''),
         categoria_id:     servicio.categoria_id ? String(servicio.categoria_id) : '',
         empleado_ids:     servicio.empleado_ids || [],
+        fechas_especiales: servicio.fechas_especiales || [],
       });
     } else {
       setForm({
@@ -32,9 +44,28 @@ export default function ServicioModal({
         categoria_id: categoriaIdPorDefecto ? String(categoriaIdPorDefecto) : '',
       });
     }
+    setNuevaFecha('');
   }, [servicio, isOpen, categoriaIdPorDefecto]);
 
   const set = (field, value) => setForm(f => ({ ...f, [field]: value }));
+
+  const agregarFecha = () => {
+    if (!nuevaFecha || form.fechas_especiales.includes(nuevaFecha)) return;
+    setForm(f => ({
+      ...f,
+      fechas_especiales: [...f.fechas_especiales, nuevaFecha].sort(),
+    }));
+    setNuevaFecha('');
+  };
+
+  const quitarFecha = (fecha) => setForm(f => ({
+    ...f,
+    fechas_especiales: f.fechas_especiales.filter(x => x !== fecha),
+  }));
+
+  // Fechas ya pasadas: se siguen mostrando (son historial) pero atenuadas,
+  // porque un cliente ya no puede reservar en ellas.
+  const esPasada = (iso) => iso < hoyISO();
 
   const toggleEmpleado = (id) => setForm(f => ({
     ...f,
@@ -62,6 +93,7 @@ export default function ServicioModal({
         duracion_minutos: Number(form.duracion_minutos),
         categoria_id:     form.categoria_id ? Number(form.categoria_id) : null,
         empleado_ids:     form.empleado_ids,
+        fechas_especiales: form.fechas_especiales,
       });
       onClose();
     } catch {
@@ -178,6 +210,80 @@ export default function ServicioModal({
                 </p>
               )}
             </>
+          )}
+        </div>
+
+        {/* Fechas especiales: para servicios que se dictan solo ciertos días */}
+        <div>
+          <label style={{
+            display: 'block', fontSize: '12px', marginBottom: '4px',
+            color: 'var(--text-secondary)', letterSpacing: '0.02em',
+          }}>
+            Fechas especiales
+          </label>
+          <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: '0 0 8px', lineHeight: 1.5 }}>
+            Dejalo vacío si el servicio se hace cualquier día. Si cargás fechas, el cliente
+            <strong> solo va a poder reservarlo en esos días</strong> (útil para jornadas que
+            se hacen una vez al mes).
+          </p>
+
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+            <div style={{ flex: 1 }}>
+              <Input
+                type="date"
+                min={hoyISO()}
+                value={nuevaFecha}
+                onChange={e => setNuevaFecha(e.target.value)}
+              />
+            </div>
+            <Button variant="ghost" type="button" onClick={agregarFecha} disabled={!nuevaFecha}>
+              + Agregar
+            </Button>
+          </div>
+
+          {form.fechas_especiales.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '10px' }}>
+              {form.fechas_especiales.map(f => {
+                const pasada = esPasada(f);
+                return (
+                  <div
+                    key={f}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      gap: '10px', padding: '7px 10px', borderRadius: '6px',
+                      border: '1px solid var(--border)',
+                      background: 'var(--bg-hover)',
+                      opacity: pasada ? 0.55 : 1,
+                    }}
+                  >
+                    <span style={{ fontSize: '12px', color: pasada ? 'var(--text-muted)' : 'var(--gold)' }}>
+                      {fechaLegible(f)}{pasada ? ' · ya pasó' : ''}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => quitarFecha(f)}
+                      title="Quitar esta fecha"
+                      style={{
+                        border: 'none', background: 'transparent', cursor: 'pointer',
+                        color: 'var(--text-muted)', fontSize: '13px', lineHeight: 1, padding: '2px 4px',
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {form.fechas_especiales.length > 0 && !form.fechas_especiales.some(f => !esPasada(f)) && (
+            <p style={{
+              fontSize: '11px', color: 'var(--warning, #d99a3a)', marginTop: '8px',
+              lineHeight: 1.5, background: 'var(--bg-hover)', padding: '8px 10px', borderRadius: '6px',
+            }}>
+              ⚠ Todas las fechas cargadas ya pasaron. Mientras no agregues una futura,
+              nadie va a poder reservar este servicio online.
+            </p>
           )}
         </div>
 

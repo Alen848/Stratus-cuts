@@ -19,8 +19,25 @@ class Servicio(Base):
     # Relaciones
     turnos    = relationship("TurnoServicio", back_populates="servicio")
     categoria = relationship("CategoriaServicio", back_populates="servicios")
+    # Fechas puntuales en las que se dicta (servicios tipo "evento especial")
+    fechas_especiales_rel = relationship(
+        "ServicioFechaEspecial",
+        back_populates="servicio",
+        cascade="all, delete-orphan",
+        order_by="ServicioFechaEspecial.fecha",
+    )
     # `empleados` lo define Empleado.servicios con backref (M2M empleado_servicios)
 
     @property
     def empleado_ids(self):
         return [e.id for e in self.empleados]
+
+    @property
+    def fechas_especiales(self):
+        """Fechas en las que se dicta. Vacío = disponible siempre."""
+        return [f.fecha for f in self.fechas_especiales_rel]
+
+    @property
+    def es_evento_especial(self):
+        """True si solo se puede reservar en fechas puntuales."""
+        return len(self.fechas_especiales_rel) > 0

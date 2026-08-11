@@ -66,6 +66,32 @@ export default function Booking() {
   const totalPrecio   = selectedServices.reduce((sum, s) => sum + Number(s.precio), 0);
   const totalDuracion = selectedServices.reduce((sum, s) => sum + s.duracion_minutos, 0);
 
+  // ── Servicios de fecha especial ────────────────────────────────────────────
+  // Un servicio con `fechas_especiales` cargadas solo se dicta esos días (ej: una
+  // jornada al mes). Si el cliente eligió alguno, la lista de días se recorta a
+  // sus fechas; el resto del flujo (elegir horario) queda igual.
+  const hoyISO = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  })();
+
+  const serviciosEspeciales = selectedServices.filter(
+    s => (s.fechas_especiales || []).length > 0
+  );
+
+  // Con varios servicios especiales elegidos, solo sirven los días que comparten.
+  const fechasEspeciales = serviciosEspeciales.length === 0
+    ? null
+    : serviciosEspeciales
+        .map(s => s.fechas_especiales)
+        .reduce((comunes, fechas) => comunes.filter(f => fechas.includes(f)))
+        .filter(f => f >= hoyISO)
+        .sort();
+
+  const hayEventoEspecial = fechasEspeciales !== null;
+  // Elegidos dos eventos que no coinciden en ningún día, o cuyas fechas ya pasaron
+  const sinFechasCompatibles = hayEventoEspecial && fechasEspeciales.length === 0;
+
   useEffect(() => {
     if (!selectedEmpleado || !selectedDate) {
       setAvailableSlots([]);
@@ -125,6 +151,18 @@ export default function Booking() {
   useEffect(() => {
     if (selectedEmpleado && !puedeRealizar(selectedEmpleado)) {
       setSelectedEmpleado(null);
+      setSelectedDate('');
+      setSelectedTime('');
+      setAvailableSlots([]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedServices]);
+
+  // Si al cambiar los servicios la fecha elegida deja de ser válida (pasó a ser
+  // un evento especial, o cambió a otro con otras fechas), la limpiamos.
+  useEffect(() => {
+    if (!selectedDate) return;
+    if (hayEventoEspecial && !fechasEspeciales.includes(selectedDate)) {
       setSelectedDate('');
       setSelectedTime('');
       setAvailableSlots([]);
@@ -249,6 +287,9 @@ export default function Booking() {
 
   const renderServicioItem = (s, dentroDeCategoria) => {
     const checked = !!selectedServices.find(ss => ss.id === s.id);
+    // Servicio de jornada puntual: lo avisamos antes de que lo elija
+    const proximas = (s.fechas_especiales || []).filter(f => f >= hoyISO);
+    const esEvento = (s.fechas_especiales || []).length > 0;
     return (
       <button
         key={s.id}
@@ -262,7 +303,17 @@ export default function Booking() {
           </svg>
         </div>
         <div className="si-info">
-          <span className="si-name">{s.nombre}</span>
+          <span className="si-name">
+            {s.nombre}
+            {esEvento && <span className="si-evento">◈ Fecha especial</span>}
+          </span>
+          {esEvento && (
+            <span className="si-desc">
+              {proximas.length === 0
+                ? 'Sin próximas fechas por ahora'
+                : `Próxima: ${new Date(`${proximas[0]}T12:00:00`).toLocaleDateString('es-AR', { day: 'numeric', month: 'long' })}`}
+            </span>
+          )}
           {s.descripcion && <span className="si-desc">{s.descripcion}</span>}
         </div>
         <div className="si-right">
@@ -413,26 +464,50 @@ export default function Booking() {
           {/* -- Fecha -- */}
           <div className="field">
             <label className="field-label">Fecha <span className="field-req">*</span></label>
+
+            {hayEventoEspecial && !sinFechasCompatibles && (
+              <div className="evento-aviso">
+                <span className="ev-tag">◈ Fecha especial</span>
+                <span className="ev-text">
+                  {serviciosEspeciales.map(s => s.nombre).join(' y ')}
+                  {serviciosEspeciales.length === 1 ? ' se realiza' : ' se realizan'} solo
+                  {fechasEspeciales.length === 1 ? ' este día' : ' estos días'}.
+                  Elegí la fecha y después tu horario.
+                </span>
+              </div>
+            )}
+
             {!selectedEmpleado ? (
               <span className="field-hint" style={{ padding: '0.6rem 0' }}>
                 Elegí un profesional primero
               </span>
+            ) : sinFechasCompatibles ? (
+              <span className="field-hint" style={{ padding: '0.6rem 0' }}>
+                {serviciosEspeciales.length > 1
+                  ? 'Los servicios que elegiste se hacen en fechas distintas y no coinciden. Reservalos por separado.'
+                  : 'Todavía no hay próximas fechas cargadas para este servicio. Escribinos y te avisamos.'}
+              </span>
             ) : (
               <div className="day-strip">
-                {Array.from({ length: 30 }, (_, i) => {
-                  const d = new Date();
-                  d.setDate(d.getDate() + i);
-                  const iso = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                {(hayEventoEspecial
+                  ? fechasEspeciales
+                  : Array.from({ length: 30 }, (_, i) => {
+                      const d = new Date();
+                      d.setDate(d.getDate() + i);
+                      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                    })
+                ).map(iso => {
+                  const d = new Date(`${iso}T12:00:00`);
                   const dayName = d.toLocaleDateString('es-AR', { weekday: 'short' }).replace('.', '');
                   const dayNum  = d.getDate();
                   const monthStr = d.toLocaleDateString('es-AR', { month: 'short' }).replace('.', '');
                   const isSelected = selectedDate === iso;
-                  const isToday = i === 0;
+                  const isToday = iso === hoyISO;
                   return (
                     <button
                       key={iso}
                       type="button"
-                      className={`day-pill${isSelected ? ' dp-selected' : ''}${isToday ? ' dp-today' : ''}`}
+                      className={`day-pill${isSelected ? ' dp-selected' : ''}${isToday ? ' dp-today' : ''}${hayEventoEspecial ? ' dp-evento' : ''}`}
                       onClick={() => handleDateChange(iso)}
                     >
                       <span className="dp-weekday">{dayName}</span>
