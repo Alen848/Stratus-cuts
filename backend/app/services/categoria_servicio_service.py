@@ -38,10 +38,19 @@ def _aplicar_evento(db: Session, cat: CategoriaServicio, datos: dict, salon_id: 
 
     fechas = datos.get("fechas_especiales")
     if fechas is not None:
-        unicas = sorted(set(fechas))
-        cat.evento.fechas = [
-            EventoFecha(salon_id=salon_id, fecha=f) for f in unicas
-        ]
+        # Sincronizamos por diferencia en vez de reemplazar la colección entera:
+        # al reemplazarla, SQLAlchemy inserta las filas nuevas antes de borrar las
+        # viejas en el mismo flush y choca contra el único (evento_id, fecha).
+        # Pasaba al guardar un evento sin tocarle las fechas (ej: renombrarlo).
+        deseadas = set(fechas)
+        actuales = {f.fecha: f for f in cat.evento.fechas}
+
+        for fecha, fila in actuales.items():
+            if fecha not in deseadas:
+                cat.evento.fechas.remove(fila)
+
+        for fecha in sorted(deseadas - set(actuales)):
+            cat.evento.fechas.append(EventoFecha(salon_id=salon_id, fecha=fecha))
 
 
 def get_categoria(db: Session, categoria_id: int, salon_id: int):
