@@ -13,6 +13,14 @@ const CATEGORY_ICONS = ['✂', '◈', '✦', '◆', '◉', '❋'];
 
 const GRID = '36px 2fr 3fr 1fr 1fr auto';
 
+const hoyISO = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+const fechaCorta = (iso) =>
+  new Date(`${iso}T12:00:00`).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
+
 export default function ServiciosPage() {
   const { servicios, loading, refetch: refetchServicios, addServicio, editServicio, removeServicio } = useServicios();
   const {
@@ -27,15 +35,25 @@ export default function ServiciosPage() {
   const [categoriaDestino, setCategoriaDestino]   = useState(null);
   const [catModalOpen, setCatModalOpen]           = useState(false);
   const [editingCategoria, setEditingCategoria]   = useState(null);
+  // El modal es el mismo, pero en "modo evento" pide fechas y oculta la categoría
+  const [modoEvento, setModoEvento]               = useState(false);
 
   const openCreate = (categoriaId = null) => {
     setEditingServicio(null);
     setCategoriaDestino(categoriaId);
+    setModoEvento(false);
+    setModalOpen(true);
+  };
+  const openCreateEvento = () => {
+    setEditingServicio(null);
+    setCategoriaDestino(null);
+    setModoEvento(true);
     setModalOpen(true);
   };
   const openEdit = (s) => {
     setEditingServicio(s);
     setCategoriaDestino(null);
+    setModoEvento(Boolean(s.es_evento_especial));
     setModalOpen(true);
   };
 
@@ -104,17 +122,22 @@ export default function ServiciosPage() {
     }
   };
 
+  // Los eventos especiales no viven en ninguna categoría: tienen su propio bloque
+  // acá arriba y su propia sección en la página de reservas.
+  const eventos   = servicios.filter(s => s.es_evento_especial);
+  const normales  = servicios.filter(s => !s.es_evento_especial);
+
   // Agrupamos: cada categoría con sus servicios + un grupo final "Sin categoría"
   const grupos = [
     ...categorias.map(cat => ({
       key: `cat-${cat.id}`,
       categoria: cat,
-      servicios: servicios.filter(s => s.categoria_id === cat.id),
+      servicios: normales.filter(s => s.categoria_id === cat.id),
     })),
     {
       key: 'sin-categoria',
       categoria: null,
-      servicios: servicios.filter(s => !s.categoria_id),
+      servicios: normales.filter(s => !s.categoria_id),
     },
   ].filter(g => g.categoria || g.servicios.length > 0);
 
@@ -138,22 +161,7 @@ export default function ServiciosPage() {
       <span style={{ color: 'var(--gold)', fontSize: '16px' }}>
         {CATEGORY_ICONS[i % CATEGORY_ICONS.length]}
       </span>
-      <div style={{ fontWeight: 500, fontSize: '13px' }}>
-        {s.nombre}
-        {s.es_evento_especial && (
-          <span
-            title={`Solo reservable en: ${(s.fechas_especiales || []).map(f => new Date(`${f}T12:00:00`).toLocaleDateString('es-AR')).join(', ')}`}
-            style={{
-              marginLeft: '8px', fontSize: '10px', fontWeight: 400,
-              padding: '2px 7px', borderRadius: '99px',
-              border: '1px solid var(--gold-border)', background: 'var(--gold-dim)',
-              color: 'var(--gold)', whiteSpace: 'nowrap',
-            }}
-          >
-            ◈ {(s.fechas_especiales || []).filter(f => f >= new Date().toISOString().slice(0, 10)).length} fecha(s)
-          </span>
-        )}
-      </div>
+      <div style={{ fontWeight: 500, fontSize: '13px' }}>{s.nombre}</div>
       <div style={{
         fontSize: '12px', color: 'var(--text-secondary)', paddingRight: '16px',
         whiteSpace: 'pre-line', lineHeight: 1.5,   // respeta los saltos de línea del dueño
@@ -173,6 +181,59 @@ export default function ServiciosPage() {
     </div>
   );
 
+  // Fila de un evento: en vez de la descripción, lo que importa son sus fechas
+  const renderFilaEvento = (s, i, total) => {
+    const fechas    = s.fechas_especiales || [];
+    const futuras   = fechas.filter(f => f >= hoyISO());
+    const vencido   = futuras.length === 0;
+    return (
+      <div
+        key={s.id}
+        className="animate-fade"
+        style={{
+          display: 'grid', gridTemplateColumns: GRID,
+          padding: '16px 20px',
+          borderBottom: i < total - 1 ? '1px solid var(--border)' : 'none',
+          alignItems: 'center',
+          animationDelay: `${i * 0.04}s`,
+        }}
+      >
+        <span style={{ color: 'var(--gold)', fontSize: '16px' }}>◈</span>
+        <div style={{ fontWeight: 500, fontSize: '13px' }}>{s.nombre}</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', paddingRight: '16px' }}>
+          {vencido ? (
+            <span style={{ fontSize: '11px', color: 'var(--warning, #d99a3a)' }}>
+              ⚠ Sin fechas próximas — no se le muestra al cliente
+            </span>
+          ) : (
+            futuras.map(f => (
+              <span
+                key={f}
+                style={{
+                  fontSize: '11px', padding: '2px 8px', borderRadius: '99px',
+                  border: '1px solid var(--gold-border)', background: 'var(--gold-dim)',
+                  color: 'var(--gold)', whiteSpace: 'nowrap',
+                }}
+              >
+                {fechaCorta(f)}
+              </span>
+            ))
+          )}
+        </div>
+        <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+          {formatDuration(s.duracion_minutos)}
+        </div>
+        <div style={{ fontSize: '14px', color: 'var(--gold)', fontWeight: 500 }}>
+          ${s.precio?.toLocaleString('es-AR')}
+        </div>
+        <div style={{ display: 'flex', gap: '6px' }}>
+          <Button variant="ghost" size="sm" onClick={() => openEdit(s)}>✎</Button>
+          <Button variant="danger" size="sm" onClick={() => handleDelete(s.id)}>✕</Button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
@@ -182,6 +243,7 @@ export default function ServiciosPage() {
         </span>
         <div style={{ display: 'flex', gap: '10px', flexShrink: 0 }}>
           <Button variant="ghost" onClick={openCreateCategoria}>+ Nueva categoría</Button>
+          <Button variant="ghost" onClick={openCreateEvento}>◈ Nuevo evento</Button>
           <Button variant="primary" onClick={() => openCreate(null)}>+ Nuevo servicio</Button>
         </div>
       </div>
@@ -196,7 +258,64 @@ export default function ServiciosPage() {
           action={<Button variant="primary" onClick={() => openCreate(null)}>Crear servicio</Button>}
         />
       ) : (
-        grupos.map(({ key, categoria, servicios: items }) => (
+        <>
+        {/* Eventos especiales: bloque propio, fuera de las categorías */}
+        <div style={{
+          background: 'var(--bg-surface)',
+          border: '1px solid var(--gold-border)',
+          borderRadius: 'var(--radius-lg)',
+          overflow: 'hidden',
+        }}>
+          <div style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            gap: '12px', padding: '14px 20px',
+            borderBottom: '1px solid var(--border)',
+            background: 'var(--gold-dim)',
+          }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--gold)' }}>
+                ◈ Eventos especiales
+                <span style={{ marginLeft: '10px', fontSize: '11px', color: 'var(--text-muted)', fontWeight: 400 }}>
+                  {eventos.length} {eventos.length === 1 ? 'evento' : 'eventos'}
+                </span>
+              </div>
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                Servicios que se hacen solo ciertos días. El cliente los ve en una sección
+                aparte y solo puede reservarlos en esas fechas.
+              </div>
+            </div>
+            <div style={{ flexShrink: 0 }}>
+              <Button variant="ghost" size="sm" onClick={openCreateEvento}>+ evento</Button>
+            </div>
+          </div>
+
+          {eventos.length === 0 ? (
+            <div style={{ padding: '20px', fontSize: '12px', color: 'var(--text-muted)' }}>
+              Todavía no hay eventos. Creá uno para un servicio que se hace una vez al mes,
+              por ejemplo una jornada de depilación láser.
+            </div>
+          ) : (
+            <>
+              <div style={{
+                display: 'grid', gridTemplateColumns: GRID,
+                padding: '12px 20px',
+                borderBottom: '1px solid var(--border)',
+                fontSize: '11px', color: 'var(--text-muted)',
+                letterSpacing: '0.07em', textTransform: 'uppercase',
+              }}>
+                <span></span>
+                <span>Evento</span>
+                <span>Próximas fechas</span>
+                <span>Duración</span>
+                <span>Precio</span>
+                <span></span>
+              </div>
+              {eventos.map((s, i) => renderFilaEvento(s, i, eventos.length))}
+            </>
+          )}
+        </div>
+
+        {grupos.map(({ key, categoria, servicios: items }) => (
           <div
             key={key}
             style={{
@@ -261,7 +380,8 @@ export default function ServiciosPage() {
               </>
             )}
           </div>
-        ))
+        ))}
+        </>
       )}
 
       <ServicioModal
@@ -272,6 +392,7 @@ export default function ServiciosPage() {
         categorias={categorias}
         categoriaIdPorDefecto={categoriaDestino}
         empleados={empleados}
+        modoEvento={modoEvento}
       />
 
       <CategoriaModal

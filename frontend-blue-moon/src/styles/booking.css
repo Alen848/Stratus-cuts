@@ -511,21 +511,63 @@
   color: var(--text-2);
 }
 
-/* Etiqueta del servicio en la lista, antes de elegirlo */
-.si-evento {
-  display: inline-block;
-  margin-left: 0.4rem;
-  padding: 0.1rem 0.4rem;
-  border-radius: 99px;
-  border: 1px solid rgba(var(--gold-rgb),0.35);
-  background: rgba(var(--gold-rgb),0.08);
-  color: var(--gold);
-  font-size: 0.55rem;
+/* Sección propia de eventos, arriba del catálogo normal */
+.evento-bloque {
+  border: 1px solid rgba(var(--gold-rgb),0.32);
+  border-radius: 5px;
+  background: rgba(var(--gold-rgb),0.04);
+  margin-bottom: 0.85rem;
+  overflow: hidden;
+}
+
+.eb-head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.7rem 0.85rem;
+  border-bottom: 1px solid rgba(var(--gold-rgb),0.22);
+  background: rgba(var(--gold-rgb),0.07);
+}
+.eb-tag {
+  font-size: 0.62rem;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  vertical-align: middle;
-  white-space: nowrap;
+  color: var(--gold);
+}
+.eb-sub {
+  font-size: 0.72rem;
+  font-weight: 300;
+  color: var(--text-3);
+}
+
+.evento-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1.1rem 0.85rem;
+  border: none;
+  border-bottom: 1px solid rgba(var(--gold-rgb),0.16);
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-body);
+  width: 100%;
+  transition: background 0.2s ease;
+  min-height: 60px;
+}
+.evento-item:last-child { border-bottom: none; }
+.evento-item:hover { background: rgba(var(--gold-rgb),0.07); }
+.evento-item.ei-selected { background: rgba(var(--gold-rgb),0.13); }
+
+/* La fecha es el dato que define al evento: se lee antes que la descripción. */
+.ei-fecha {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.74rem;
+  font-weight: 500;
+  color: var(--gold);
+  line-height: 1.45;
 }
 
 /* -- Time slots -- */

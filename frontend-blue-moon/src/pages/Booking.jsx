@@ -116,15 +116,23 @@ export default function Booking() {
     );
   };
 
-  // Los servicios se muestran agrupados: primero la categoría (sin precio) y,
+  // Los eventos especiales tienen su propia sección destacada arriba de todo y no
+  // entran en las categorías. Si no tienen ninguna fecha futura no se muestran:
+  // ofrecer algo que no se puede reservar solo lleva a un callejón sin salida.
+  const eventos = servicios.filter(
+    s => (s.fechas_especiales || []).some(f => f >= hoyISO)
+  );
+  const serviciosNormales = servicios.filter(s => !(s.fechas_especiales || []).length);
+
+  // El resto se muestra agrupado: primero la categoría (sin precio) y,
   // al desplegarla, los servicios concretos con su precio y duración.
   const gruposServicios = categorias
-    .map(cat => ({ categoria: cat, items: servicios.filter(s => s.categoria_id === cat.id) }))
+    .map(cat => ({ categoria: cat, items: serviciosNormales.filter(s => s.categoria_id === cat.id) }))
     .filter(g => g.items.length > 0);
 
   const categoriaIdsConItems = new Set(gruposServicios.map(g => g.categoria.id));
   // Servicios sin categoría (o con una categoría que ya no existe): se muestran sueltos
-  const serviciosSueltos = servicios.filter(
+  const serviciosSueltos = serviciosNormales.filter(
     s => !s.categoria_id || !categoriaIdsConItems.has(s.categoria_id)
   );
 
@@ -287,9 +295,6 @@ export default function Booking() {
 
   const renderServicioItem = (s, dentroDeCategoria) => {
     const checked = !!selectedServices.find(ss => ss.id === s.id);
-    // Servicio de jornada puntual: lo avisamos antes de que lo elija
-    const proximas = (s.fechas_especiales || []).filter(f => f >= hoyISO);
-    const esEvento = (s.fechas_especiales || []).length > 0;
     return (
       <button
         key={s.id}
@@ -303,17 +308,42 @@ export default function Booking() {
           </svg>
         </div>
         <div className="si-info">
-          <span className="si-name">
-            {s.nombre}
-            {esEvento && <span className="si-evento">◈ Fecha especial</span>}
+          <span className="si-name">{s.nombre}</span>
+          {s.descripcion && <span className="si-desc">{s.descripcion}</span>}
+        </div>
+        <div className="si-right">
+          <span className="si-price">{money(s.precio)}</span>
+          <span className="si-dur">{s.duracion_minutos} min</span>
+        </div>
+      </button>
+    );
+  };
+
+  // Card de un evento especial: además del precio, lo importante es cuándo se hace.
+  const renderEventoItem = (s) => {
+    const checked  = !!selectedServices.find(ss => ss.id === s.id);
+    const proximas = (s.fechas_especiales || []).filter(f => f >= hoyISO);
+    const fmt = (iso) => new Date(`${iso}T12:00:00`)
+      .toLocaleDateString('es-AR', { day: 'numeric', month: 'long' });
+    return (
+      <button
+        key={s.id}
+        type="button"
+        className={`evento-item${checked ? ' ei-selected' : ''}`}
+        onClick={() => toggleServicio(s)}
+      >
+        <div className={`si-check${checked ? ' si-checked' : ''}`}>
+          <svg viewBox="0 0 12 12" className="si-check-icon">
+            <polyline points="2 6 5 9 10 3" />
+          </svg>
+        </div>
+        <div className="si-info">
+          <span className="si-name">{s.nombre}</span>
+          <span className="ei-fecha">
+            {proximas.length === 1
+              ? `Próxima fecha: ${fmt(proximas[0])}`
+              : `Próximas fechas: ${proximas.slice(0, 3).map(fmt).join(' · ')}`}
           </span>
-          {esEvento && (
-            <span className="si-desc">
-              {proximas.length === 0
-                ? 'Sin próximas fechas por ahora'
-                : `Próxima: ${new Date(`${proximas[0]}T12:00:00`).toLocaleDateString('es-AR', { day: 'numeric', month: 'long' })}`}
-            </span>
-          )}
           {s.descripcion && <span className="si-desc">{s.descripcion}</span>}
         </div>
         <div className="si-right">
@@ -350,6 +380,21 @@ export default function Booking() {
               </span>
             ) : (
               <div className="servicio-list">
+                {/* Eventos especiales: sección propia, siempre visible, arriba de todo */}
+                {eventos.length > 0 && (
+                  <div className="evento-bloque">
+                    <div className="eb-head">
+                      <span className="eb-tag">◈ Eventos especiales</span>
+                      <span className="eb-sub">
+                        {eventos.length === 1
+                          ? 'Se realiza solo en fechas puntuales'
+                          : 'Se realizan solo en fechas puntuales'}
+                      </span>
+                    </div>
+                    {eventos.map(renderEventoItem)}
+                  </div>
+                )}
+
                 {gruposServicios.map(({ categoria, items }) => {
                   const abierta = openCategoria === categoria.id;
                   const elegidos = items.filter(

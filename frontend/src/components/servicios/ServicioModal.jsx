@@ -20,7 +20,7 @@ const fechaLegible = (iso) =>
 
 export default function ServicioModal({
   isOpen, onClose, onSubmit, servicio = null, categorias = [],
-  categoriaIdPorDefecto = null, empleados = [],
+  categoriaIdPorDefecto = null, empleados = [], modoEvento = false,
 }) {
   const [form, setForm]       = useState(defaultForm);
   const [loading, setLoading] = useState(false);
@@ -67,6 +67,11 @@ export default function ServicioModal({
   // porque un cliente ya no puede reservar en ellas.
   const esPasada = (iso) => iso < hoyISO();
 
+  // Un evento sin fechas sería indistinguible de un servicio normal: lo exigimos.
+  const faltanFechas = modoEvento && form.fechas_especiales.length === 0;
+  const sinFechasFuturas =
+    form.fechas_especiales.length > 0 && form.fechas_especiales.every(esPasada);
+
   const toggleEmpleado = (id) => setForm(f => ({
     ...f,
     empleado_ids: f.empleado_ids.includes(id)
@@ -91,7 +96,9 @@ export default function ServicioModal({
         ...form,
         precio:           Number(form.precio),
         duracion_minutos: Number(form.duracion_minutos),
-        categoria_id:     form.categoria_id ? Number(form.categoria_id) : null,
+        // Un evento no vive dentro de una categoría: tiene su propia sección,
+        // tanto en este panel como en la página de reservas.
+        categoria_id:     modoEvento ? null : (form.categoria_id ? Number(form.categoria_id) : null),
         empleado_ids:     form.empleado_ids,
         fechas_especiales: form.fechas_especiales,
       });
@@ -104,26 +111,48 @@ export default function ServicioModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={isEdit ? 'Editar servicio' : 'Nuevo servicio'}>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={
+        modoEvento
+          ? (isEdit ? 'Editar evento especial' : 'Nuevo evento especial')
+          : (isEdit ? 'Editar servicio' : 'Nuevo servicio')
+      }
+    >
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        {modoEvento && (
+          <p style={{
+            fontSize: '11px', color: 'var(--text-muted)', margin: 0, lineHeight: 1.6,
+            background: 'var(--gold-dim)', border: '1px solid var(--gold-border)',
+            padding: '10px 12px', borderRadius: '6px',
+          }}>
+            ◈ Un <strong>evento especial</strong> es un servicio que se hace solo ciertos días
+            (ej: una jornada de láser al mes). El cliente lo va a ver en una sección propia
+            y solo va a poder reservarlo en las fechas que cargues acá abajo.
+          </p>
+        )}
+
         <Input
-          label="Nombre del servicio"
+          label={modoEvento ? 'Nombre del evento' : 'Nombre del servicio'}
           value={form.nombre}
           onChange={e => set('nombre', e.target.value)}
           required
-          placeholder="Ej: Corte de cabello"
+          placeholder={modoEvento ? 'Ej: Jornada de depilación láser' : 'Ej: Corte de cabello'}
         />
-        <Input
-          label="Categoría"
-          as="select"
-          value={form.categoria_id}
-          onChange={e => set('categoria_id', e.target.value)}
-        >
-          <option value="">Sin categoría (se muestra suelto)</option>
-          {categorias.map(c => (
-            <option key={c.id} value={c.id}>{c.nombre}</option>
-          ))}
-        </Input>
+        {!modoEvento && (
+          <Input
+            label="Categoría"
+            as="select"
+            value={form.categoria_id}
+            onChange={e => set('categoria_id', e.target.value)}
+          >
+            <option value="">Sin categoría (se muestra suelto)</option>
+            {categorias.map(c => (
+              <option key={c.id} value={c.id}>{c.nombre}</option>
+            ))}
+          </Input>
+        )}
         <Input
           label="Descripción"
           as="textarea"
@@ -213,18 +242,17 @@ export default function ServicioModal({
           )}
         </div>
 
-        {/* Fechas especiales: para servicios que se dictan solo ciertos días */}
+        {/* Fechas del evento: solo en modo evento, el servicio normal no las tiene */}
+        {modoEvento && (
         <div>
           <label style={{
             display: 'block', fontSize: '12px', marginBottom: '4px',
             color: 'var(--text-secondary)', letterSpacing: '0.02em',
           }}>
-            Fechas especiales
+            Fechas en las que se realiza <span style={{ color: 'var(--gold)' }}>*</span>
           </label>
           <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: '0 0 8px', lineHeight: 1.5 }}>
-            Dejalo vacío si el servicio se hace cualquier día. Si cargás fechas, el cliente
-            <strong> solo va a poder reservarlo en esos días</strong> (útil para jornadas que
-            se hacen una vez al mes).
+            Cargá una o varias. Podés dejar programadas las próximas jornadas de una vez.
           </p>
 
           <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
@@ -276,21 +304,32 @@ export default function ServicioModal({
             </div>
           )}
 
-          {form.fechas_especiales.length > 0 && !form.fechas_especiales.some(f => !esPasada(f)) && (
+          {form.fechas_especiales.length === 0 && (
+            <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px', lineHeight: 1.5 }}>
+              Un evento necesita al menos una fecha para poder guardarse.
+            </p>
+          )}
+
+          {sinFechasFuturas && (
             <p style={{
               fontSize: '11px', color: 'var(--warning, #d99a3a)', marginTop: '8px',
               lineHeight: 1.5, background: 'var(--bg-hover)', padding: '8px 10px', borderRadius: '6px',
             }}>
               ⚠ Todas las fechas cargadas ya pasaron. Mientras no agregues una futura,
-              nadie va a poder reservar este servicio online.
+              el evento no se le muestra al cliente.
             </p>
           )}
         </div>
+        )}
 
         <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '4px' }}>
           <Button variant="ghost" onClick={onClose} type="button">Cancelar</Button>
-          <Button variant="primary" type="submit" disabled={loading}>
-            {loading ? '...' : isEdit ? 'Guardar cambios' : 'Crear servicio'}
+          <Button variant="primary" type="submit" disabled={loading || faltanFechas}>
+            {loading
+              ? '...'
+              : isEdit
+                ? 'Guardar cambios'
+                : modoEvento ? 'Crear evento' : 'Crear servicio'}
           </Button>
         </div>
       </form>
