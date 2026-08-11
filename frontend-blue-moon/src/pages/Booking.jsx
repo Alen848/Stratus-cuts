@@ -356,27 +356,61 @@ export default function Booking() {
               </span>
             ) : (
               <div className="servicio-list">
-                {/* Eventos especiales: sección propia arriba, siempre desplegada */}
+                {/* Eventos especiales: mismo acordeón que las categorías, arriba
+                    de todo y con acento dorado. La fecha va en la cabecera para
+                    que se lea sin tener que desplegar. */}
                 {gruposEvento.map(({ categoria, items }) => {
+                  const abierta = openCategoria === categoria.id;
+                  const elegidos = items.filter(
+                    i => selectedServices.some(s => s.id === i.id)
+                  ).length;
                   const proximas = (categoria.fechas_especiales || [])
                     .filter(f => f >= hoyISO);
                   const fmt = (iso) => new Date(`${iso}T12:00:00`)
                     .toLocaleDateString('es-AR', { day: 'numeric', month: 'long' });
                   return (
-                    <div key={`ev-${categoria.id}`} className="evento-bloque">
-                      <div className="eb-head">
-                        <span className="eb-tag">◈ Evento especial</span>
-                        <span className="eb-nombre">{categoria.nombre}</span>
-                        <span className="eb-fecha">
-                          {proximas.length === 1
-                            ? `Solo el ${fmt(proximas[0])}`
-                            : `Solo el ${proximas.slice(0, 3).map(fmt).join(' · ')}`}
-                        </span>
-                        {categoria.descripcion && (
-                          <span className="eb-sub">{categoria.descripcion}</span>
-                        )}
-                      </div>
-                      {items.map(s => renderServicioItem(s, true))}
+                    <div
+                      key={`ev-${categoria.id}`}
+                      className={`servicio-cat servicio-cat-evento${abierta ? ' sc-open' : ''}`}
+                    >
+                      <button
+                        type="button"
+                        className="servicio-cat-head"
+                        aria-expanded={abierta}
+                        onClick={() => setOpenCategoria(abierta ? null : categoria.id)}
+                      >
+                        <div className="si-info">
+                          <span className="si-name">
+                            <span className="ev-chip">◈ Evento</span>
+                            {categoria.nombre}
+                          </span>
+                          <span className="eb-fecha">
+                            {proximas.length === 1
+                              ? `Solo el ${fmt(proximas[0])}`
+                              : `Solo el ${proximas.slice(0, 3).map(fmt).join(' · ')}`}
+                          </span>
+                          <span className="si-desc">
+                            {categoria.descripcion
+                              || `${items.length} ${items.length === 1 ? 'opción' : 'opciones'}`}
+                          </span>
+                        </div>
+                        <div className="sc-right">
+                          {elegidos > 0 && (
+                            <span className="sc-badge">
+                              {elegidos} {elegidos === 1 ? 'elegido' : 'elegidos'}
+                            </span>
+                          )}
+                          <svg viewBox="0 0 12 12" className="sc-chevron">
+                            <polyline points="3 4.5 6 8 9 4.5" />
+                          </svg>
+                        </div>
+                      </button>
+
+                      {abierta && (
+                        <div className="servicio-sublist">
+                          {items.map(s => renderServicioItem(s, true))}
+                        </div>
+                      )}
                     </div>
                   );
                 })}

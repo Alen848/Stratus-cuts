@@ -511,64 +511,51 @@
   color: var(--text-2);
 }
 
-/* Sección propia de eventos, arriba del catálogo normal */
-.evento-bloque {
-  border: 1px solid rgba(var(--gold-rgb),0.32);
-  border-radius: 5px;
-  background: rgba(var(--gold-rgb),0.04);
-  margin-bottom: 0.85rem;
-  overflow: hidden;
+/* Evento: es el mismo acordeón que una categoría, con acento dorado. Se pliega
+   igual para no comerse la pantalla; la fecha queda visible en la cabecera. */
+.servicio-cat-evento .servicio-cat-head {
+  background: rgba(var(--gold-rgb),0.05);
+}
+.servicio-cat-evento .servicio-cat-head:hover,
+.servicio-cat-evento.sc-open .servicio-cat-head {
+  background: rgba(var(--gold-rgb),0.1);
+}
+.servicio-cat-evento .servicio-sublist {
+  border-left-color: rgba(var(--gold-rgb),0.3);
 }
 
-.eb-head {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  padding: 0.7rem 0.85rem;
-  border-bottom: 1px solid rgba(var(--gold-rgb),0.22);
-  background: rgba(var(--gold-rgb),0.07);
-}
-.eb-tag {
-  font-size: 0.62rem;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+/* Chip que identifica al evento, antes del nombre */
+.ev-chip {
+  display: inline-block;
+  margin-right: 0.45rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 99px;
+  border: 1px solid rgba(var(--gold-rgb),0.4);
+  background: rgba(var(--gold-rgb),0.1);
   color: var(--gold);
+  font-size: 0.55rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  vertical-align: middle;
+  white-space: nowrap;
 }
-.eb-nombre {
-  font-family: var(--font-display);
-  font-size: 1.15rem;
-  color: var(--text);
-  line-height: 1.2;
-}
+
 /* La fecha es el dato que define al evento: se lee antes que la descripción. */
 .eb-fecha {
+  display: block;
+  margin-top: 0.2rem;
   font-size: 0.76rem;
   font-weight: 500;
   color: var(--gold);
   line-height: 1.45;
 }
-.eb-sub {
-  font-size: 0.72rem;
-  font-weight: 300;
-  color: var(--text-3);
-  white-space: pre-line;
-  line-height: 1.5;
-}
 
-/* Las variantes del evento reusan .servicio-item, pero sobre fondo dorado */
-.evento-bloque .servicio-item {
-  border-bottom: 1px solid rgba(var(--gold-rgb),0.16);
-}
-.evento-bloque .servicio-item:first-child { border-top: none; }
-.evento-bloque .servicio-item:last-child  { border-bottom: none; }
-.evento-bloque .servicio-item:hover        { background: rgba(var(--gold-rgb),0.07); }
-.evento-bloque .servicio-item.si-selected  { background: rgba(var(--gold-rgb),0.13); }
-.evento-bloque .si-check.si-checked {
+.servicio-cat-evento .si-check.si-checked {
   background: var(--gold);
   border-color: var(--gold);
 }
-.evento-bloque .si-price { color: var(--gold); }
+.servicio-cat-evento .si-price { color: var(--gold); }
 
 /* -- Time slots -- */
 .time-section { display: flex; flex-direction: column; gap: 0.55rem; }
