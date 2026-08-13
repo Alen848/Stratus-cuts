@@ -30,6 +30,10 @@ const DEFAULT_CONFIG = {
   transferencia_cbu:     '',
   transferencia_alias:   '',
   transferencia_titular: '',
+  // Webhooks salientes (el secreto nunca vuelve del backend)
+  webhook_url:         '',
+  webhook_configurado: false,
+  webhook_activo:      false,
 };
 
 function timeToStr(t) {
@@ -484,6 +488,276 @@ function TabPagos({ config, setField, configPassword }) {
   );
 }
 
+// ─── Sub-tab: Webhooks (integración con sistemas externos) ───────────────────
+const EVENTOS_WEBHOOK = [
+  ['turno.creado',     'Cuando alguien reserva un turno'],
+  ['turno.actualizado','Cuando se edita un turno existente'],
+  ['turno.eliminado',  'Cuando se borra un turno'],
+  ['turno.confirmado', 'Cuando se acredita la seña (solo si cobrás seña)'],
+];
+
+function fechaHora(iso) {
+  return new Date(iso).toLocaleString('es-AR', {
+    day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit',
+  });
+}
+
+function TabWebhooks({ config, setField, configPassword }) {
+  const [saving, setSaving]   = useState(false);
+  const [saved, setSaved]     = useState(false);
+  const [error, setError]     = useState('');
+  const [secretInput, setSecretInput] = useState('');
+  const [entregas, setEntregas]       = useState([]);
+  const [cargandoLog, setCargandoLog] = useState(true);
+  const [probando, setProbando]       = useState(false);
+  const [resultadoPrueba, setResultadoPrueba] = useState(null);
+
+  const cargarEntregas = useCallback(async () => {
+    try {
+      setCargandoLog(true);
+      const res = await configSalonApi.webhookEntregas(50);
+      setEntregas(res.data || []);
+    } catch {
+      setEntregas([]);
+    } finally {
+      setCargandoLog(false);
+    }
+  }, []);
+
+  useEffect(() => { cargarEntregas(); }, [cargarEntregas]);
+
+  const handleSave = async () => {
+    setError('');
+    const url = String(config.webhook_url || '').trim();
+    if (config.webhook_activo && !url) {
+      setError('Para activar los webhooks, ingresá la URL de destino.');
+      return;
+    }
+    if (url && !/^https?:\/\//i.test(url)) {
+      setError('La URL tiene que empezar con http:// o https://');
+      return;
+    }
+    if (config.webhook_activo && !config.webhook_configurado && !secretInput.trim()) {
+      setError('Para activar los webhooks, ingresá el secreto compartido.');
+      return;
+    }
+    try {
+      setSaving(true);
+      const payload = {
+        reservas_online:       config.reservas_online,
+        max_dias_anticipacion: config.max_dias_anticipacion,
+        min_hs_anticipacion:   config.min_hs_anticipacion,
+        webhook_url:    url,
+        webhook_activo: config.webhook_activo,
+        config_password: configPassword,
+      };
+      // El secreto solo se manda si se escribió uno nuevo (write-only)
+      if (secretInput.trim()) payload.webhook_secret = secretInput.trim();
+
+      const res = await configSalonApi.update(payload);
+      setField('webhook_configurado', res.data?.webhook_configurado);
+      setSecretInput('');
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (e) {
+      setError(e?.response?.data?.detail || 'No se pudo guardar.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleProbar = async () => {
+    setResultadoPrueba(null);
+    try {
+      setProbando(true);
+      const res = await configSalonApi.webhookProbar();
+      setResultadoPrueba(res.data);
+      await cargarEntregas();
+    } catch (e) {
+      setResultadoPrueba({ ok: false, detalle: e?.response?.data?.detail || 'No se pudo enviar la prueba.' });
+    } finally {
+      setProbando(false);
+    }
+  };
+
+  return (
+    <div>
+      <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.6, margin: '0 0 20px' }}>
+        Avisamos a otro sistema cada vez que pasa algo con un turno, mandándole un POST
+        a la URL que pongas acá. Sirve para integrar la turnera con un sistema de gestión
+        externo. Si no estás integrando nada, dejalo apagado.
+      </p>
+
+      <FieldRow
+        label="Activar webhooks"
+        hint="Con esto apagado no se envía nada. Es el único interruptor: no se activan por evento."
+      >
+        <Toggle
+          value={!!config.webhook_activo}
+          onChange={v => { setField('webhook_activo', v); setSaved(false); }}
+        />
+      </FieldRow>
+
+      <FieldRow label="URL de destino" hint="A dónde mandamos el POST. Tiene que ser pública y HTTPS.">
+        <input
+          style={inputSt}
+          value={config.webhook_url || ''}
+          onChange={e => { setField('webhook_url', e.target.value); setSaved(false); }}
+          placeholder="https://ejemplo.com/functions/v1/stratus-webhook"
+        />
+      </FieldRow>
+
+      <FieldRow
+        label="Secreto compartido"
+        hint={config.webhook_configurado
+          ? 'Ya hay un secreto guardado. Escribí uno nuevo solo si querés reemplazarlo.'
+          : 'Con esto firmamos cada envío (HMAC-SHA256, header X-Stratus-Signature) para que el receptor pueda verificar que vino de nosotros.'}
+      >
+        <input
+          style={inputSt}
+          type="password"
+          value={secretInput}
+          onChange={e => { setSecretInput(e.target.value); setSaved(false); }}
+          placeholder={config.webhook_configurado ? '•••••••• (guardado)' : 'Pegá acá el secreto'}
+        />
+      </FieldRow>
+
+      <FieldRow label="Eventos que enviamos" hint="Se envían todos mientras los webhooks estén activos.">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
+          {EVENTOS_WEBHOOK.map(([nombre, desc]) => (
+            <div key={nombre} style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
+              <code style={{
+                fontSize: '12px', color: 'var(--gold)', background: 'var(--gold-dim)',
+                border: '1px solid var(--gold-border)', borderRadius: '4px',
+                padding: '2px 7px', whiteSpace: 'nowrap',
+              }}>
+                {nombre}
+              </code>
+              <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{desc}</span>
+            </div>
+          ))}
+        </div>
+      </FieldRow>
+
+      <SaveBar onSave={handleSave} saving={saving} saved={saved} error={error} />
+
+      {/* Prueba manual */}
+      <div style={{
+        marginTop: '32px', padding: '18px 20px',
+        border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)',
+        background: 'var(--bg-surface)',
+      }}>
+        <h3 style={{ fontSize: '15px', fontFamily: 'var(--font-display)', margin: '0 0 6px' }}>
+          Probar la conexión
+        </h3>
+        <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '0 0 14px', lineHeight: 1.5 }}>
+          Manda un <code>turno.creado</code> de prueba (con <code>"prueba": true</code> en los datos)
+          a la URL guardada y te dice qué respondió. No crea ningún turno real.
+        </p>
+        <button
+          onClick={handleProbar}
+          disabled={probando || !config.webhook_url}
+          style={{
+            padding: '8px 18px', borderRadius: 'var(--radius-sm)',
+            border: '1px solid var(--gold-border)', background: 'var(--gold-dim)',
+            color: 'var(--gold)', fontSize: '13px', fontFamily: 'var(--font-body)',
+            cursor: (probando || !config.webhook_url) ? 'not-allowed' : 'pointer',
+            opacity: (probando || !config.webhook_url) ? 0.6 : 1,
+          }}
+        >
+          {probando ? 'Enviando...' : 'Enviar evento de prueba'}
+        </button>
+
+        {resultadoPrueba && (
+          <div style={{
+            marginTop: '14px', padding: '10px 12px', borderRadius: '6px',
+            fontSize: '13px', lineHeight: 1.5,
+            background: resultadoPrueba.ok ? 'rgba(76,175,125,0.1)' : 'rgba(229,62,62,0.1)',
+            border: `1px solid ${resultadoPrueba.ok ? 'rgba(76,175,125,0.4)' : 'rgba(229,62,62,0.4)'}`,
+            color: resultadoPrueba.ok ? 'var(--color-success, #4caf7d)' : '#e53e3e',
+          }}>
+            {resultadoPrueba.ok ? '✓ ' : '✕ '}{resultadoPrueba.detalle}
+          </div>
+        )}
+      </div>
+
+      {/* Historial de envíos */}
+      <div style={{ marginTop: '28px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+          <h3 style={{ fontSize: '15px', fontFamily: 'var(--font-display)', margin: 0 }}>
+            Últimos envíos
+          </h3>
+          <button
+            onClick={cargarEntregas}
+            style={{
+              background: 'transparent', border: 'none', cursor: 'pointer',
+              color: 'var(--text-muted)', fontSize: '12px', fontFamily: 'var(--font-body)',
+            }}
+          >
+            ↻ Actualizar
+          </button>
+        </div>
+        <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '0 0 12px', lineHeight: 1.5 }}>
+          No hay reintentos: si un envío falla, ese aviso se pierde. Este historial sirve
+          para darse cuenta.
+        </p>
+
+        {cargandoLog ? (
+          <div style={{ padding: '20px', fontSize: '13px', color: 'var(--text-muted)' }}>Cargando...</div>
+        ) : entregas.length === 0 ? (
+          <div style={{
+            padding: '20px', fontSize: '13px', color: 'var(--text-muted)',
+            border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)',
+          }}>
+            Todavía no se envió ningún webhook.
+          </div>
+        ) : (
+          <div style={{
+            border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', overflow: 'hidden',
+          }}>
+            {entregas.map((e, i) => (
+              <div
+                key={e.id}
+                style={{
+                  display: 'grid', gridTemplateColumns: '150px 1fr 90px 70px',
+                  gap: '12px', alignItems: 'center', padding: '10px 14px',
+                  borderBottom: i < entregas.length - 1 ? '1px solid var(--border)' : 'none',
+                  fontSize: '12px',
+                }}
+              >
+                <span style={{ color: 'var(--text-muted)' }}>{fechaHora(e.enviado_en)}</span>
+                <span style={{ color: 'var(--text-primary)', minWidth: 0 }}>
+                  <code style={{ color: 'var(--gold)' }}>{e.evento}</code>
+                  {e.turno_id ? (
+                    <span style={{ color: 'var(--text-muted)' }}> · turno #{e.turno_id}</span>
+                  ) : null}
+                  {e.error && (
+                    <div style={{
+                      color: '#e53e3e', marginTop: '3px', overflow: 'hidden',
+                      textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    }} title={e.error}>
+                      {e.error}
+                    </div>
+                  )}
+                </span>
+                <span style={{
+                  fontWeight: 600,
+                  color: e.ok ? 'var(--color-success, #4caf7d)' : '#e53e3e',
+                }}>
+                  {e.http_status ?? 'sin respuesta'}
+                </span>
+                <span style={{ color: 'var(--text-muted)', textAlign: 'right' }}>
+                  {e.duracion_ms != null ? `${e.duracion_ms} ms` : '—'}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Pantalla de desbloqueo (candado de Configuración) ────────────────────────
 function UnlockScreen({ onUnlock }) {
   const [password, setPassword] = useState('');
@@ -657,6 +931,9 @@ export default function ConfiguracionPage() {
           transferencia_cbu:     d.transferencia_cbu     || '',
           transferencia_alias:   d.transferencia_alias   || '',
           transferencia_titular: d.transferencia_titular || '',
+          webhook_url:         d.webhook_url || '',
+          webhook_configurado: d.webhook_configurado ?? false,
+          webhook_activo:      d.webhook_activo ?? false,
         });
       }
       if (horRes?.data?.length > 0) {
@@ -699,6 +976,7 @@ export default function ConfiguracionPage() {
     { key: 'horarios',  label: 'Horarios' },
     { key: 'info',      label: 'Info del local' },
     { key: 'pagos',     label: 'Mercado Pago' },
+    { key: 'webhooks',  label: 'Webhooks' },
     { key: 'seguridad', label: '🔒 Seguridad' },
   ];
 
@@ -749,6 +1027,9 @@ export default function ConfiguracionPage() {
       )}
       {activeTab === 'pagos' && (
         <TabPagos config={config} setField={setField} configPassword={configPassword} />
+      )}
+      {activeTab === 'webhooks' && (
+        <TabWebhooks config={config} setField={setField} configPassword={configPassword} />
       )}
       {activeTab === 'seguridad' && (
         <TabSeguridad

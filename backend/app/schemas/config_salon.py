@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional
+from datetime import datetime
 
 
 class ConfigSalonUpdate(BaseModel):
@@ -64,6 +65,22 @@ class ConfigSalonOut(BaseModel):
 
     # Candado de Configuración (nunca se devuelve el hash, solo si está activo)
     config_lock_activo: bool          # True si hay una clave de configuración seteada
+
+    class Config:
+        from_attributes = True
+
+
+class WebhookEntregaOut(BaseModel):
+    """Una fila del historial de webhooks enviados."""
+    id:          int
+    evento:      str
+    url:         str
+    http_status: Optional[int]      # None = no hubo respuesta (timeout, DNS, ...)
+    error:       Optional[str]
+    duracion_ms: Optional[int]
+    turno_id:    Optional[int]
+    enviado_en:  datetime
+    ok:          bool               # derivado: True si el status fue 2xx
 
     class Config:
         from_attributes = True

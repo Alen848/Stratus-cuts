@@ -106,6 +106,9 @@ export const configSalon = {
   // Candado de la sección Configuración
   verifyPassword: (password)      => api.post('/config-salon/verify-password', { password }),
   setPassword:    (current, nueva) => api.post('/config-salon/password', { current_password: current, nueva_password: nueva }),
+  // Webhooks salientes (integración con sistemas externos)
+  webhookEntregas: (limit = 50) => api.get('/config-salon/webhook/entregas', { params: { limit } }),
+  webhookProbar:   ()           => api.post('/config-salon/webhook/probar'),
 };
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
