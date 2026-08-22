@@ -13,6 +13,10 @@ ENV VITE_API_URL=$VITE_API_URL
 ARG VITE_SALON_SLUG
 ENV VITE_SALON_SLUG=$VITE_SALON_SLUG
 
+# Meta Pixel. Si no se pasa, el build queda sin tracking (dev/staging).
+ARG VITE_META_PIXEL_ID
+ENV VITE_META_PIXEL_ID=$VITE_META_PIXEL_ID
+
 COPY . .
 RUN pnpm build
 

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { createCliente, createTurno, getEmpleados, getServicios, getCategorias, getDisponibilidadSemanal, getPagoConfig } from '../services/api';
 import { money } from '../utils/format';
+import { trackEvent } from '../utils/pixel';
 import '../styles/booking.css';
 
 
@@ -255,6 +256,16 @@ export default function Booking() {
 
       const turnoResponse = await createTurno(turnoData);
       const data = turnoResponse.data;
+
+      // Conversión para Meta Ads: el turno ya quedó creado en la BD, así que lo
+      // reportamos acá y no en /confirmation. De esta forma cubrimos también el
+      // caso de seña con tarjeta, donde el usuario se va a Mercado Pago y podría
+      // no volver nunca al sitio.
+      trackEvent('Schedule', {
+        value: totalPrecio,
+        currency: 'ARS',
+        content_name: selectedServices.map(s => s.nombre).join(', '),
+      });
 
       // Seña por transferencia: mostramos datos bancarios y pedimos el comprobante
       if (data?.requiere_pago && data?.metodo === 'transferencia') {
