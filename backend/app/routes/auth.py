@@ -55,27 +55,11 @@ def login(
     db: Session = Depends(get_db),
     slug: Optional[str] = None,
 ):
-    # Buscar usuario por username
-    user = db.query(Usuario).filter(
-        Usuario.username == form_data.username,
-        or_(Usuario.activo == True, Usuario.activo == None),
-    ).first()
-
-    if not user or not verify_password(form_data.password, user.password_hash):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Usuario o contraseña incorrectos",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    # Si no es superadmin, validar salón
-    if user.rol != "superadmin":
-        if not slug:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="El parámetro slug es requerido para usuarios de salón.",
-            )
-        # Buscar el salón por el slug
+    # El username es único por salón (uq_usuario_salon_username), no de forma
+    # global: hay que resolver el salón ANTES de buscar al usuario. Si no, dos
+    # salones con el mismo username colisionan y sólo entra el de id más bajo.
+    salon = None
+    if slug:
         salon = db.query(Salon).filter(
             Salon.slug == slug,
             Salon.activo == True
@@ -87,13 +71,34 @@ def login(
                 detail="El salón especificado no existe o no está activo",
             )
 
-        # Validar que el usuario pertenezca a ese salón
-        if user.salon_id != salon.id:
+    candidatos = db.query(Usuario).filter(
+        Usuario.username == form_data.username,
+        or_(Usuario.activo == True, Usuario.activo == None),
+    ).all()
+
+    user = None
+    if salon:
+        user = next((u for u in candidatos if u.salon_id == salon.id), None)
+    if user is None:
+        # El superadmin no pertenece a ningún salón: se resuelve por username.
+        user = next((u for u in candidatos if u.rol == "superadmin"), None)
+
+    if user is None and not slug:
+        # Sin slug no se puede desambiguar. Si la contraseña es válida para
+        # algún salón, avisamos que falta el parámetro en vez de devolver un
+        # 401 engañoso; si no lo es, cae al 401 de abajo sin filtrar nada.
+        if any(verify_password(form_data.password, u.password_hash) for u in candidatos):
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Usuario o contraseña incorrectos",
-                headers={"WWW-Authenticate": "Bearer"},
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El parámetro slug es requerido para usuarios de salón.",
             )
+
+    if not user or not verify_password(form_data.password, user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Usuario o contraseña incorrectos",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
     token = create_access_token({
         "sub": str(user.id),
