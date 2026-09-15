@@ -1,6 +1,6 @@
 // Burbuja flotante de WhatsApp para que los clientes escriban al salón.
-// El número va en formato internacional para wa.me: 54 9 (Argentina móvil) + 223 (área) + 6919766.
-const WHATSAPP_NUMERO = '5492236919766';
+// El número va en formato internacional para wa.me: 54 9 (Argentina móvil) + 223 (área) + 6955409.
+const WHATSAPP_NUMERO = '5492236955409';
 const MENSAJE = 'Hola! Quería hacer una consulta 😊';
 
 export default function WhatsAppBubble() {
