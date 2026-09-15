@@ -213,11 +213,17 @@ export default function TurnosPage() {
 
           <div className={styles.dayInfo}>
             <span className={styles.dayTitle}>
-              {formatDayLabel(new Date(selectedDate + 'T00:00:00'))}
+              {/* Cada texto va en su propio nodo: si quedan sueltos como hermanos, el
+                  traductor del navegador los reemplaza y React rompe al re-renderizar. */}
+              <span>{formatDayLabel(new Date(selectedDate + 'T00:00:00'))}</span>
               {isToday && <span className={styles.todayBadge}>Hoy</span>}
             </span>
             <span className={styles.daySubtitle}>
-              {conteosDia.total} turno{conteosDia.total !== 1 ? 's' : ''} en este día
+              <span>
+                {conteosDia.total === 1
+                  ? '1 turno en este día'
+                  : `${conteosDia.total} turnos en este día`}
+              </span>
             </span>
           </div>
 

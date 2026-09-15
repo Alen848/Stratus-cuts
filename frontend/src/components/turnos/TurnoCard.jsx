@@ -106,15 +106,15 @@ export default function TurnoCard({ turno, onEdit, onDelete, onCobrar, onMarcar,
           </Badge>
           {isWalkin && <Badge variant="warning">Sin turno</Badge>}
           {senaPagada && !completado && (
-            <span style={chip('rgba(76,175,125,0.14)', '#4caf7d')}>Seña ✓ {formatCurrency(turno.monto_sena)}</span>
+            <span style={chip('rgba(76,175,125,0.14)', '#4caf7d')}>{`Seña ✓ ${formatCurrency(turno.monto_sena)}`}</span>
           )}
           {senaTransferPendiente && (
             <span style={chip('rgba(224,163,58,0.16)', '#e0a33a')}>
-              🏦 Seña transf. pendiente {formatCurrency(turno.monto_sena)}
+              {`🏦 Seña transf. pendiente ${formatCurrency(turno.monto_sena)}`}
             </span>
           )}
           {cobrable && saldo != null && saldo > 0 && (
-            <span style={chip('rgba(224,163,58,0.16)', '#e0a33a')}>Restan {formatCurrency(saldo)}</span>
+            <span style={chip('rgba(224,163,58,0.16)', '#e0a33a')}>{`Restan ${formatCurrency(saldo)}`}</span>
           )}
           {completado && (
             <span style={chip('rgba(76,175,125,0.14)', '#4caf7d')}>Pagado ✓</span>

@@ -237,10 +237,11 @@ export default function ServiciosPage() {
             }}>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: '14px', fontWeight: 600, color: esEvento ? 'var(--gold)' : undefined }}>
-                  {esEvento && '◈ '}
-                  {categoria ? categoria.nombre : 'Sin categoría'}
+                  {/* Un solo nodo de texto por elemento: los textos hermanos sueltos
+                      los descoloca el traductor del navegador y React rompe al re-renderizar. */}
+                  <span>{`${esEvento ? '◈ ' : ''}${categoria ? categoria.nombre : 'Sin categoría'}`}</span>
                   <span style={{ marginLeft: '10px', fontSize: '11px', color: 'var(--text-muted)', fontWeight: 400 }}>
-                    {items.length} {items.length === 1 ? 'servicio' : 'servicios'}
+                    {items.length === 1 ? '1 servicio' : `${items.length} servicios`}
                   </span>
                 </div>
                 <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
