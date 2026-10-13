@@ -41,6 +41,7 @@ def _empleados_del_salon(db: Session, empleado_ids, salon_id: int):
     return db.query(Empleado).filter(
         Empleado.salon_id == salon_id,
         Empleado.id.in_(empleado_ids),
+        Empleado.eliminado == False,
     ).all()
 
 

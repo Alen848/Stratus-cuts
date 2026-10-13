@@ -718,12 +718,12 @@ export default function EmpleadosPage() {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('¿Eliminar este profesional?')) {
+    if (window.confirm('¿Eliminar este profesional? Sus turnos pasados y lo cobrado en Caja se conservan.')) {
       try {
         await removeEmpleado(id);
         notify('Profesional eliminado');
-      } catch {
-        notify('Error al eliminar profesional', 'error');
+      } catch (err) {
+        notify(err?.response?.data?.detail || 'Error al eliminar profesional', 'error');
       }
     }
   };

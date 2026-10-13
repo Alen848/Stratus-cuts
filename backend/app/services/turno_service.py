@@ -26,6 +26,18 @@ def to_argentina_naive(dt: datetime) -> datetime:
     return dt
 
 
+def _check_empleado_vigente(db: Session, empleado_id: int, salon_id: int):
+    """Corta si el profesional no es del salón o fue dado de baja."""
+    from app.models.empleado import Empleado
+    existe = db.query(Empleado.id).filter(
+        Empleado.id == empleado_id,
+        Empleado.salon_id == salon_id,
+        Empleado.eliminado == False,
+    ).first()
+    if not existe:
+        raise HTTPException(status_code=404, detail="Profesional no encontrado")
+
+
 def expirar_turnos_vencidos(db: Session, salon_id: int = None) -> int:
     """
     Reservas online cuya seña no se pagó dentro del plazo (hold vencido) se
@@ -124,6 +136,8 @@ def _check_horario_salon(db: Session, salon_id: int, fecha_hora: datetime):
 def create_turno(db: Session, turno: TurnoCreate, salon_id: int):
     # 0. Liberar holds de seña vencidos antes de chequear conflictos
     expirar_turnos_vencidos(db, salon_id)
+
+    _check_empleado_vigente(db, turno.empleado_id, salon_id)
 
     # 1. Verificar si el día ya está cerrado
     nuevo_inicio = to_argentina_naive(turno.fecha_hora)
@@ -234,6 +248,9 @@ def update_turno(db: Session, turno_id: int, turno_update: TurnoUpdate, salon_id
         check_dia_abierto(db, salon_id, nueva_fecha.date())
         _check_horario_salon(db, salon_id, nueva_fecha)
         update_data["fecha_hora"] = nueva_fecha
+
+    if update_data.get("empleado_id") not in (None, db_turno.empleado_id):
+        _check_empleado_vigente(db, update_data["empleado_id"], salon_id)
 
     # Verificar conflictos de horario si cambia fecha_hora o empleado_id
     if "fecha_hora" in update_data or "empleado_id" in update_data:
@@ -400,6 +417,8 @@ def get_horarios_semanales(
     db: Session, empleado_id: int, fecha_inicio: date, salon_id: int,
     duracion: int = None, intervalo: int = None,
 ):
+    _check_empleado_vigente(db, empleado_id, salon_id)
+
     # Liberar holds de seña vencidos para que no aparezcan como ocupados
     expirar_turnos_vencidos(db, salon_id)
 

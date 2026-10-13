@@ -9,6 +9,7 @@ def _verificar_empleado_salon(db: Session, empleado_id: int, salon_id: int) -> E
     empleado = db.query(Empleado).filter(
         Empleado.id == empleado_id,
         Empleado.salon_id == salon_id,
+        Empleado.eliminado == False,
     ).first()
     if not empleado:
         raise HTTPException(status_code=404, detail="Profesional no encontrado en este salón.")

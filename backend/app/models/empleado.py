@@ -18,6 +18,11 @@ class Empleado(Base):
     activo              = Column(Boolean, default=True)
     sueldo_base         = Column(Float, nullable=True)
     comision_porcentaje = Column(Float, default=0.0, nullable=True)
+    # Baja: el profesional ya no trabaja en el salón. Desaparece de listados,
+    # reservas y disponibilidad, pero sus turnos pasados (y los pagos que la
+    # Caja ya registró) se conservan. Distinto de `activo`, que es un switch
+    # editable desde el admin.
+    eliminado           = Column(Boolean, default=False, nullable=False)
 
     # Relaciones
     turnos = relationship("Turno", back_populates="empleado")
