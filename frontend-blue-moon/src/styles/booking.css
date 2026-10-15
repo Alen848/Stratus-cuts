@@ -3,8 +3,37 @@
 ═══════════════════════════════════════════ */
 
 .booking-page {
+  /* Blue Moon: el salvia es el marco de la página y el formulario va en una
+     tarjeta clara encima. Paleta: carbón cálido para texto, verde oscuro para
+     acentos, salvia claro para lo seleccionado y dorado solo en detalles. */
+  --text:          #3A3530;
+  --text-2:        #4F4A44;
+  --text-3:        #6E6A62;
+  --text-4:        #9A968C;
+  --text-rgb:      58,53,48;
+  --accent:        #4A5C42;
+  --accent-rgb:    74,92,66;
+  --gold:          #7A5C24;   /* texto dorado legible sobre la tarjeta */
+  --gold-rgb:      201,169,110; /* #C9A96E, para bordes y tintes */
+  --cta:           #3F4F38;
+  --cta-hover:     #4A5C42;
+  --border:        rgba(58,53,48,0.10);
+  --border-md:     rgba(58,53,48,0.16);
+  --border-accent: rgba(74,92,66,0.30);
+  --ghost:         rgba(58,53,48,0.12);
+  --hover:         #F2F5EE;
+  --selected:      #E8EFE4;
+  --glow:          #F2F5EE;
+
+  --salvia:        #A3A88B;
+  --salvia-ink:    #2B3A2A;   /* texto sobre el salvia (contraste 4.9:1) */
+  --card:          #FBFBF7;
+
   min-height: 100vh;
-  background: transparent;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(251,251,247,0.22), transparent 70%),
+    var(--salvia);
+  color: var(--text);
   padding-top: 70px;
   font-family: var(--font-body);
   display: flex;
@@ -13,9 +42,20 @@
 
 .booking-wrap {
   width: 100%;
-  max-width: 560px;
-  padding: 4rem 2rem 7rem;
+  max-width: 600px;
+  padding: 3.5rem 1.5rem 6rem;
   animation: fadeUp 0.5s var(--ease) forwards;
+}
+
+/* El formulario completo vive en una tarjeta clara sobre el salvia */
+.booking-page .form {
+  background: var(--card);
+  border: 1px solid rgba(255,255,255,0.55);
+  border-radius: 20px;
+  padding: 2.5rem 2.25rem 2.25rem;
+  box-shadow:
+    0 30px 60px -30px rgba(30,38,24,0.45),
+    0 10px 24px -14px rgba(30,38,24,0.25);
 }
 
 /* -- Encabezado -- */
@@ -24,18 +64,26 @@
   font-weight: 500;
   letter-spacing: 0.3em;
   text-transform: uppercase;
-  color: var(--accent);
-  display: block;
+  color: var(--salvia-ink);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
   margin-bottom: 1rem;
+}
+.booking-tag::before {
+  content: '';
+  width: 28px;
+  height: 1px;
+  background: rgba(251,251,247,0.8);
 }
 
 .booking-title {
   font-family: var(--font-display);
   font-size: 3.2rem;
   font-weight: 500;
-  color: var(--text);
+  color: var(--salvia-ink);
   line-height: 1.04;
-  margin-bottom: 2.5rem;
+  margin-bottom: 2.25rem;
   letter-spacing: -0.005em;
 }
 
@@ -44,6 +92,10 @@
   display: flex;
   flex-direction: column;
   gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #FFFFFF;
 }
 
 .servicio-item {
@@ -63,7 +115,7 @@
   transition: background 0.2s ease;
   min-height: 60px;
 }
-.servicio-item:first-child { border-top: 1px solid var(--border); }
+.servicio-list > .servicio-item:last-child { border-bottom: none; }
 .servicio-item:hover { background: var(--hover); }
 .servicio-item.si-selected { background: var(--selected); }
 
@@ -103,9 +155,9 @@
 
 .si-desc {
   display: block;
-  font-size: 0.78rem;
-  font-weight: 300;
-  color: var(--text-3);
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text);
   margin-top: 0.25rem;
   /* pre-line respeta los saltos de línea que escribió el dueño del salón
      y deja que el resto del texto haga wrap solo. */
@@ -138,7 +190,7 @@
 .servicio-cat {
   border-bottom: 1px solid var(--border);
 }
-.servicio-cat:first-child { border-top: 1px solid var(--border); }
+.servicio-cat:last-child { border-bottom: none; }
 
 .servicio-cat-head {
   display: flex;
@@ -199,6 +251,15 @@
   to   { opacity: 1; transform: none; }
 }
 
+/* En la tarjeta la sublista va a lo ancho, con sangría en vez de línea lateral */
+.booking-page .servicio-sublist {
+  margin-left: 0;
+  padding-left: 0;
+  border-left: none;
+  border-top: 1px solid var(--border);
+}
+.booking-page .servicio-item.si-sub { padding-left: 1.75rem; }
+
 /* Dentro de una categoría el ítem no repite el borde superior */
 .servicio-item.si-sub { min-height: 54px; padding: 0.85rem 0.75rem; }
 .servicio-item.si-sub:first-child { border-top: none; }
@@ -208,10 +269,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.85rem 0.75rem;
+  padding: 0.85rem 1rem;
   background: var(--selected);
-  border-radius: 0 0 5px 5px;
-  margin-top: -1px;
+  border-radius: 10px;
+  margin-top: 0.6rem;
 }
 
 .ss-label {
@@ -301,7 +362,7 @@
 .field-input {
   background: var(--bg-elevated);
   border: 1px solid var(--border-md);
-  border-radius: 5px;
+  border-radius: 10px;
   padding: 0.95rem 1.1rem;
   color: var(--text);
   font-family: var(--font-body);
@@ -335,7 +396,7 @@
   padding: 1.1rem;
   background: var(--cta);
   border: none;
-  border-radius: 4px;
+  border-radius: 999px;
   color: var(--cta-text);
   font-family: var(--font-body);
   font-size: 0.74rem;
@@ -371,9 +432,10 @@
 
 .empleado-card {
   padding: 1.1rem 1.2rem;
+  font-family: var(--font-body);
   background: var(--bg-elevated);
   border: 1px solid var(--ghost);
-  border-radius: 5px;
+  border-radius: 12px;
   text-align: left;
   cursor: pointer;
   transition: border-color 0.2s ease, background 0.2s ease, transform 0.18s ease;
@@ -423,11 +485,12 @@
   align-items: center;
   gap: 0.1rem;
   padding: 0.8rem 1rem;
+  font-family: var(--font-body);
   min-width: 60px;
   flex-shrink: 0;
   background: var(--bg-elevated);
   border: 1px solid var(--ghost);
-  border-radius: 5px;
+  border-radius: 12px;
   cursor: pointer;
   transition: border-color 0.2s ease, background 0.2s ease, transform 0.18s ease;
 }
@@ -584,7 +647,7 @@
   padding: 0.75rem 0.3rem;
   background: var(--bg-elevated);
   border: 1px solid var(--ghost);
-  border-radius: 4px;
+  border-radius: 10px;
   color: var(--text-2);
   font-family: var(--font-body);
   font-size: 0.82rem;
@@ -718,7 +781,8 @@
 
 /* -- Responsive -- */
 @media (max-width: 640px) {
-  .booking-wrap { padding: 2.75rem 1.25rem 5.5rem; }
+  .booking-wrap { padding: 2.25rem 1rem 5rem; }
+  .booking-page .form { padding: 1.75rem 1.15rem 1.5rem; border-radius: 16px; }
   .booking-title { font-size: 2.2rem; }
   .form-row { grid-template-columns: 1fr; gap: 1.6rem; }
   .time-grid { grid-template-columns: repeat(4, 1fr); }
@@ -731,8 +795,8 @@
 .sena-box {
   padding: 0.95rem 1.1rem;
   border: 1px solid var(--border-accent);
-  background: rgba(var(--accent-rgb), 0.05);
-  border-radius: 10px;
+  background: var(--hover);
+  border-radius: 12px;
   font-size: 0.9rem;
   line-height: 1.6;
   color: var(--text-2);
@@ -748,19 +812,28 @@
   gap: 0.25rem;
   padding: 0.9rem 1rem;
   text-align: left;
-  border: 1px solid var(--border);
+  border: 1px solid var(--ghost);
   background: var(--bg-elevated);
-  border-radius: 10px;
+  border-radius: 12px;
+  font-family: var(--font-body);
   cursor: pointer;
   transition: border-color 0.2s var(--ease), background 0.2s var(--ease);
 }
 .sena-choice:hover { border-color: var(--border-accent); }
 .sena-choice.sc-selected {
   border-color: var(--accent);
-  background: rgba(var(--accent-rgb), 0.07);
+  background: var(--selected);
 }
 .sc-title { font-size: 0.9rem; font-weight: 600; color: var(--text); }
 .sc-sub   { font-size: 0.78rem; color: var(--text-3); line-height: 1.4; }
 @media (max-width: 480px) {
   .sena-choices { grid-template-columns: 1fr; }
 }
+
+/* El error se muestra sobre el salvia, fuera de la tarjeta: fondo sólido */
+.booking-page .error-box {
+  background: #FBEDEC;
+  border-color: rgba(176,65,62,0.25);
+  border-radius: 12px;
+}
+
