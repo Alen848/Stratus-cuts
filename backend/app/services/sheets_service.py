@@ -154,16 +154,24 @@ _token_lock = threading.Lock()
 
 def _credenciales():
     """
-    GOOGLE_SERVICE_ACCOUNT_JSON acepta el JSON entero (cómodo en Docker) o la
-    ruta al archivo. Devuelve None si no está configurada o es inválida.
+    GOOGLE_SERVICE_ACCOUNT_JSON acepta, en orden de preferencia:
+      - el JSON de la clave codificado en base64 (recomendado: son solo letras
+        y números, así que ningún panel lo deforma; Dokploy, por ejemplo,
+        vaciaba la clave privada cuando se pegaba el JSON tal cual),
+      - el JSON tal cual, o
+      - la ruta al archivo.
+    Devuelve None si no está configurada o es inválida.
     """
-    raw = (os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON") or "").strip()
+    raw = (os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON") or "").strip().strip("'\"")
     if not raw:
         return None
     try:
         if not raw.startswith("{"):
-            with open(raw, encoding="utf-8") as f:
-                raw = f.read()
+            if os.path.isfile(raw):
+                with open(raw, encoding="utf-8") as f:
+                    raw = f.read()
+            else:
+                raw = base64.b64decode(raw).decode("utf-8")
         data = json.loads(raw)
         if data.get("client_email") and data.get("private_key"):
             data["private_key"] = _normalizar_pem(data["private_key"])
