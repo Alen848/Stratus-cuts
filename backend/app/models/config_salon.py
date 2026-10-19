@@ -34,3 +34,8 @@ class ConfigSalon(Base):
     webhook_url    = Column(String(300), nullable=True)   # a dónde se notifican los eventos
     webhook_secret = Column(String(80),  nullable=True)   # secreto compartido para firmar (HMAC)
     webhook_activo = Column(Boolean, default=False, nullable=False)
+
+    # ── Sincronización con Google Sheets (ver sheets_service) ────────────────
+    # Aparte del webhook: el único webhook_url del salón puede estar ocupado.
+    sheets_activo         = Column(Boolean, default=False, nullable=False)
+    sheets_spreadsheet_id = Column(String(100), nullable=True)

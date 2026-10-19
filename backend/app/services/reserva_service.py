@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.models.servicio import Servicio
 from app.models.turno import Turno
 from app.models.pago import Pago
-from app.services import turno_service, config_salon_service, mercadopago_service, webhook_service, email_service
+from app.services import turno_service, config_salon_service, mercadopago_service, webhook_service, email_service, sheets_service
 
 ARG_TZ = timezone(timedelta(hours=-3))
 HOLD_MINUTOS = 10  # tiempo que se mantiene el horario reservado mientras se paga
@@ -66,7 +66,7 @@ def crear_reserva(db: Session, data, salon, config, webhook_url: str = None) -> 
     # ── Camino transferencia: turno reservado, seña pendiente de confirmación ─
     if aplica_sena and metodo == "transferencia":
         data.estado = "pendiente"  # retiene el slot y queda visible en el admin (no se auto-borra)
-        turno = turno_service.create_turno(db, data, salon_id=salon.id)
+        turno = turno_service.create_turno(db, data, salon_id=salon.id, sincronizar_sheet=False)
         turno.monto_total     = total
         turno.monto_sena      = sena
         turno.saldo_pendiente = round(total - sena, 2)
@@ -75,6 +75,7 @@ def crear_reserva(db: Session, data, salon, config, webhook_url: str = None) -> 
         turno.expira_en       = None
         db.commit()
         db.refresh(turno)
+        sheets_service.sync_turno(db, turno, "turno.creado", detalle="Reserva online, seña por transferencia")
         return {
             "requiere_pago": True,
             "metodo": "transferencia",
@@ -91,20 +92,21 @@ def crear_reserva(db: Session, data, salon, config, webhook_url: str = None) -> 
 
     # ── Camino sin pago: turno normal (comportamiento de siempre) ────────────
     if not aplica_sena:
-        turno = turno_service.create_turno(db, data, salon_id=salon.id)
+        turno = turno_service.create_turno(db, data, salon_id=salon.id, sincronizar_sheet=False)
         turno.monto_total     = total
         turno.monto_sena      = 0
         turno.saldo_pendiente = total
         turno.sena_estado     = "no_aplica"
         db.commit()
         db.refresh(turno)
+        sheets_service.sync_turno(db, turno, "turno.creado", detalle="Reserva online sin seña")
         # Confirmación por email al instante (reserva sin seña)
         email_service.enviar_confirmacion_turno(db, turno, salon, config)
         return {"requiere_pago": False, "turno": turno}
 
     # ── Camino con seña: crear turno en pendiente_pago + preferencia MP ──────
     data.estado = "pendiente_pago"
-    turno = turno_service.create_turno(db, data, salon_id=salon.id)
+    turno = turno_service.create_turno(db, data, salon_id=salon.id, sincronizar_sheet=False)
     turno.monto_total     = total
     turno.monto_sena      = sena
     turno.saldo_pendiente = round(total - sena, 2)
@@ -135,6 +137,7 @@ def crear_reserva(db: Session, data, salon, config, webhook_url: str = None) -> 
     turno.mp_preference_id = pref["id"]
     db.commit()
     db.refresh(turno)
+    sheets_service.sync_turno(db, turno, "reserva.iniciada", detalle="Reserva online, esperando seña por Mercado Pago")
 
     return {
         "requiere_pago": True,
@@ -193,6 +196,7 @@ def confirmar_pago(db: Session, salon_id: int, payment_id: str, access_token: st
         db.commit()
         # Webhook: la reserva online quedó en firme al pagarse la seña
         webhook_service.emit(db, salon_id, "turno.confirmado", webhook_service.turno_payload(turno))
+        sheets_service.sync_turno(db, turno, "sena.pagada", detalle=f"Mercado Pago ${turno.monto_sena or 0}")
         # Confirmación por email (recién ahora que la seña se pagó)
         email_service.enviar_confirmacion_turno(db, turno)
         return {"ok": True, "estado": "confirmado"}
@@ -202,4 +206,5 @@ def confirmar_pago(db: Session, salon_id: int, payment_id: str, access_token: st
         turno.estado = "expirado"
         turno.sena_estado = "anulada"
         db.commit()
+        sheets_service.sync_turno(db, turno, "sena.rechazada", detalle=f"Mercado Pago: {status}")
     return {"ok": True, "estado": turno.estado, "pago_status": status}

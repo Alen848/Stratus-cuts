@@ -27,6 +27,7 @@ class Turno(Base):
     comprobante_subido = Column(Boolean, default=False, nullable=False)  # el cliente adjuntó comprobante de transferencia
     creado_en        = Column(DateTime, nullable=True)   # cuándo se reservó (para medir la espera de la seña)
     sena_recordatorio_sent = Column(Boolean, default=False, nullable=False)  # ya se le pidió el comprobante por email
+    cancelado_en     = Column(DateTime, nullable=True)   # cuándo pasó a 'cancelado' (NULL en los anteriores a oct 2026)
 
     # Recordatorios WhatsApp
     reminder_pre_sent        = Column(Boolean, default=False, nullable=False)  # recordatorio previo al turno

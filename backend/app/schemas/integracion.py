@@ -25,3 +25,23 @@ class ApiKeyOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class SheetsConfigIn(BaseModel):
+    """Acepta el ID del Sheet o la URL completa (se extrae el ID)."""
+    spreadsheet: Optional[str] = None
+    activo:      Optional[bool] = None
+
+
+class SheetsUltimaSync(BaseModel):
+    ok:      Optional[bool]       # None = en curso
+    detalle: str
+    inicio:  Optional[datetime]
+    fin:     Optional[datetime]
+
+
+class SheetsEstado(BaseModel):
+    activo:          bool
+    spreadsheet_id:  Optional[str]
+    cuenta_servicio: Optional[str]   # el email con el que hay que compartir el Sheet
+    ultima_sync:     Optional[SheetsUltimaSync]

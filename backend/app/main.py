@@ -110,10 +110,16 @@ app.include_router(integracion_router)
 
 @app.on_event("startup")
 async def _arrancar_tareas_de_fondo():
-    """Recordatorio del comprobante de la seña (ver sena_recordatorio_service)."""
+    """
+    Tareas periódicas del backend:
+    - recordatorio del comprobante de la seña (ver sena_recordatorio_service)
+    - resincronización nocturna con Google Sheets (ver sheets_service)
+    """
     import asyncio
     from app.services.sena_recordatorio_service import loop_recordatorios
+    from app.services.sheets_service import loop_resync_nocturno
     asyncio.create_task(loop_recordatorios())
+    asyncio.create_task(loop_resync_nocturno())
 
 
 @app.get("/")

@@ -2,7 +2,7 @@ from sqlalchemy import func, or_, and_
 from sqlalchemy.orm import Session, joinedload
 from app.models import Turno, TurnoServicio, Servicio, HorarioEmpleado
 from app.services.horario_salon_service import get_horarios as get_salon_horarios
-from app.services import webhook_service
+from app.services import webhook_service, sheets_service
 from app.schemas.turno import TurnoCreate, TurnoUpdate
 from datetime import timedelta, date, datetime, timezone
 from fastapi import HTTPException
@@ -66,6 +66,12 @@ def expirar_turnos_vencidos(db: Session, salon_id: int = None) -> int:
         # Defensa: jamás borrar un turno que tenga plata cobrada
         if db.query(Pago).filter(Pago.turno_id == t.id, Pago.estado == "aprobada").first():
             continue
+        # Para marketing es una "consulta perdida": dejarla en el Sheet antes de borrarla
+        sheets_service.sync_turno(db, t, "reserva.abandonada", estado_forzado="abandonada")
+        # Armar la fila cargó turno.servicios/pagos: descartarlos para que el
+        # db.delete(t) de abajo no intente desvincular filas ya borradas
+        # (StaleDataError, mismo problema que en delete_turno).
+        db.expire(t, ["servicios", "pagos"])
         db.query(TurnoServicio).filter(TurnoServicio.turno_id == t.id).delete(synchronize_session=False)
         db.query(Pago).filter(Pago.turno_id == t.id).delete(synchronize_session=False)
         db.delete(t)
@@ -133,7 +139,11 @@ def _check_horario_salon(db: Session, salon_id: int, fecha_hora: datetime):
         )
 
 
-def create_turno(db: Session, turno: TurnoCreate, salon_id: int):
+def create_turno(db: Session, turno: TurnoCreate, salon_id: int, sincronizar_sheet: bool = True):
+    """
+    `sincronizar_sheet=False` lo usa la reserva pública, que completa los montos
+    de la seña después de crear el turno y recién ahí lo manda al Sheet.
+    """
     # 0. Liberar holds de seña vencidos antes de chequear conflictos
     expirar_turnos_vencidos(db, salon_id)
 
@@ -225,6 +235,8 @@ def create_turno(db: Session, turno: TurnoCreate, salon_id: int):
     # Webhook: solo turnos en firme (los pendiente_pago son efímeros hasta que se paga)
     if db_turno.estado not in ("pendiente_pago", "expirado"):
         webhook_service.emit(db, salon_id, "turno.creado", webhook_service.turno_payload(db_turno))
+    if sincronizar_sheet:
+        sheets_service.sync_turno(db, db_turno, "turno.creado")
     return db_turno
 
 
@@ -292,6 +304,13 @@ def update_turno(db: Session, turno_id: int, turno_update: TurnoUpdate, salon_id
             db_turno.duracion = nueva_duracion
         del update_data["servicios_ids"]
 
+    estado_anterior = db_turno.estado
+    nuevo_estado = update_data.get("estado", estado_anterior)
+    if nuevo_estado != estado_anterior:
+        db_turno.cancelado_en = (
+            datetime.now(ARG_TZ).replace(tzinfo=None) if nuevo_estado == "cancelado" else None
+        )
+
     for field, value in update_data.items():
         setattr(db_turno, field, value)
 
@@ -299,6 +318,10 @@ def update_turno(db: Session, turno_id: int, turno_update: TurnoUpdate, salon_id
     db.refresh(db_turno)
 
     webhook_service.emit(db, salon_id, "turno.actualizado", webhook_service.turno_payload(db_turno))
+    sheets_service.sync_turno(
+        db, db_turno,
+        f"turno.{nuevo_estado}" if nuevo_estado != estado_anterior else "turno.actualizado",
+    )
     return db_turno
 
 
@@ -324,6 +347,7 @@ def delete_turno(db: Session, turno_id: int, salon_id: int):
             )
         # Armar el payload del webhook ANTES de borrar (después ya no existe)
         payload = webhook_service.turno_payload(db_turno)
+        sheets_service.sync_turno(db, db_turno, "turno.eliminado", estado_forzado="eliminado")
         # Eliminar registros hijos y el turno en bloque. Se usa delete() por query
         # (no db.delete(db_turno)) a propósito: como el payload cargó la relación
         # turno.servicios, un delete ORM del turno intentaría "desvincular" esos
@@ -385,6 +409,7 @@ def confirmar_sena_transferencia(db: Session, turno_id: int, salon_id: int):
     db.refresh(turno)
 
     webhook_service.emit(db, salon_id, "turno.confirmado", webhook_service.turno_payload(turno))
+    sheets_service.sync_turno(db, turno, "sena.pagada", detalle=f"Transferencia ${turno.monto_sena or 0}")
     email_service.enviar_confirmacion_turno(db, turno)
     return turno
 
