@@ -330,18 +330,36 @@ def _asegurar_encabezados(sid, tab, columnas, opcionales=()):
     return mapa, extra
 
 
-def _filas_por_id(sid, mapa):
-    """{id_turno (str): número de fila} leyendo la columna ID (primera aparición)."""
-    letra = _letra(mapa[COL_ID])
-    res = _api("GET", sid, f"/values/{urllib.parse.quote(_rango(TAB_TURNOS, f'{letra}2:{letra}'))}",
-               params={"majorDimension": "COLUMNS"})
-    valores = (res.get("values") or [[]])[0]
-    filas = {}
-    for i, v in enumerate(valores):
-        clave = str(v).strip()
-        if clave and clave not in filas:
-            filas[clave] = i + 2
-    return filas
+def _leer_tabla(sid, tab, col_id=None):
+    """
+    Lee la pestaña y devuelve ({id (str): número de fila}, última fila con algún
+    valor). Si `col_id` es None, el dict viene vacío.
+    """
+    res = _api("GET", sid, f"/values/{urllib.parse.quote(_rango(tab, 'A1:ZZ'))}")
+    filas = res.get("values") or []
+    por_id, ultima = {}, 1
+    for i, fila in enumerate(filas):
+        if any(str(x).strip() for x in fila):
+            ultima = i + 1
+        if i and col_id is not None and col_id < len(fila):
+            clave = str(fila[col_id]).strip()
+            if clave and clave not in por_id:
+                por_id[clave] = i + 1
+    return por_id, ultima
+
+
+def _asegurar_filas(sid, tab, hasta):
+    """Agrega filas a la grilla si `hasta` supera las que tiene la pestaña."""
+    meta = _api("GET", sid, "", params={"fields": "sheets(properties(sheetId,title,gridProperties(rowCount)))"})
+    for hoja in meta.get("sheets", []):
+        props = hoja["properties"]
+        if props["title"] == tab:
+            faltan = hasta - props["gridProperties"]["rowCount"]
+            if faltan > 0:
+                _api("POST", sid, ":batchUpdate", body={"requests": [{"appendDimension": {
+                    "sheetId": props["sheetId"], "dimension": "ROWS", "length": faltan,
+                }}]})
+            return
 
 
 def _tramos(fila, mapa, nro_fila, tab):
@@ -365,49 +383,45 @@ def _tramos(fila, mapa, nro_fila, tab):
     return data
 
 
-def _fila_completa(fila, mapa):
-    """Fila nueva: ancho hasta nuestra última columna, en blanco el resto."""
-    ancho = max(mapa.values()) + 1
-    out = [""] * ancho
-    for col, idx in mapa.items():
-        out[idx] = fila.get(col, "")
-    return out
-
-
 def _actualizar(sid, data):
     for i in range(0, len(data), _LOTE):
         _api("POST", sid, "/values:batchUpdate",
              body={"valueInputOption": "USER_ENTERED", "data": data[i:i + _LOTE]})
 
 
-def _agregar(sid, tab, filas):
-    for i in range(0, len(filas), _LOTE):
-        _api("POST", sid, f"/values/{urllib.parse.quote(_rango(tab, 'A1'))}:append",
-             params={"valueInputOption": "USER_ENTERED", "insertDataOption": "INSERT_ROWS"},
-             body={"values": filas[i:i + _LOTE]})
-
-
 def _escribir_turnos(sid, filas):
-    """Upsert de varias filas de TURNOS VENTAS por ID. Devuelve (actualizadas, nuevas)."""
+    """
+    Upsert de varias filas de TURNOS VENTAS por ID. Devuelve (actualizadas, nuevas).
+
+    Las filas nuevas van a la primera fila sin datos. No se usa el "append" de
+    Google: marketing deja filas vacías con desplegables preparados y el append
+    las cuenta como ocupadas (mandaba los turnos a la fila 1001). Se escriben
+    solo nuestras columnas, así los desplegables y el formato quedan.
+    """
     mapa, manuales = _asegurar_encabezados(sid, TAB_TURNOS, COLUMNAS_TURNOS, SOLO_AL_CREAR)
-    existentes = _filas_por_id(sid, mapa)
-    updates, nuevas = [], []
+    existentes, ultima = _leer_tabla(sid, TAB_TURNOS, mapa[COL_ID])
+    updates, nuevas = [], 0
     for fila in filas:
         nro = existentes.get(str(fila[COL_ID]))
         if nro:
             updates.extend(_tramos(fila, mapa, nro, TAB_TURNOS))
         else:
-            nuevas.append(_fila_completa(fila, {**mapa, **manuales}))
+            nuevas += 1
+            updates.extend(_tramos(fila, {**mapa, **manuales}, ultima + nuevas, TAB_TURNOS))
+    if nuevas:
+        _asegurar_filas(sid, TAB_TURNOS, ultima + nuevas)
     if updates:
         _actualizar(sid, updates)
-    if nuevas:
-        _agregar(sid, TAB_TURNOS, nuevas)
-    return len(filas) - len(nuevas), len(nuevas)
+    return len(filas) - nuevas, nuevas
 
 
 def _escribir_log(sid, filas):
+    """Agrega filas a WEBHOOK_LOG, después de la última con datos."""
     mapa, _ = _asegurar_encabezados(sid, TAB_LOG, COLUMNAS_LOG)
-    _agregar(sid, TAB_LOG, [_fila_completa(f, mapa) for f in filas])
+    _, ultima = _leer_tabla(sid, TAB_LOG)
+    _asegurar_filas(sid, TAB_LOG, ultima + len(filas))
+    _actualizar(sid, [d for i, f in enumerate(filas, start=1)
+                      for d in _tramos(f, mapa, ultima + i, TAB_LOG)])
 
 
 # ─── Armado de filas ──────────────────────────────────────────────────────────
