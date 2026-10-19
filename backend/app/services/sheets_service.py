@@ -164,6 +164,10 @@ def _credenciales():
                 raw = f.read()
         data = json.loads(raw)
         if data.get("client_email") and data.get("private_key"):
+            # Al pasar por variables de entorno (Dokploy, compose) los saltos de
+            # línea de la clave a veces llegan escapados como texto "\n"
+            if "\n" not in data["private_key"]:
+                data["private_key"] = data["private_key"].replace("\\n", "\n")
             return data
     except Exception as e:
         log.warning("GOOGLE_SERVICE_ACCOUNT_JSON inválida: %s", e)
@@ -183,11 +187,15 @@ def _access_token():
         if not cred:
             raise SheetsError("Falta la cuenta de servicio (GOOGLE_SERVICE_ACCOUNT_JSON).")
         ahora = int(time.time())
-        assertion = jwt.encode(
-            {"iss": cred["client_email"], "scope": _SCOPE, "aud": _TOKEN_URL,
-             "iat": ahora, "exp": ahora + 3600},
-            cred["private_key"], algorithm="RS256",
-        )
+        try:
+            assertion = jwt.encode(
+                {"iss": cred["client_email"], "scope": _SCOPE, "aud": _TOKEN_URL,
+                 "iat": ahora, "exp": ahora + 3600},
+                cred["private_key"], algorithm="RS256",
+            )
+        except Exception as e:
+            # No incluir el detalle: podría arrastrar parte de la clave
+            raise SheetsError(f"No se pudo firmar con la clave de la cuenta de servicio ({type(e).__name__}).")
         cuerpo = urllib.parse.urlencode({
             "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer",
             "assertion": assertion,
@@ -198,6 +206,8 @@ def _access_token():
                 data = json.loads(resp.read())
         except urllib.error.HTTPError as e:
             raise SheetsError(f"Google rechazó la cuenta de servicio: HTTP {e.code} {e.read()[:300]!r}")
+        except (urllib.error.URLError, OSError) as e:
+            raise SheetsError(f"Sin conexión con Google al pedir el token: {type(e).__name__}: {e}")
         _token_cache["token"] = data["access_token"]
         _token_cache["vence"] = time.time() + int(data.get("expires_in", 3600))
         return _token_cache["token"]
@@ -231,6 +241,8 @@ def _api(metodo, sid, ruta, params=None, body=None):
         raise SheetsError(f"HTTP {e.code}: {detalle}")
     except urllib.error.URLError as e:
         raise SheetsError(f"Sin conexión con Google: {e.reason}")
+    except OSError as e:  # timeouts de lectura (TimeoutError) y cortes de conexión
+        raise SheetsError(f"Sin conexión con Google: {type(e).__name__}: {e}")
 
 
 def _rango(tab, a1):
@@ -645,4 +657,7 @@ def probar(db: Session, salon_id: int) -> dict:
         _asegurar_encabezados(cfg.sheets_spreadsheet_id, TAB_LOG, COLUMNAS_LOG)
     except SheetsError as e:
         return {"ok": False, "detalle": str(e)}
+    except Exception as e:
+        log.exception("Sheets: error inesperado al probar")
+        return {"ok": False, "detalle": f"Error inesperado: {type(e).__name__}: {e}"}
     return {"ok": True, "detalle": f"Acceso OK. Columnas listas en '{TAB_TURNOS}' y '{TAB_LOG}'."}
