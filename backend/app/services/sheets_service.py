@@ -33,10 +33,11 @@ Diseño defensivo (mismo criterio que webhook_service):
     reintentos por evento; la resincronización nocturna completa corrige lo
     que se haya perdido en el día.
 
-Autenticación: firmamos el JWT de la cuenta de servicio con python-jose (ya es
-dependencia) y lo cambiamos por un access token. Sin librerías nuevas.
+Autenticación: firmamos el JWT de la cuenta de servicio con `cryptography` (ya
+es dependencia) y lo cambiamos por un access token. Sin librerías nuevas.
 """
 import asyncio
+import base64
 import json
 import logging
 import os
@@ -49,7 +50,8 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
 
-from jose import jwt
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import padding
 from sqlalchemy.orm import Session, joinedload
 
 from app.database.connection import SessionLocal
@@ -164,14 +166,41 @@ def _credenciales():
                 raw = f.read()
         data = json.loads(raw)
         if data.get("client_email") and data.get("private_key"):
-            # Al pasar por variables de entorno (Dokploy, compose) los saltos de
-            # línea de la clave a veces llegan escapados como texto "\n"
-            if "\n" not in data["private_key"]:
-                data["private_key"] = data["private_key"].replace("\\n", "\n")
+            data["private_key"] = _normalizar_pem(data["private_key"])
             return data
     except Exception as e:
         log.warning("GOOGLE_SERVICE_ACCOUNT_JSON inválida: %s", e)
     return None
+
+
+def _normalizar_pem(pk: str) -> str:
+    """
+    Al pasar por variables de entorno (Dokploy, compose) la clave suele llegar
+    deformada: saltos de línea escapados como texto "\\n", \\r de Windows o
+    espacios al principio de las líneas. En un PEM nada de eso es válido.
+    """
+    pk = pk.replace("\\n", "\n").replace("\r", "")
+    return "\n".join(linea.strip() for linea in pk.strip().split("\n")) + "\n"
+
+
+def _forma_pem(pk: str) -> str:
+    """Descripción de la clave para diagnosticar, SIN revelar su contenido."""
+    return (f"largo={len(pk)}, líneas={pk.count(chr(10))}, "
+            f"empieza_bien={pk.startswith('-----BEGIN PRIVATE KEY-----')}, "
+            f"termina_bien={pk.rstrip().endswith('-----END PRIVATE KEY-----')}")
+
+
+def _b64url(datos: bytes) -> bytes:
+    return base64.urlsafe_b64encode(datos).rstrip(b"=")
+
+
+def _firmar_jwt(claims: dict, pem: str) -> str:
+    """JWT RS256 firmado con la clave privada de la cuenta de servicio."""
+    clave = serialization.load_pem_private_key(pem.encode(), password=None)
+    a_firmar = (_b64url(json.dumps({"alg": "RS256", "typ": "JWT"}).encode())
+                + b"." + _b64url(json.dumps(claims).encode()))
+    firma = clave.sign(a_firmar, padding.PKCS1v15(), hashes.SHA256())
+    return (a_firmar + b"." + _b64url(firma)).decode()
 
 
 def email_cuenta_servicio():
@@ -188,14 +217,17 @@ def _access_token():
             raise SheetsError("Falta la cuenta de servicio (GOOGLE_SERVICE_ACCOUNT_JSON).")
         ahora = int(time.time())
         try:
-            assertion = jwt.encode(
+            assertion = _firmar_jwt(
                 {"iss": cred["client_email"], "scope": _SCOPE, "aud": _TOKEN_URL,
                  "iat": ahora, "exp": ahora + 3600},
-                cred["private_key"], algorithm="RS256",
+                cred["private_key"],
             )
         except Exception as e:
-            # No incluir el detalle: podría arrastrar parte de la clave
-            raise SheetsError(f"No se pudo firmar con la clave de la cuenta de servicio ({type(e).__name__}).")
+            # Sin el mensaje de la excepción: podría arrastrar parte de la clave
+            raise SheetsError(
+                f"No se pudo firmar con la clave de la cuenta de servicio "
+                f"({type(e).__name__}; {_forma_pem(cred['private_key'])})."
+            )
         cuerpo = urllib.parse.urlencode({
             "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer",
             "assertion": assertion,
