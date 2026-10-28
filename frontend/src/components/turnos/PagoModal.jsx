@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { pagos } from '../../api/api';
-import { formatCurrency } from '../../utils/formatters';
+import { formatCurrency, walkinNombre } from '../../utils/formatters';
 
 const METODOS = ['efectivo', 'débito', 'transferencia', 'Mercado Pago'];
 
@@ -122,7 +122,7 @@ export default function PagoModal({ isOpen, onClose, onPagoRegistrado, turno }) 
 
         {/* Resumen */}
         <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <Row label="Cliente" value={`${cliente.nombre || 'Sin turno'} ${cliente.apellido || ''}`} />
+          <Row label="Cliente" value={`${cliente.nombre || walkinNombre(turno.observaciones) || 'Sin turno'} ${cliente.apellido || ''}`} />
           {serviciosNombres.length > 0 && <Row label="Servicios" value={serviciosNombres.join(', ')} />}
           <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
           <Row label="Total" value={formatCurrency(total)} />

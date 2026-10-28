@@ -1,7 +1,7 @@
 import Badge  from '../ui/Badge';
 import Avatar from '../ui/Avatar';
 import Button from '../ui/Button';
-import { formatTime, formatDate, formatDuration, estadoColor, formatCurrency } from '../../utils/formatters';
+import { formatTime, formatDate, formatDuration, estadoColor, formatCurrency, walkinNombre } from '../../utils/formatters';
 import styles from '../../styles/components/turnos/TurnoCard.module.css';
 
 const ESTADO_LABEL = {
@@ -78,7 +78,7 @@ export default function TurnoCard({ turno, onEdit, onDelete, onCobrar, onMarcar,
         )}
         <div>
           <div className={`${styles.clientName} ${isWalkin ? styles.walkinName : ''}`}>
-            {isWalkin ? 'Sin turno' : `${cliente.nombre} ${cliente.apellido || ''}`}
+            {isWalkin ? (walkinNombre(turno.observaciones) || 'Sin turno') : `${cliente.nombre} ${cliente.apellido || ''}`}
           </div>
           <div className={styles.clientInfo}>
             {isWalkin
