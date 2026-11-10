@@ -6,6 +6,7 @@ import Button from '../ui/Button';
 const defaultForm = {
   nombre: '', descripcion: '', precio: '', duracion_minutos: '', categoria_id: '',
   empleado_ids: [],
+  horas_limite: {},   // { empleado_id: 'HH:MM' } — hasta qué hora toma este servicio
 };
 
 export default function ServicioModal({
@@ -25,6 +26,10 @@ export default function ServicioModal({
         duracion_minutos: String(servicio.duracion_minutos ?? ''),
         categoria_id:     servicio.categoria_id ? String(servicio.categoria_id) : '',
         empleado_ids:     servicio.empleado_ids || [],
+        // El backend devuelve 'HH:MM:SS'; el input type=time trabaja con 'HH:MM'
+        horas_limite: Object.fromEntries(
+          Object.entries(servicio.horas_limite || {}).map(([id, h]) => [id, String(h).slice(0, 5)])
+        ),
       });
     } else {
       setForm({
@@ -41,6 +46,10 @@ export default function ServicioModal({
     empleado_ids: f.empleado_ids.includes(id)
       ? f.empleado_ids.filter(x => x !== id)
       : [...f.empleado_ids, id],
+  }));
+
+  const setHoraLimite = (id, hora) => setForm(f => ({
+    ...f, horas_limite: { ...f.horas_limite, [id]: hora },
   }));
 
   const activos = empleados.filter(e => e.activo !== false);
@@ -62,6 +71,12 @@ export default function ServicioModal({
         duracion_minutos: Number(form.duracion_minutos),
         categoria_id:     form.categoria_id ? Number(form.categoria_id) : null,
         empleado_ids:     form.empleado_ids,
+        // Solo de los profesionales marcados y con hora cargada
+        horas_limite: Object.fromEntries(
+          form.empleado_ids
+            .filter(id => form.horas_limite[id])
+            .map(id => [id, form.horas_limite[id]])
+        ),
       });
       onClose();
     } catch {
@@ -155,6 +170,39 @@ export default function ServicioModal({
                   );
                 })}
               </div>
+
+              {form.empleado_ids.length > 0 && (
+                <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                    Hasta qué hora toma este servicio <span style={{ opacity: 0.8 }}>(opcional — vacío = su horario normal)</span>
+                  </span>
+                  {activos.filter(e => form.empleado_ids.includes(e.id)).map(e => (
+                    <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span style={{ fontSize: '12px', color: 'var(--text-secondary)', minWidth: '110px' }}>
+                        {e.nombre}
+                      </span>
+                      <input
+                        type="time"
+                        value={form.horas_limite[e.id] || ''}
+                        onChange={ev => setHoraLimite(e.id, ev.target.value)}
+                        style={{
+                          padding: '5px 8px', borderRadius: 'var(--radius-sm)', fontSize: '12px',
+                          border: '1px solid var(--border)', background: 'var(--bg-elevated)',
+                          color: 'var(--text-primary)', fontFamily: 'var(--font-body)',
+                        }}
+                      />
+                      {form.horas_limite[e.id] && (
+                        <button type="button" onClick={() => setHoraLimite(e.id, '')}
+                          title="Quitar tope"
+                          style={{
+                            background: 'transparent', border: 'none', cursor: 'pointer',
+                            color: 'var(--text-muted)', fontSize: '12px',
+                          }}>✕</button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {form.empleado_ids.length === 0 ? (
                 <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px', lineHeight: 1.5 }}>

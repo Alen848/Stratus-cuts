@@ -45,14 +45,63 @@ def _empleados_del_salon(db: Session, empleado_ids, salon_id: int):
     ).all()
 
 
+def _guardar_horas_limite(db: Session, servicio_id: int, horas_limite: dict):
+    """
+    Escribe la hora tope de cada profesional asignado al servicio. Las filas de
+    empleado_servicios ya tienen que existir (flush previo); a quien no figure
+    en `horas_limite` se le borra el tope.
+    """
+    from app.models.empleado_servicio import empleado_servicios
+
+    db.execute(
+        empleado_servicios.update()
+        .where(empleado_servicios.c.servicio_id == servicio_id)
+        .values(hora_limite=None)
+    )
+    for empleado_id, hora in (horas_limite or {}).items():
+        if hora is None:
+            continue
+        db.execute(
+            empleado_servicios.update()
+            .where(
+                empleado_servicios.c.servicio_id == servicio_id,
+                empleado_servicios.c.empleado_id == int(empleado_id),
+            )
+            .values(hora_limite=hora)
+        )
+
+
+def hora_limite_empleado(db: Session, empleado_id: int, servicios_ids):
+    """
+    Hora tope del profesional para esta combinación de servicios: la más
+    temprana entre los que tengan una. None si ninguno la tiene.
+    """
+    from app.models.empleado_servicio import empleado_servicios
+
+    if not servicios_ids:
+        return None
+    horas = db.execute(
+        empleado_servicios.select().where(
+            empleado_servicios.c.empleado_id == empleado_id,
+            empleado_servicios.c.servicio_id.in_(servicios_ids),
+            empleado_servicios.c.hora_limite.isnot(None),
+        )
+    ).all()
+    return min((r.hora_limite for r in horas), default=None)
+
+
 def create_servicio(db: Session, servicio: ServicioCreate, salon_id: int):
     _validar_categoria(db, servicio.categoria_id, salon_id)
     data = servicio.model_dump()
     empleado_ids = data.pop("empleado_ids", None)
+    horas_limite = data.pop("horas_limite", None)
     db_servicio = Servicio(salon_id=salon_id, **data)
     if empleado_ids:
         db_servicio.empleados = _empleados_del_salon(db, empleado_ids, salon_id)
     db.add(db_servicio)
+    db.flush()
+    if horas_limite:
+        _guardar_horas_limite(db, db_servicio.id, horas_limite)
     db.commit()
     db.refresh(db_servicio)
     return db_servicio
@@ -67,10 +116,14 @@ def update_servicio(db: Session, servicio_id: int, servicio: ServicioUpdate, sal
         _validar_categoria(db, cambios["categoria_id"], salon_id)
     # Solo tocar la asignación de profesionales si vino explícita en el payload
     empleado_ids = cambios.pop("empleado_ids", None)
+    horas_limite = cambios.pop("horas_limite", None)
     if empleado_ids is not None:
         db_servicio.empleados = _empleados_del_salon(db, empleado_ids, salon_id)
     for key, value in cambios.items():
         setattr(db_servicio, key, value)
+    if horas_limite is not None:
+        db.flush()
+        _guardar_horas_limite(db, db_servicio.id, horas_limite)
     db.commit()
     db.refresh(db_servicio)
     return db_servicio

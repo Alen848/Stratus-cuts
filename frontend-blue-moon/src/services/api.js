@@ -21,13 +21,18 @@ export const createTurno = (turnoData) => api.post(pub('/turnos'), turnoData);
 
 // `servicioId` solo sirve para que el backend sepa cada cuántos minutos ofrecer
 // turnos: un evento especial puede tener un intervalo más corto que la hora.
-export const getDisponibilidadSemanal = (empleadoId, fechaInicio, duracion, servicioId) =>
+// `serviciosIds` (todos los elegidos) aplica la hora tope que el profesional
+// tenga en alguno de ellos.
+export const getDisponibilidadSemanal = (empleadoId, fechaInicio, duracion, servicioId, serviciosIds = []) =>
   api.get(pub(`/disponibilidad/${empleadoId}`), {
     params: {
       fecha_inicio: fechaInicio,
       ...(duracion ? { duracion } : {}),
       ...(servicioId ? { servicio_id: servicioId } : {}),
+      ...(serviciosIds.length ? { servicios_ids: serviciosIds } : {}),
     },
+    // FastAPI espera servicios_ids=1&servicios_ids=2, sin corchetes
+    paramsSerializer: { indexes: null },
   });
 
 // Comprobante de transferencia (subida del cliente)

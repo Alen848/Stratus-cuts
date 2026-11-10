@@ -438,11 +438,30 @@ def get_intervalo_servicio(db: Session, servicio_id: int, salon_id: int) -> int:
     return servicio.categoria.intervalo_minutos or INTERVALO_DEFAULT
 
 
+def validar_hora_limite(db: Session, empleado_id: int, servicios_ids, fecha_hora: datetime, duracion: int):
+    """El turno tiene que terminar antes de la hora tope del profesional para esos servicios."""
+    from app.services.servicio_service import hora_limite_empleado
+
+    limite = hora_limite_empleado(db, empleado_id, servicios_ids)
+    if limite is None:
+        return
+    fin = fecha_hora + timedelta(minutes=duracion or 0)
+    if fin > datetime.combine(fecha_hora.date(), limite):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Ese profesional atiende este servicio solo hasta las {limite.strftime('%H:%M')}. Elegí un horario más temprano u otro profesional.",
+        )
+
+
 def get_horarios_semanales(
     db: Session, empleado_id: int, fecha_inicio: date, salon_id: int,
-    duracion: int = None, intervalo: int = None,
+    duracion: int = None, intervalo: int = None, servicios_ids=None,
 ):
+    from app.services.servicio_service import hora_limite_empleado
+
     _check_empleado_vigente(db, empleado_id, salon_id)
+    # Tope horario que el salón le puso al profesional para estos servicios
+    hora_limite = hora_limite_empleado(db, empleado_id, servicios_ids)
 
     # Liberar holds de seña vencidos para que no aparezcan como ocupados
     expirar_turnos_vencidos(db, salon_id)
@@ -483,6 +502,9 @@ def get_horarios_semanales(
         else:
             resultado[fecha_actual.isoformat()] = []
             continue
+
+        if hora_limite is not None:
+            hora_fin_efectiva = min(hora_fin_efectiva, hora_limite)
 
         if hora_inicio_efectiva >= hora_fin_efectiva:
             resultado[fecha_actual.isoformat()] = []

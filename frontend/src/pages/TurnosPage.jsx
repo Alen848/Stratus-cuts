@@ -7,6 +7,7 @@ import { useApp }       from '../context/AppContext';
 import TurnoCard   from '../components/turnos/TurnoCard';
 import TurnoModal  from '../components/turnos/TurnoModal';
 import PagoModal   from '../components/turnos/PagoModal';
+import ReasignarModal from '../components/turnos/ReasignarModal';
 import { turnos as turnosApi } from '../api/api';
 import Button      from '../components/ui/Button';
 import EmptyState  from '../components/ui/EmptyState';
@@ -47,6 +48,7 @@ export default function TurnosPage() {
   const [modalOpen, setModalOpen]       = useState(false);
   const [editingTurno, setEditingTurno] = useState(null);
   const [cobroTurno, setCobroTurno]     = useState(null);
+  const [reasignarTurno, setReasignarTurno] = useState(null);
   const [filtroEstado, setFiltroEstado] = useState('todos');
   const [search, setSearch]             = useState('');
   const [selectedDate, setSelectedDate] = useState(toLocalDateStr(new Date()));
@@ -125,6 +127,17 @@ export default function TurnosPage() {
         msg = e.response?.data?.detail || e.message || msg;
       }
       notify(msg, 'error');
+      throw e;
+    }
+  };
+
+  const handleReasignar = async (t, empleadoId) => {
+    try {
+      await editTurno(t.id, { empleado_id: empleadoId });
+      const nuevo = empleados.find(e => e.id === empleadoId);
+      notify(`Turno reasignado a ${nuevo?.nombre || 'otro profesional'}`);
+    } catch (e) {
+      notify(e.response?.data?.detail || 'No se pudo reasignar el turno', 'error');
       throw e;
     }
   };
@@ -306,7 +319,8 @@ export default function TurnosPage() {
             <TurnoCard key={t.id} turno={t} onEdit={openEdit} onDelete={handleDelete}
               onCobrar={setCobroTurno} onMarcar={handleMarcar} onConfirmarSena={handleConfirmarSena}
               onVerComprobante={handleVerComprobante}
-              onAdjuntarComprobante={handleAdjuntarComprobante} />
+              onAdjuntarComprobante={handleAdjuntarComprobante}
+              onReasignar={setReasignarTurno} />
           ))}
         </div>
       )}
@@ -326,6 +340,16 @@ export default function TurnosPage() {
         onPagoRegistrado={handlePagoRegistrado}
         turno={editingTurno}
         clientes={clientes}
+        empleados={empleados}
+        servicios={servicios}
+        turnos={turnos}
+      />
+
+      <ReasignarModal
+        isOpen={!!reasignarTurno}
+        turno={reasignarTurno}
+        onClose={() => setReasignarTurno(null)}
+        onSubmit={handleReasignar}
         empleados={empleados}
         servicios={servicios}
         turnos={turnos}

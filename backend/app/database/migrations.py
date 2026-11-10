@@ -59,6 +59,10 @@ COLUMNS_TO_ADD = {
         # Agrupador opcional: los servicios sin categoría se muestran sueltos
         "categoria_id": "INTEGER NULL",
     },
+    "empleado_servicios": {
+        # Hora tope por profesional para un servicio puntual
+        "hora_limite": "TIME NULL",
+    },
 }
 
 

@@ -4,7 +4,7 @@ Prefijo: /public/{slug}/...
 El slug identifica el salón.
 """
 import os
-from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, Query
 from sqlalchemy.orm import Session
 from typing import List
 from datetime import date as DateType, datetime, timezone, timedelta
@@ -82,6 +82,7 @@ def public_disponibilidad(
     fecha_inicio: DateType,
     duracion: int = None,
     servicio_id: int = None,
+    servicios_ids: List[int] = Query(None),
     db: Session = Depends(get_db),
 ):
     """
@@ -89,12 +90,16 @@ def public_disponibilidad(
     ofrecer turnos: los eventos especiales pueden tener un intervalo más corto
     que la hora habitual. El intervalo se resuelve acá y no se acepta del
     cliente, para que no puedan pedir una grilla arbitraria.
+
+    `servicios_ids` son todos los servicios elegidos: se usan para aplicar la
+    hora tope que el profesional tenga en alguno de ellos.
     """
     salon = _get_salon(slug, db)
     intervalo = turno_service.get_intervalo_servicio(db, servicio_id, salon.id)
     return turno_service.get_horarios_semanales(
         db, empleado_id, fecha_inicio, salon_id=salon.id,
         duracion=duracion, intervalo=intervalo,
+        servicios_ids=servicios_ids or ([servicio_id] if servicio_id else None),
     )
 
 
@@ -143,6 +148,15 @@ def public_create_turno(request: Request, slug: str, turno: ReservaPublicaCreate
     # Servicios de "fecha especial": solo se reservan en sus días puntuales
     servicio_service.validar_fechas_especiales(
         db, turno.servicios_ids, fecha_turno.date(), salon.id
+    )
+
+    # Hora tope del profesional para estos servicios (ej.: hasta las 15 el día de depilación)
+    duracion_total = sum(
+        s.duracion_minutos for s in
+        (servicio_service.get_servicio(db, sid, salon.id) for sid in turno.servicios_ids) if s
+    )
+    turno_service.validar_hora_limite(
+        db, turno.empleado_id, turno.servicios_ids, fecha_turno, duracion_total
     )
 
     # La notification_url debe ser pública y HTTPS. Detrás de un proxy,

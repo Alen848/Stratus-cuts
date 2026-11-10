@@ -21,7 +21,7 @@ const ghostMini = {
   cursor: 'pointer', fontFamily: 'var(--font-body)', whiteSpace: 'nowrap',
 };
 
-export default function TurnoCard({ turno, onEdit, onDelete, onCobrar, onMarcar, onConfirmarSena, onVerComprobante, onAdjuntarComprobante }) {
+export default function TurnoCard({ turno, onEdit, onDelete, onCobrar, onMarcar, onConfirmarSena, onVerComprobante, onAdjuntarComprobante, onReasignar }) {
   const cliente  = turno.cliente  || null;
   const empleado = turno.empleado || {};
   const servicios = turno.servicios?.map(ts => ts.servicio?.nombre || ts.nombre).filter(Boolean) || [];
@@ -166,6 +166,9 @@ export default function TurnoCard({ turno, onEdit, onDelete, onCobrar, onMarcar,
             <button onClick={() => onMarcar?.(turno, 'no_show')} title="El cliente no vino" style={ghostMini}>No vino</button>
             <button onClick={() => onMarcar?.(turno, 'cancelado')} title="Cancelar turno" style={ghostMini}>Cancelar</button>
           </>
+        )}
+        {['pendiente', 'confirmado', 'pendiente_pago'].includes(turno.estado) && onReasignar && (
+          <button onClick={() => onReasignar(turno)} title="Pasar el turno a otro profesional" style={ghostMini}>⇄ Reasignar</button>
         )}
         <Button variant="ghost"  size="sm" onClick={() => onEdit(turno)}>✎</Button>
         <Button variant="danger" size="sm" onClick={() => onDelete(turno.id)}>✕</Button>

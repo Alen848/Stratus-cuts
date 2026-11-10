@@ -117,7 +117,8 @@ export default function Booking() {
     // Además mandamos un servicio para que el backend sepa el intervalo de la
     // grilla: en un evento los turnos pueden salir cada 20 min y no cada hora.
     getDisponibilidadSemanal(
-      selectedEmpleado.id, selectedDate, totalDuracion, selectedServices[0]?.id
+      selectedEmpleado.id, selectedDate, totalDuracion, selectedServices[0]?.id,
+      selectedServices.map(s => s.id)
     )
       .then(r => setAvailableSlots(r.data?.[selectedDate] || []))
       .catch(() => setAvailableSlots([]))

@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, Float, ForeignKey, UniqueConstraint
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, object_session
 from app.database.connection import Base
 
 class Servicio(Base):
@@ -24,6 +24,22 @@ class Servicio(Base):
     @property
     def empleado_ids(self):
         return [e.id for e in self.empleados]
+
+    @property
+    def horas_limite(self):
+        """{empleado_id: hora} de los profesionales con hora tope para este servicio."""
+        from app.models.empleado_servicio import empleado_servicios
+
+        db = object_session(self)
+        if db is None or self.id is None:
+            return {}
+        rows = db.execute(
+            empleado_servicios.select().where(
+                empleado_servicios.c.servicio_id == self.id,
+                empleado_servicios.c.hora_limite.isnot(None),
+            )
+        ).all()
+        return {r.empleado_id: r.hora_limite for r in rows}
 
     # Las fechas no son del servicio sino de la jornada: un servicio es "de fecha
     # especial" cuando pertenece a una categoría marcada como evento. Se exponen
