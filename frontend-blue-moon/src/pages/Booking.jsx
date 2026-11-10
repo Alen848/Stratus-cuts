@@ -5,6 +5,25 @@ import { money } from '../utils/format';
 import { trackEvent } from '../utils/pixel';
 import '../styles/booking.css';
 
+// El backend valida el email con un criterio más estricto que el navegador
+// (type="email" deja pasar "ana@gmail"), así que lo chequeamos igual acá.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+// Mensaje legible a partir del error de la API. Los 422 de FastAPI traen
+// `detail` como lista de objetos: sin esto se mostraba "[object Object]".
+const CAMPOS = { email: 'El email', telefono: 'El teléfono', nombre: 'El nombre' };
+function mensajeDeError(err) {
+  const detail = err?.response?.data?.detail;
+  if (typeof detail === 'string') return detail;
+  if (Array.isArray(detail) && detail.length) {
+    const campo = detail[0]?.loc?.[detail[0].loc.length - 1];
+    return CAMPOS[campo]
+      ? `${CAMPOS[campo]} no es válido. Revisalo y volvé a intentar.`
+      : 'Hay un dato inválido en el formulario. Revisalo y volvé a intentar.';
+  }
+  return err?.response?.data?.message || err?.message || 'Ocurrió un error inesperado.';
+}
+
 
 export default function Booking() {
   const location = useLocation();
@@ -229,14 +248,26 @@ export default function Booking() {
       setError('Por favor seleccioná una fecha y horario.');
       return;
     }
+    const email = formData.email.trim();
+    // Solo dígitos (y el + inicial): espacios y guiones lo hacían pasar el
+    // límite de 20 caracteres del backend.
+    const telefono = formData.telefono.trim().replace(/(?!^\+)[^\d]/g, '');
+    if (email && !EMAIL_RE.test(email)) {
+      setError('El email no parece válido (ej: nombre@gmail.com). Revisalo y volvé a intentar.');
+      return;
+    }
+    if (telefono && (telefono.length < 8 || telefono.length > 20)) {
+      setError('El teléfono no parece válido. Escribilo solo con números, ej: 2235000000.');
+      return;
+    }
     setLoading(true);
     setError('');
 
     try {
       const clienteResponse = await createCliente({
-        nombre: formData.nombre,
-        telefono: formData.telefono || null,
-        email: formData.email || null,
+        nombre: formData.nombre.trim(),
+        telefono: telefono || null,
+        email: email || null,
       });
       const clienteId = clienteResponse.data.id;
 
@@ -299,12 +330,7 @@ export default function Booking() {
       // Reserva sin seña: confirmación directa (comportamiento de siempre)
       navigate('/confirmation', { state: { turno: data } });
     } catch (err) {
-      const msg =
-        err?.response?.data?.detail ||
-        err?.response?.data?.message ||
-        JSON.stringify(err?.response?.data) ||
-        err.message;
-      setError(`Error al reservar: ${msg}`);
+      setError(`Error al reservar: ${mensajeDeError(err)}`);
     } finally {
       setLoading(false);
     }
