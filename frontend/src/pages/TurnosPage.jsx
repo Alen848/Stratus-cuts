@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useTurnos }    from '../hooks/useTurnos';
 import { useClientes }  from '../hooks/useClientes';
 import { useEmpleados } from '../hooks/useEmpleados';
@@ -7,11 +7,13 @@ import { useApp }       from '../context/AppContext';
 import TurnoCard   from '../components/turnos/TurnoCard';
 import TurnoModal  from '../components/turnos/TurnoModal';
 import PagoModal   from '../components/turnos/PagoModal';
+import ReasignarModal from '../components/turnos/ReasignarModal';
+import { turnos as turnosApi } from '../api/api';
 import Button      from '../components/ui/Button';
 import EmptyState  from '../components/ui/EmptyState';
 import styles      from '../styles/pages/TurnosPage.module.css';
 
-const FILTROS = ['todos', 'pendiente', 'confirmado', 'completado', 'cancelado'];
+const FILTROS = ['todos', 'pendiente', 'confirmado', 'completado', 'cancelado', 'seña pendiente'];
 
 function formatDayLabel(date) {
   return date.toLocaleDateString('es-AR', {
@@ -46,6 +48,7 @@ export default function TurnosPage() {
   const [modalOpen, setModalOpen]       = useState(false);
   const [editingTurno, setEditingTurno] = useState(null);
   const [cobroTurno, setCobroTurno]     = useState(null);
+  const [reasignarTurno, setReasignarTurno] = useState(null);
   const [filtroEstado, setFiltroEstado] = useState('todos');
   const [search, setSearch]             = useState('');
   const [selectedDate, setSelectedDate] = useState(toLocalDateStr(new Date()));
@@ -59,11 +62,19 @@ export default function TurnosPage() {
   const isToday = selectedDate === toLocalDateStr(new Date());
 
   const filtrados = useMemo(() => {
+    // "Seña pendiente" es transversal: muestra los turnos de cualquier fecha que
+    // esperan el comprobante, para no tener que recorrer día por día.
+    const soloSenaPendiente = filtroEstado === 'seña pendiente';
+
     let list = [...turnos]
-      .filter(t => turnoLocalDate(t.fecha_hora) === selectedDate)
+      .filter(t => soloSenaPendiente || turnoLocalDate(t.fecha_hora) === selectedDate)
       .sort((a, b) => new Date(a.fecha_hora) - new Date(b.fecha_hora));
 
-    if (filtroEstado !== 'todos') list = list.filter(t => t.estado === filtroEstado);
+    if (soloSenaPendiente) {
+      list = list.filter(t => t.sena_estado === 'pendiente' && t.estado !== 'cancelado');
+    } else if (filtroEstado !== 'todos') {
+      list = list.filter(t => t.estado === filtroEstado);
+    }
 
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -120,6 +131,17 @@ export default function TurnosPage() {
     }
   };
 
+  const handleReasignar = async (t, empleadoId) => {
+    try {
+      await editTurno(t.id, { empleado_id: empleadoId });
+      const nuevo = empleados.find(e => e.id === empleadoId);
+      notify(`Turno reasignado a ${nuevo?.nombre || 'otro profesional'}`);
+    } catch (e) {
+      notify(e.response?.data?.detail || 'No se pudo reasignar el turno', 'error');
+      throw e;
+    }
+  };
+
   const handlePagoRegistrado = () => {
     notify('Cobro registrado correctamente ✓');
     setCobroTurno(null);
@@ -134,6 +156,53 @@ export default function TurnosPage() {
       notify(estado === 'no_show' ? 'Turno marcado como "No vino"' : 'Turno cancelado');
     } catch (e) {
       notify(e.response?.data?.detail || 'No se pudo actualizar el turno', 'error');
+    }
+  };
+
+  const handleVerComprobante = async (t) => {
+    try {
+      const res = await turnosApi.getComprobante(t.id);
+      const url = URL.createObjectURL(res.data);
+      window.open(url, '_blank', 'noopener,noreferrer');
+      // Liberar el object URL después de un rato
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (e) {
+      notify(e.response?.status === 404 ? 'No hay comprobante para este turno' : 'No se pudo abrir el comprobante', 'error');
+    }
+  };
+
+  // Adjuntar el comprobante que el cliente mandó por WhatsApp
+  const fileInputRef = useRef(null);
+  const [turnoComprobante, setTurnoComprobante] = useState(null);
+
+  const handleAdjuntarComprobante = (t) => {
+    setTurnoComprobante(t);
+    fileInputRef.current?.click();
+  };
+
+  const handleArchivoElegido = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';           // permite volver a elegir el mismo archivo
+    if (!file || !turnoComprobante) return;
+    try {
+      await turnosApi.subirComprobante(turnoComprobante.id, file);
+      notify('Comprobante adjuntado');
+      await refetch();
+    } catch (err) {
+      notify(err.response?.data?.detail || 'No se pudo adjuntar el comprobante', 'error');
+    } finally {
+      setTurnoComprobante(null);
+    }
+  };
+
+  const handleConfirmarSena = async (t) => {
+    if (!window.confirm(`¿Confirmar que se acreditó la seña por transferencia de ${t.cliente?.nombre || 'este turno'}? Se registrará en Caja y el turno quedará confirmado.`)) return;
+    try {
+      await turnosApi.confirmarSena(t.id);
+      notify('Seña confirmada y registrada en Caja ✓');
+      if (refetch) refetch();
+    } catch (e) {
+      notify(e.response?.data?.detail || 'No se pudo confirmar la seña', 'error');
     }
   };
 
@@ -157,11 +226,17 @@ export default function TurnosPage() {
 
           <div className={styles.dayInfo}>
             <span className={styles.dayTitle}>
-              {formatDayLabel(new Date(selectedDate + 'T00:00:00'))}
+              {/* Cada texto va en su propio nodo: si quedan sueltos como hermanos, el
+                  traductor del navegador los reemplaza y React rompe al re-renderizar. */}
+              <span>{formatDayLabel(new Date(selectedDate + 'T00:00:00'))}</span>
               {isToday && <span className={styles.todayBadge}>Hoy</span>}
             </span>
             <span className={styles.daySubtitle}>
-              {conteosDia.total} turno{conteosDia.total !== 1 ? 's' : ''} en este día
+              <span>
+                {conteosDia.total === 1
+                  ? '1 turno en este día'
+                  : `${conteosDia.total} turnos en este día`}
+              </span>
             </span>
           </div>
 
@@ -230,18 +305,33 @@ export default function TurnosPage() {
       ) : filtrados.length === 0 ? (
         <EmptyState
           icon="◷"
-          title={`Sin turnos el ${formatDayLabel(new Date(selectedDate + 'T00:00:00'))}`}
-          description="No hay turnos que coincidan con los filtros seleccionados para este día."
+          title={filtroEstado === 'seña pendiente'
+            ? 'Sin señas pendientes'
+            : `Sin turnos el ${formatDayLabel(new Date(selectedDate + 'T00:00:00'))}`}
+          description={filtroEstado === 'seña pendiente'
+            ? 'No hay turnos esperando el comprobante de la transferencia.'
+            : 'No hay turnos que coincidan con los filtros seleccionados para este día.'}
           action={<Button variant="primary" onClick={openCreate}>Crear turno</Button>}
         />
       ) : (
         <div className={styles.list}>
           {filtrados.map(t => (
             <TurnoCard key={t.id} turno={t} onEdit={openEdit} onDelete={handleDelete}
-              onCobrar={setCobroTurno} onMarcar={handleMarcar} />
+              onCobrar={setCobroTurno} onMarcar={handleMarcar} onConfirmarSena={handleConfirmarSena}
+              onVerComprobante={handleVerComprobante}
+              onAdjuntarComprobante={handleAdjuntarComprobante}
+              onReasignar={setReasignarTurno} />
           ))}
         </div>
       )}
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*,application/pdf"
+        style={{ display: 'none' }}
+        onChange={handleArchivoElegido}
+      />
 
       <TurnoModal
         isOpen={modalOpen}
@@ -250,6 +340,16 @@ export default function TurnosPage() {
         onPagoRegistrado={handlePagoRegistrado}
         turno={editingTurno}
         clientes={clientes}
+        empleados={empleados}
+        servicios={servicios}
+        turnos={turnos}
+      />
+
+      <ReasignarModal
+        isOpen={!!reasignarTurno}
+        turno={reasignarTurno}
+        onClose={() => setReasignarTurno(null)}
+        onSubmit={handleReasignar}
         empleados={empleados}
         servicios={servicios}
         turnos={turnos}

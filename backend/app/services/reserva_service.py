@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.models.servicio import Servicio
 from app.models.turno import Turno
 from app.models.pago import Pago
-from app.services import turno_service, config_salon_service, mercadopago_service, webhook_service, email_service
+from app.services import turno_service, config_salon_service, mercadopago_service, webhook_service, email_service, sheets_service
 
 ARG_TZ = timezone(timedelta(hours=-3))
 HOLD_MINUTOS = 10  # tiempo que se mantiene el horario reservado mientras se paga
@@ -45,26 +45,68 @@ def crear_reserva(db: Session, data, salon, config, webhook_url: str = None) -> 
     obligatoria = bool(getattr(config, "sena_obligatoria", False))
     token       = config_salon_service.get_mp_access_token(db, salon.id)
     quiere_pagar = bool(getattr(data, "pagar_sena", False))
+    metodo      = (getattr(data, "metodo_sena", "tarjeta") or "tarjeta").lower()
 
     sena = calcular_sena(total, porcentaje)
-    requiere_pago = bool(mp_activo and token and sena > 0 and (obligatoria or quiere_pagar))
+
+    # Métodos de seña disponibles según la config del salón
+    mp_disponible        = bool(mp_activo and token)
+    transferencia_activa = bool(getattr(config, "transferencia_activa", False) and getattr(config, "transferencia_cbu", None))
+    hay_metodo           = mp_disponible or transferencia_activa
+
+    # ¿Aplica seña? Hay porcentaje, algún método, y (es obligatoria o el cliente la eligió)
+    aplica_sena = bool(sena > 0 and hay_metodo and (obligatoria or quiere_pagar))
+
+    # Método efectivo: si pidió tarjeta pero MP no está y sí hay transferencia, cae a transferencia.
+    if metodo == "transferencia" and not transferencia_activa:
+        metodo = "tarjeta"
+    if metodo == "tarjeta" and not mp_disponible and transferencia_activa:
+        metodo = "transferencia"
+
+    # ── Camino transferencia: turno reservado, seña pendiente de confirmación ─
+    if aplica_sena and metodo == "transferencia":
+        data.estado = "pendiente"  # retiene el slot y queda visible en el admin (no se auto-borra)
+        turno = turno_service.create_turno(db, data, salon_id=salon.id, sincronizar_sheet=False)
+        turno.monto_total     = total
+        turno.monto_sena      = sena
+        turno.saldo_pendiente = round(total - sena, 2)
+        turno.sena_estado     = "pendiente"
+        turno.metodo_pago     = "transferencia"
+        turno.expira_en       = None
+        db.commit()
+        db.refresh(turno)
+        sheets_service.sync_turno(db, turno, "turno.creado", detalle="Reserva online, seña por transferencia")
+        return {
+            "requiere_pago": True,
+            "metodo": "transferencia",
+            "turno": turno,
+            "monto_total": total,
+            "monto_sena": sena,
+            "saldo_pendiente": turno.saldo_pendiente,
+            "transferencia": {
+                "cbu":     getattr(config, "transferencia_cbu", None),
+                "alias":   getattr(config, "transferencia_alias", None),
+                "titular": getattr(config, "transferencia_titular", None),
+            },
+        }
 
     # ── Camino sin pago: turno normal (comportamiento de siempre) ────────────
-    if not requiere_pago:
-        turno = turno_service.create_turno(db, data, salon_id=salon.id)
+    if not aplica_sena:
+        turno = turno_service.create_turno(db, data, salon_id=salon.id, sincronizar_sheet=False)
         turno.monto_total     = total
         turno.monto_sena      = 0
         turno.saldo_pendiente = total
         turno.sena_estado     = "no_aplica"
         db.commit()
         db.refresh(turno)
+        sheets_service.sync_turno(db, turno, "turno.creado", detalle="Reserva online sin seña")
         # Confirmación por email al instante (reserva sin seña)
         email_service.enviar_confirmacion_turno(db, turno, salon, config)
         return {"requiere_pago": False, "turno": turno}
 
     # ── Camino con seña: crear turno en pendiente_pago + preferencia MP ──────
     data.estado = "pendiente_pago"
-    turno = turno_service.create_turno(db, data, salon_id=salon.id)
+    turno = turno_service.create_turno(db, data, salon_id=salon.id, sincronizar_sheet=False)
     turno.monto_total     = total
     turno.monto_sena      = sena
     turno.saldo_pendiente = round(total - sena, 2)
@@ -95,6 +137,7 @@ def crear_reserva(db: Session, data, salon, config, webhook_url: str = None) -> 
     turno.mp_preference_id = pref["id"]
     db.commit()
     db.refresh(turno)
+    sheets_service.sync_turno(db, turno, "reserva.iniciada", detalle="Reserva online, esperando seña por Mercado Pago")
 
     return {
         "requiere_pago": True,
@@ -153,6 +196,7 @@ def confirmar_pago(db: Session, salon_id: int, payment_id: str, access_token: st
         db.commit()
         # Webhook: la reserva online quedó en firme al pagarse la seña
         webhook_service.emit(db, salon_id, "turno.confirmado", webhook_service.turno_payload(turno))
+        sheets_service.sync_turno(db, turno, "sena.pagada", detalle=f"Mercado Pago ${turno.monto_sena or 0}")
         # Confirmación por email (recién ahora que la seña se pagó)
         email_service.enviar_confirmacion_turno(db, turno)
         return {"ok": True, "estado": "confirmado"}
@@ -162,4 +206,5 @@ def confirmar_pago(db: Session, salon_id: int, payment_id: str, access_token: st
         turno.estado = "expirado"
         turno.sena_estado = "anulada"
         db.commit()
+        sheets_service.sync_turno(db, turno, "sena.rechazada", detalle=f"Mercado Pago: {status}")
     return {"ok": True, "estado": turno.estado, "pago_status": status}

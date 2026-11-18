@@ -40,6 +40,20 @@ export const turnos = {
   // Retorna disponibilidad semanal: { '2024-12-01': [{hora, disponible, ...}], ... }
   getDisponibilidadSemanal: (empleadoId, fechaInicio) =>
     api.get(`/turns/disponibilidad-semanal/${empleadoId}`, { params: { fecha_inicio: fechaInicio } }),
+
+  // Confirma manualmente la seña por transferencia de un turno
+  confirmarSena: (id) => api.post(`/turns/${id}/confirmar-sena`),
+
+  // Comprobante de transferencia adjuntado por el cliente (imagen/PDF, como blob)
+  getComprobante: (id) => api.get(`/turns/${id}/comprobante`, { responseType: 'blob' }),
+
+  // El salón adjunta el comprobante que le mandaron por WhatsApp
+  subirComprobante: (id, file) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    // Content-Type undefined => el navegador pone multipart/form-data con boundary
+    return api.post(`/turns/${id}/comprobante`, fd, { headers: { 'Content-Type': undefined } });
+  },
 };
 
 // ─── Pagos ────────────────────────────────────────────────────────────────────
@@ -89,6 +103,12 @@ export const horariosSalon = {
 export const configSalon = {
   get:    ()       => api.get('/config-salon/'),
   update: (data)   => api.put('/config-salon/', data),
+  // Candado de la sección Configuración
+  verifyPassword: (password)      => api.post('/config-salon/verify-password', { password }),
+  setPassword:    (current, nueva) => api.post('/config-salon/password', { current_password: current, nueva_password: nueva }),
+  // Webhooks salientes (integración con sistemas externos)
+  webhookEntregas: (limit = 50) => api.get('/config-salon/webhook/entregas', { params: { limit } }),
+  webhookProbar:   ()           => api.post('/config-salon/webhook/probar'),
 };
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────

@@ -1,7 +1,28 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { createCliente, createTurno, getEmpleados, getServicios, getDisponibilidadSemanal, getPagoConfig } from '../services/api';
+import { createCliente, createTurno, getEmpleados, getServicios, getCategorias, getDisponibilidadSemanal, getPagoConfig } from '../services/api';
+import { money } from '../utils/format';
+import { trackEvent } from '../utils/pixel';
 import '../styles/booking.css';
+
+// El backend valida el email con un criterio más estricto que el navegador
+// (type="email" deja pasar "ana@gmail"), así que lo chequeamos igual acá.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+// Mensaje legible a partir del error de la API. Los 422 de FastAPI traen
+// `detail` como lista de objetos: sin esto se mostraba "[object Object]".
+const CAMPOS = { email: 'El email', telefono: 'El teléfono', nombre: 'El nombre' };
+function mensajeDeError(err) {
+  const detail = err?.response?.data?.detail;
+  if (typeof detail === 'string') return detail;
+  if (Array.isArray(detail) && detail.length) {
+    const campo = detail[0]?.loc?.[detail[0].loc.length - 1];
+    return CAMPOS[campo]
+      ? `${CAMPOS[campo]} no es válido. Revisalo y volvé a intentar.`
+      : 'Hay un dato inválido en el formulario. Revisalo y volvé a intentar.';
+  }
+  return err?.response?.data?.message || err?.message || 'Ocurrió un error inesperado.';
+}
 
 
 export default function Booking() {
@@ -12,8 +33,11 @@ export default function Booking() {
     || (location.state?.selectedService ? [location.state.selectedService] : []);
 
   const [servicios, setServicios] = useState([]);
+  const [categorias, setCategorias] = useState([]);
   const [loadingServicios, setLoadingServicios] = useState(true);
   const [selectedServices, setSelectedServices] = useState(preSelected);
+  // Categoría desplegada en el acordeón (null = ninguna)
+  const [openCategoria, setOpenCategoria] = useState(null);
 
   const [formData, setFormData] = useState({ nombre: '', telefono: '', email: '' });
   const [empleados, setEmpleados] = useState([]);
@@ -28,18 +52,27 @@ export default function Booking() {
 
   // Seña / Mercado Pago
   const [pagoConfig, setPagoConfig] = useState({ habilitado: false, sena_porcentaje: 0, sena_obligatoria: false });
-  const [metodoPago, setMetodoPago] = useState('sena'); // 'sena' | 'local' (solo si la seña es opcional)
+  const [metodoPago, setMetodoPago] = useState('sena');        // 'sena' | 'local' (solo si la seña es opcional)
+  const [metodoSena, setMetodoSena] = useState('tarjeta');     // 'tarjeta' | 'transferencia'
 
   useEffect(() => {
     getPagoConfig()
-      .then(r => setPagoConfig(r.data || { habilitado: false }))
+      .then(r => {
+        const cfg = r.data || { habilitado: false };
+        setPagoConfig(cfg);
+        // Método de seña por defecto: tarjeta si hay MP, si no transferencia.
+        if (cfg.mp_habilitado) setMetodoSena('tarjeta');
+        else if (cfg.transferencia_habilitada) setMetodoSena('transferencia');
+      })
       .catch(() => setPagoConfig({ habilitado: false, sena_porcentaje: 0, sena_obligatoria: false }));
   }, []);
 
   useEffect(() => {
-    getServicios()
-      .then(r => setServicios(r.data || []))
-      .catch(() => setServicios([]))
+    Promise.all([
+      getServicios().then(r => r.data || []).catch(() => []),
+      getCategorias().then(r => r.data || []).catch(() => []),
+    ])
+      .then(([servs, cats]) => { setServicios(servs); setCategorias(cats); })
       .finally(() => setLoadingServicios(false));
   }, []);
 
@@ -50,6 +83,46 @@ export default function Booking() {
       .finally(() => setLoadingEmpleados(false));
   }, []);
 
+  const totalPrecio   = selectedServices.reduce((sum, s) => sum + Number(s.precio), 0);
+  const totalDuracion = selectedServices.reduce((sum, s) => sum + s.duracion_minutos, 0);
+
+  const hoyISO = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  })();
+
+  // ── Eventos especiales ─────────────────────────────────────────────────────
+  // Un evento es una categoría marcada como tal: se hace solo ciertos días y sus
+  // servicios son las variantes que se pueden reservar esa jornada. Las fechas y
+  // el intervalo entre turnos son de la categoría, no de cada variante.
+  const catsEvento = categorias.filter(
+    c => c.es_evento && (c.fechas_especiales || []).some(f => f >= hoyISO)
+  );
+
+  const gruposEvento = catsEvento
+    .map(cat => ({ categoria: cat, items: servicios.filter(s => s.categoria_id === cat.id) }))
+    .filter(g => g.items.length > 0);
+
+  const idsCategoriaEvento = new Set(categorias.filter(c => c.es_evento).map(c => c.id));
+  const esServicioDeEvento = (s) => idsCategoriaEvento.has(s.categoria_id);
+
+  // Categorías de evento a las que pertenece lo que el cliente ya eligió
+  const catsEventoElegidas = catsEvento.filter(
+    c => selectedServices.some(s => s.categoria_id === c.id)
+  );
+
+  // Con dos eventos distintos elegidos, solo sirven los días que comparten
+  const fechasEvento = catsEventoElegidas.length === 0
+    ? null
+    : catsEventoElegidas
+        .map(c => c.fechas_especiales)
+        .reduce((comunes, fechas) => comunes.filter(f => fechas.includes(f)))
+        .filter(f => f >= hoyISO)
+        .sort();
+
+  const hayEventoElegido    = fechasEvento !== null;
+  const sinFechasCompatibles = hayEventoElegido && fechasEvento.length === 0;
+
   useEffect(() => {
     if (!selectedEmpleado || !selectedDate) {
       setAvailableSlots([]);
@@ -58,11 +131,19 @@ export default function Booking() {
     }
     setLoadingSlots(true);
     setSelectedTime('');
-    getDisponibilidadSemanal(selectedEmpleado.id, selectedDate)
+    // La disponibilidad depende de la duración total de los servicios elegidos:
+    // un horario solo está libre si entra el servicio completo sin pisar otro turno.
+    // Además mandamos un servicio para que el backend sepa el intervalo de la
+    // grilla: en un evento los turnos pueden salir cada 20 min y no cada hora.
+    getDisponibilidadSemanal(
+      selectedEmpleado.id, selectedDate, totalDuracion, selectedServices[0]?.id,
+      selectedServices.map(s => s.id)
+    )
       .then(r => setAvailableSlots(r.data?.[selectedDate] || []))
       .catch(() => setAvailableSlots([]))
       .finally(() => setLoadingSlots(false));
-  }, [selectedEmpleado, selectedDate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedEmpleado, selectedDate, totalDuracion, selectedServices]);
 
   const toggleServicio = (service) => {
     setSelectedServices(prev =>
@@ -72,8 +153,62 @@ export default function Booking() {
     );
   };
 
-  const totalPrecio = selectedServices.reduce((sum, s) => sum + Number(s.precio), 0);
-  const totalDuracion = selectedServices.reduce((sum, s) => sum + s.duracion_minutos, 0);
+  // El resto se muestra agrupado: primero la categoría (sin precio) y,
+  // al desplegarla, los servicios concretos con su precio y duración.
+  const serviciosNormales = servicios.filter(s => !esServicioDeEvento(s));
+
+  const gruposServicios = categorias
+    .filter(cat => !cat.es_evento)
+    .map(cat => ({ categoria: cat, items: serviciosNormales.filter(s => s.categoria_id === cat.id) }))
+    .filter(g => g.items.length > 0);
+
+  const categoriaIdsConItems = new Set(gruposServicios.map(g => g.categoria.id));
+  // Servicios sin categoría (o con una categoría que ya no existe): se muestran sueltos
+  const serviciosSueltos = serviciosNormales.filter(
+    s => !s.categoria_id || !categoriaIdsConItems.has(s.categoria_id)
+  );
+
+  // Si llegamos con un servicio preseleccionado, abrimos su categoría
+  useEffect(() => {
+    if (openCategoria !== null || preSelected.length === 0) return;
+    const conCategoria = preSelected.find(s => s.categoria_id);
+    if (conCategoria) setOpenCategoria(conCategoria.categoria_id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categorias]);
+
+  // Solo mostramos los profesionales que realizan TODOS los servicios elegidos.
+  // Un empleado sin servicios asignados (servicio_ids vacío) hace todos.
+  const selectedServiceIds = selectedServices.map(s => s.id);
+  const puedeRealizar = (emp) => {
+    const ids = emp.servicio_ids || [];
+    if (ids.length === 0) return true;
+    return selectedServiceIds.every(id => ids.includes(id));
+  };
+  const empleadosDisponibles = empleados.filter(puedeRealizar);
+
+  // Si el profesional elegido deja de poder hacer los servicios seleccionados,
+  // lo deseleccionamos para no dejar una combinación inválida.
+  useEffect(() => {
+    if (selectedEmpleado && !puedeRealizar(selectedEmpleado)) {
+      setSelectedEmpleado(null);
+      setSelectedDate('');
+      setSelectedTime('');
+      setAvailableSlots([]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedServices]);
+
+  // Si al cambiar los servicios la fecha elegida deja de ser válida (pasó a haber
+  // un evento con otras fechas), la limpiamos para no dejar una combinación rota.
+  useEffect(() => {
+    if (!selectedDate) return;
+    if (hayEventoElegido && !fechasEvento.includes(selectedDate)) {
+      setSelectedDate('');
+      setSelectedTime('');
+      setAvailableSlots([]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedServices]);
 
   // Seña
   const senaPorcentaje = pagoConfig.sena_porcentaje || 0;
@@ -113,14 +248,26 @@ export default function Booking() {
       setError('Por favor seleccioná una fecha y horario.');
       return;
     }
+    const email = formData.email.trim();
+    // Solo dígitos (y el + inicial): espacios y guiones lo hacían pasar el
+    // límite de 20 caracteres del backend.
+    const telefono = formData.telefono.trim().replace(/(?!^\+)[^\d]/g, '');
+    if (email && !EMAIL_RE.test(email)) {
+      setError('El email no parece válido (ej: nombre@gmail.com). Revisalo y volvé a intentar.');
+      return;
+    }
+    if (telefono && (telefono.length < 8 || telefono.length > 20)) {
+      setError('El teléfono no parece válido. Escribilo solo con números, ej: 2235000000.');
+      return;
+    }
     setLoading(true);
     setError('');
 
     try {
       const clienteResponse = await createCliente({
-        nombre: formData.nombre,
-        telefono: formData.telefono || null,
-        email: formData.email || null,
+        nombre: formData.nombre.trim(),
+        telefono: telefono || null,
+        email: email || null,
       });
       const clienteId = clienteResponse.data.id;
 
@@ -135,13 +282,46 @@ export default function Booking() {
         empleado_id: selectedEmpleado.id,
         servicios_ids: selectedServices.map(s => s.id),
         pagar_sena: pagaSena,
+        metodo_sena: metodoSena,
         return_url: `${window.location.origin}/confirmation`,
       };
 
       const turnoResponse = await createTurno(turnoData);
       const data = turnoResponse.data;
 
-      // Si requiere pago de seña, el backend devuelve el link de Mercado Pago
+      // Conversión para Meta Ads: el turno ya quedó creado en la BD, así que lo
+      // reportamos acá y no en /confirmation. De esta forma cubrimos también el
+      // caso de seña con tarjeta, donde el usuario se va a Mercado Pago y podría
+      // no volver nunca al sitio.
+      trackEvent('Schedule', {
+        value: totalPrecio,
+        currency: 'ARS',
+        content_name: selectedServices.map(s => s.nombre).join(', '),
+      });
+
+      // Seña por transferencia: mostramos datos bancarios y pedimos el comprobante
+      if (data?.requiere_pago && data?.metodo === 'transferencia') {
+        navigate('/confirmation', {
+          state: {
+            transferencia: {
+              ...data.transferencia,
+              monto_sena: data.monto_sena,
+              saldo_pendiente: data.saldo_pendiente,
+              monto_total: data.monto_total,
+              turno_id: data.turno_id,
+              // Datos del turno para mostrarlos en la confirmación
+              cliente: formData.nombre,
+              fecha: formattedSelectedDate,
+              hora: selectedTime,
+              profesional: selectedEmpleado?.nombre,
+              servicios: selectedServices.map(s => s.nombre).join(', '),
+            },
+          },
+        });
+        return;
+      }
+
+      // Seña por tarjeta: el backend devuelve el link de Mercado Pago
       if (data?.requiere_pago && data?.init_point) {
         window.location.href = data.init_point;
         return;
@@ -150,12 +330,7 @@ export default function Booking() {
       // Reserva sin seña: confirmación directa (comportamiento de siempre)
       navigate('/confirmation', { state: { turno: data } });
     } catch (err) {
-      const msg =
-        err?.response?.data?.detail ||
-        err?.response?.data?.message ||
-        JSON.stringify(err?.response?.data) ||
-        err.message;
-      setError(`Error al reservar: ${msg}`);
+      setError(`Error al reservar: ${mensajeDeError(err)}`);
     } finally {
       setLoading(false);
     }
@@ -166,6 +341,32 @@ export default function Booking() {
         weekday: 'long', day: 'numeric', month: 'long',
       })
     : null;
+
+  const renderServicioItem = (s, dentroDeCategoria) => {
+    const checked = !!selectedServices.find(ss => ss.id === s.id);
+    return (
+      <button
+        key={s.id}
+        type="button"
+        className={`servicio-item${checked ? ' si-selected' : ''}${dentroDeCategoria ? ' si-sub' : ''}`}
+        onClick={() => toggleServicio(s)}
+      >
+        <div className={`si-check${checked ? ' si-checked' : ''}`}>
+          <svg viewBox="0 0 12 12" className="si-check-icon">
+            <polyline points="2 6 5 9 10 3" />
+          </svg>
+        </div>
+        <div className="si-info">
+          <span className="si-name">{s.nombre}</span>
+          {s.descripcion && <span className="si-desc">{s.descripcion}</span>}
+        </div>
+        <div className="si-right">
+          <span className="si-price">{money(s.precio)}</span>
+          <span className="si-dur">{s.duracion_minutos} min</span>
+        </div>
+      </button>
+    );
+  };
 
   const slotHintStart = availableSlots[0]?.hora;
   const slotHintEnd = availableSlots[availableSlots.length - 1]?.hora;
@@ -193,31 +394,107 @@ export default function Booking() {
               </span>
             ) : (
               <div className="servicio-list">
-                {servicios.map(s => {
-                  const checked = !!selectedServices.find(ss => ss.id === s.id);
+                {/* Eventos especiales: mismo acordeón que las categorías, arriba
+                    de todo y con acento dorado. La fecha va en la cabecera para
+                    que se lea sin tener que desplegar. */}
+                {gruposEvento.map(({ categoria, items }) => {
+                  const abierta = openCategoria === categoria.id;
+                  const elegidos = items.filter(
+                    i => selectedServices.some(s => s.id === i.id)
+                  ).length;
+                  const proximas = (categoria.fechas_especiales || [])
+                    .filter(f => f >= hoyISO);
+                  const fmt = (iso) => new Date(`${iso}T12:00:00`)
+                    .toLocaleDateString('es-AR', { day: 'numeric', month: 'long' });
                   return (
-                    <button
-                      key={s.id}
-                      type="button"
-                      className={`servicio-item${checked ? ' si-selected' : ''}`}
-                      onClick={() => toggleServicio(s)}
+                    <div
+                      key={`ev-${categoria.id}`}
+                      className={`servicio-cat servicio-cat-evento${abierta ? ' sc-open' : ''}`}
                     >
-                      <div className={`si-check${checked ? ' si-checked' : ''}`}>
-                        <svg viewBox="0 0 12 12" className="si-check-icon">
-                          <polyline points="2 6 5 9 10 3" />
-                        </svg>
-                      </div>
-                      <div className="si-info">
-                        <span className="si-name">{s.nombre}</span>
-                        {s.descripcion && <span className="si-desc">{s.descripcion}</span>}
-                      </div>
-                      <div className="si-right">
-                        <span className="si-price">${s.precio}</span>
-                        <span className="si-dur">{s.duracion_minutos} min</span>
-                      </div>
-                    </button>
+                      <button
+                        type="button"
+                        className="servicio-cat-head"
+                        aria-expanded={abierta}
+                        onClick={() => setOpenCategoria(abierta ? null : categoria.id)}
+                      >
+                        <div className="si-info">
+                          <span className="si-name">
+                            <span className="ev-chip">◈ Evento</span>
+                            {categoria.nombre}
+                          </span>
+                          <span className="eb-fecha">
+                            {proximas.length === 1
+                              ? `Solo el ${fmt(proximas[0])}`
+                              : `Solo el ${proximas.slice(0, 3).map(fmt).join(' · ')}`}
+                          </span>
+                          <span className="si-desc">
+                            {categoria.descripcion
+                              || `${items.length} ${items.length === 1 ? 'opción' : 'opciones'}`}
+                          </span>
+                        </div>
+                        <div className="sc-right">
+                          {elegidos > 0 && (
+                            <span className="sc-badge">
+                              {elegidos} {elegidos === 1 ? 'elegido' : 'elegidos'}
+                            </span>
+                          )}
+                          <svg viewBox="0 0 12 12" className="sc-chevron">
+                            <polyline points="3 4.5 6 8 9 4.5" />
+                          </svg>
+                        </div>
+                      </button>
+
+                      {abierta && (
+                        <div className="servicio-sublist">
+                          {items.map(s => renderServicioItem(s, true))}
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
+
+                {gruposServicios.map(({ categoria, items }) => {
+                  const abierta = openCategoria === categoria.id;
+                  const elegidos = items.filter(
+                    i => selectedServices.some(s => s.id === i.id)
+                  ).length;
+                  return (
+                    <div key={`cat-${categoria.id}`} className={`servicio-cat${abierta ? ' sc-open' : ''}`}>
+                      <button
+                        type="button"
+                        className="servicio-cat-head"
+                        aria-expanded={abierta}
+                        onClick={() => setOpenCategoria(abierta ? null : categoria.id)}
+                      >
+                        <div className="si-info">
+                          <span className="si-name">{categoria.nombre}</span>
+                          <span className="si-desc">
+                            {categoria.descripcion
+                              || `${items.length} ${items.length === 1 ? 'opción' : 'opciones'}`}
+                          </span>
+                        </div>
+                        <div className="sc-right">
+                          {elegidos > 0 && (
+                            <span className="sc-badge">
+                              {elegidos} {elegidos === 1 ? 'elegido' : 'elegidos'}
+                            </span>
+                          )}
+                          <svg viewBox="0 0 12 12" className="sc-chevron">
+                            <polyline points="3 4.5 6 8 9 4.5" />
+                          </svg>
+                        </div>
+                      </button>
+
+                      {abierta && (
+                        <div className="servicio-sublist">
+                          {items.map(s => renderServicioItem(s, true))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {serviciosSueltos.map(s => renderServicioItem(s, false))}
               </div>
             )}
             {selectedServices.length > 0 && (
@@ -226,7 +503,7 @@ export default function Booking() {
                   {selectedServices.length} {selectedServices.length === 1 ? 'servicio' : 'servicios'}
                   {' · '}{totalDuracion} min
                 </span>
-                <span className="ss-total">${totalPrecio}</span>
+                <span className="ss-total">{money(totalPrecio)}</span>
               </div>
             )}
           </div>
@@ -264,9 +541,13 @@ export default function Booking() {
               <span className="slots-placeholder" style={{ padding: '1rem 0', textAlign: 'left' }}>
                 No hay profesionales disponibles
               </span>
+            ) : empleadosDisponibles.length === 0 ? (
+              <span className="slots-placeholder" style={{ padding: '1rem 0', textAlign: 'left' }}>
+                Ningún profesional realiza todos los servicios seleccionados. Probá quitando alguno.
+              </span>
             ) : (
               <div className="empleado-grid">
-                {empleados.map(emp => (
+                {empleadosDisponibles.map(emp => (
                   <button
                     key={emp.id}
                     type="button"
@@ -286,26 +567,49 @@ export default function Booking() {
           {/* -- Fecha -- */}
           <div className="field">
             <label className="field-label">Fecha <span className="field-req">*</span></label>
+
+            {hayEventoElegido && !sinFechasCompatibles && (
+              <div className="evento-aviso">
+                <span className="ev-tag">◈ Fecha especial</span>
+                <span className="ev-text">
+                  {catsEventoElegidas.map(c => c.nombre).join(' y ')}
+                  {catsEventoElegidas.length === 1 ? ' se realiza' : ' se realizan'} solo
+                  {fechasEvento.length === 1 ? ' este día' : ' estos días'}.
+                  Elegí la fecha y después tu horario.
+                </span>
+              </div>
+            )}
+
             {!selectedEmpleado ? (
               <span className="field-hint" style={{ padding: '0.6rem 0' }}>
                 Elegí un profesional primero
               </span>
+            ) : sinFechasCompatibles ? (
+              <span className="field-hint" style={{ padding: '0.6rem 0' }}>
+                Los servicios que elegiste pertenecen a eventos que se hacen en fechas
+                distintas y no coinciden. Reservalos por separado.
+              </span>
             ) : (
               <div className="day-strip">
-                {Array.from({ length: 30 }, (_, i) => {
-                  const d = new Date();
-                  d.setDate(d.getDate() + i);
-                  const iso = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                {(hayEventoElegido
+                  ? fechasEvento
+                  : Array.from({ length: 30 }, (_, i) => {
+                      const d = new Date();
+                      d.setDate(d.getDate() + i);
+                      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                    })
+                ).map(iso => {
+                  const d = new Date(`${iso}T12:00:00`);
                   const dayName = d.toLocaleDateString('es-AR', { weekday: 'short' }).replace('.', '');
                   const dayNum  = d.getDate();
                   const monthStr = d.toLocaleDateString('es-AR', { month: 'short' }).replace('.', '');
                   const isSelected = selectedDate === iso;
-                  const isToday = i === 0;
+                  const isToday = iso === hoyISO;
                   return (
                     <button
                       key={iso}
                       type="button"
-                      className={`day-pill${isSelected ? ' dp-selected' : ''}${isToday ? ' dp-today' : ''}`}
+                      className={`day-pill${isSelected ? ' dp-selected' : ''}${isToday ? ' dp-today' : ''}${hayEventoElegido ? ' dp-evento' : ''}`}
                       onClick={() => handleDateChange(iso)}
                     >
                       <span className="dp-weekday">{dayName}</span>
@@ -404,8 +708,8 @@ export default function Booking() {
 
               {pagoConfig.sena_obligatoria ? (
                 <div className="sena-box">
-                  Para confirmar tu turno se abona una <strong>seña de ${montoSena.toLocaleString('es-AR')}</strong>
-                  {' '}({senaPorcentaje}%). El resto (${saldoLocal.toLocaleString('es-AR')}) lo pagás en el local.
+                  Para confirmar tu turno se abona una <strong>seña de {money(montoSena)}</strong>
+                  {' '}({senaPorcentaje}%). El resto ({money(saldoLocal)}) lo pagás en el local.
                 </div>
               ) : (
                 <div className="sena-choices">
@@ -415,7 +719,7 @@ export default function Booking() {
                     onClick={() => setMetodoPago('sena')}
                   >
                     <span className="sc-title">Pagar seña ahora</span>
-                    <span className="sc-sub">${montoSena.toLocaleString('es-AR')} ({senaPorcentaje}%) · resto en el local</span>
+                    <span className="sc-sub">{money(montoSena)} ({senaPorcentaje}%) · resto en el local</span>
                   </button>
                   <button
                     type="button"
@@ -426,6 +730,35 @@ export default function Booking() {
                     <span className="sc-sub">Reservás sin pagar ahora</span>
                   </button>
                 </div>
+              )}
+
+              {/* Método de la seña: tarjeta vs transferencia */}
+              {pagaSena && pagoConfig.transferencia_habilitada && (
+                pagoConfig.mp_habilitado ? (
+                  <div className="sena-choices" style={{ marginTop: '0.75rem' }}>
+                    <button
+                      type="button"
+                      className={`sena-choice${metodoSena === 'tarjeta' ? ' sc-selected' : ''}`}
+                      onClick={() => setMetodoSena('tarjeta')}
+                    >
+                      <span className="sc-title">💳 Tarjeta / Mercado Pago</span>
+                      <span className="sc-sub">Pagás la seña online al instante</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`sena-choice${metodoSena === 'transferencia' ? ' sc-selected' : ''}`}
+                      onClick={() => setMetodoSena('transferencia')}
+                    >
+                      <span className="sc-title">🏦 Transferencia</span>
+                      <span className="sc-sub">Te mostramos CBU y alias, y subís el comprobante acá mismo</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="sena-box" style={{ marginTop: '0.75rem' }}>
+                    La seña se abona por <strong>transferencia</strong>. En el siguiente paso te mostramos
+                    el <strong>CBU y el alias</strong>, y adjuntás el comprobante en la misma página.
+                  </div>
+                )
               )}
             </div>
           )}
@@ -438,7 +771,9 @@ export default function Booking() {
             {loading
               ? 'Procesando...'
               : pagaSena
-                ? `Pagar seña $${montoSena.toLocaleString('es-AR')}`
+                ? (metodoSena === 'transferencia'
+                    ? `Reservar y transferir seña ${money(montoSena)}`
+                    : `Pagar seña ${money(montoSena)}`)
                 : 'Confirmar turno'}
           </button>
         </form>

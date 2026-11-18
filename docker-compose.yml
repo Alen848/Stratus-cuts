@@ -36,6 +36,7 @@ services:
       SMTP_USER: ${SMTP_USER}
       SMTP_PASSWORD: ${SMTP_PASSWORD}
       SMTP_FROM: ${SMTP_FROM}
+      GOOGLE_SERVICE_ACCOUNT_JSON: ${GOOGLE_SERVICE_ACCOUNT_JSON:-}
     ports:
       - "8000:8000"
 
@@ -72,6 +73,9 @@ services:
       args:
         VITE_API_URL: ${VITE_API_URL}
         VITE_SALON_SLUG: blue-moon
+        # Meta Pixel de Blue Moon. Sólo se setea en producción: staging y dev
+        # buildean sin esta variable para no ensuciar los datos de la campaña.
+        VITE_META_PIXEL_ID: "1812436623450422"
     restart: unless-stopped
     ports:
       - "3004:80"

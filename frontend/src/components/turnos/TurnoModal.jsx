@@ -3,6 +3,7 @@ import Modal  from '../ui/Modal';
 import Input  from '../ui/Input';
 import Button from '../ui/Button';
 import { pagos as pagosApi, horariosSalon as horariosSalonApi } from '../../api/api';
+import { walkinNombre } from '../../utils/formatters';
 
 const ESTADOS = ['pendiente', 'confirmado', 'completado', 'cancelado'];
 const METODOS = ['efectivo', 'débito', 'transferencia'];
@@ -311,7 +312,7 @@ export default function TurnoModal({
     servicios_ids: [],
     estado: 'confirmado', metodo_pago: 'efectivo',
     observaciones: '',
-    walkin_telefono: '', walkin_monto: '',
+    walkin_nombre: '', walkin_telefono: '', walkin_monto: '',
   });
   const [loading, setLoading]         = useState(false);
   const [validError, setValidError]   = useState('');
@@ -370,7 +371,10 @@ export default function TurnoModal({
         servicios_ids: turno.servicios?.map(s => s.servicio_id || s.servicio?.id).filter(Boolean) || [],
         estado:       turno.estado       || 'confirmado',
         metodo_pago:  turno.metodo_pago  || 'efectivo',
-        observaciones: turno.observaciones || '',
+        // El nombre se edita en su propio campo y se vuelve a anexar al guardar
+        observaciones: (turno.observaciones || '')
+          .split(' | ').filter(p => !/^Nombre:/.test(p.trim())).join(' | '),
+        walkin_nombre: walkinNombre(turno.observaciones) || '',
         walkin_telefono: turno.cliente?.telefono || '',
         walkin_monto: '',
       });
@@ -382,7 +386,7 @@ export default function TurnoModal({
         servicios_ids: [],
         estado: 'confirmado', metodo_pago: 'efectivo',
         observaciones: '',
-        walkin_telefono: '', walkin_monto: '',
+        walkin_nombre: '', walkin_telefono: '', walkin_monto: '',
       });
     }
   }, [turno, isOpen]);
@@ -407,10 +411,11 @@ export default function TurnoModal({
 
       let observaciones = form.observaciones || null;
       if (modo === 'walkin') {
+        const nombre = form.walkin_nombre.trim();
         const extras = [];
         if (form.walkin_telefono) extras.push(`Tel: ${form.walkin_telefono}`);
         if (form.walkin_monto)    extras.push(`Monto: $${form.walkin_monto}`);
-        if (extras.length) observaciones = [form.observaciones, ...extras].filter(Boolean).join(' | ');
+        observaciones = [nombre && `Nombre: ${nombre}`, form.observaciones, ...extras].filter(Boolean).join(' | ') || null;
       }
 
       const duracionFinal = duracionManual ?? duracionTotal;
@@ -457,6 +462,7 @@ export default function TurnoModal({
           setModo(m);
           set('cliente_id', '');
           set('walkin_monto', '');
+          set('walkin_nombre', '');
           set('walkin_telefono', '');
         }} />}
 
@@ -488,6 +494,14 @@ export default function TurnoModal({
                 <span style={{ fontSize: '11px', color: 'var(--gold)', fontWeight: 500, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
                   Cliente sin turno
                 </span>
+                <div>
+                  <label style={labelSt}>
+                    Nombre <span style={{ color: 'var(--text-muted)', fontSize: '10px' }}>(opcional)</span>
+                  </label>
+                  <input type="text" value={form.walkin_nombre}
+                    onChange={e => set('walkin_nombre', e.target.value)}
+                    placeholder="Juan Pérez" style={{ ...inputSt, width: '100%' }} />
+                </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                   <div>
                     <label style={labelSt}>

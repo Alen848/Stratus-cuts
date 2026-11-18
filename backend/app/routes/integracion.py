@@ -5,6 +5,8 @@ Dos partes:
   1. Lectura máquina-a-máquina (header `X-API-Key`): endpoints de SOLO lectura,
      scopeados automáticamente al salón dueño de la clave.
   2. Gestión de las API Keys (auth normal de admin del salón): crear/listar/revocar.
+  3. Sincronización con Google Sheets (auth de admin): configurar, probar e
+     importar el histórico. Ver sheets_service.
 
 Todo es aditivo: no modifica ninguna ruta existente ni afecta a otros salones.
 """
@@ -18,9 +20,12 @@ from app.auth.dependencies import require_admin
 from app.models.usuario import Usuario
 from app.services import (
     api_key_service, turno_service, cliente_service,
-    servicio_service, empleado_service,
+    servicio_service, empleado_service, sheets_service,
 )
-from app.schemas.integracion import ApiKeyCreate, ApiKeyCreated, ApiKeyOut
+from app.models.config_salon import ConfigSalon
+from app.schemas.integracion import (
+    ApiKeyCreate, ApiKeyCreated, ApiKeyOut, SheetsConfigIn, SheetsEstado,
+)
 from app.schemas.turno import Turno
 from app.schemas.cliente import Cliente
 from app.schemas.servicio import Servicio
@@ -125,3 +130,58 @@ def revocar_key(
     if not ok:
         raise HTTPException(status_code=404, detail="API Key no encontrada")
     return {"detail": "API Key revocada"}
+
+
+# ─── Google Sheets (admin del salón) ──────────────────────────────────────────
+
+@router.get("/sheets", response_model=SheetsEstado)
+def estado_sheets(
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(require_admin),
+):
+    return sheets_service.estado(db, current_user.salon_id)
+
+
+@router.put("/sheets", response_model=SheetsEstado)
+def configurar_sheets(
+    data: SheetsConfigIn,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(require_admin),
+):
+    cfg = db.query(ConfigSalon).filter(ConfigSalon.salon_id == current_user.salon_id).first()
+    if not cfg:
+        cfg = ConfigSalon(salon_id=current_user.salon_id)
+        db.add(cfg)
+    if data.spreadsheet is not None:
+        cfg.sheets_spreadsheet_id = sheets_service.extraer_spreadsheet_id(data.spreadsheet) or None
+    if data.activo is not None:
+        if data.activo and not cfg.sheets_spreadsheet_id:
+            raise HTTPException(status_code=400, detail="Primero cargá el Sheet.")
+        cfg.sheets_activo = data.activo
+    db.commit()
+    return sheets_service.estado(db, current_user.salon_id)
+
+
+@router.post("/sheets/probar")
+def probar_sheets(
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(require_admin),
+):
+    """Verifica acceso y pestañas, y deja escritos los encabezados."""
+    return sheets_service.probar(db, current_user.salon_id)
+
+
+@router.post("/sheets/importar", status_code=202)
+def importar_sheets(
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(require_admin),
+):
+    """
+    Vuelca todos los turnos del salón al Sheet (upsert por ID) en segundo plano.
+    Se puede repetir sin duplicar filas. El resultado se ve en GET /sheets.
+    """
+    est = sheets_service.estado(db, current_user.salon_id)
+    if not est["activo"]:
+        raise HTTPException(status_code=400, detail="La sincronización con Sheets no está activa.")
+    sheets_service.encolar_sync_completa(current_user.salon_id)
+    return {"detail": "Importación en curso"}

@@ -2,7 +2,7 @@ from sqlalchemy import func, or_, and_
 from sqlalchemy.orm import Session, joinedload
 from app.models import Turno, TurnoServicio, Servicio, HorarioEmpleado
 from app.services.horario_salon_service import get_horarios as get_salon_horarios
-from app.services import webhook_service
+from app.services import webhook_service, sheets_service
 from app.schemas.turno import TurnoCreate, TurnoUpdate
 from datetime import timedelta, date, datetime, timezone
 from fastapi import HTTPException
@@ -14,12 +14,28 @@ ARG_TZ = timezone(timedelta(hours=-3))
 # Estados que liberan el horario (no ocupan slot ni generan conflicto)
 ESTADOS_LIBERAN_SLOT = ("cancelado", "expirado")
 
+# Cada cuántos minutos se ofrece un turno de arranque, salvo que un evento
+# especial defina el suyo propio.
+INTERVALO_DEFAULT = 60
+
 
 def to_argentina_naive(dt: datetime) -> datetime:
     """Convierte cualquier datetime a hora Argentina sin timezone (naive)."""
     if dt.tzinfo is not None:
         return dt.astimezone(ARG_TZ).replace(tzinfo=None)
     return dt
+
+
+def _check_empleado_vigente(db: Session, empleado_id: int, salon_id: int):
+    """Corta si el profesional no es del salón o fue dado de baja."""
+    from app.models.empleado import Empleado
+    existe = db.query(Empleado.id).filter(
+        Empleado.id == empleado_id,
+        Empleado.salon_id == salon_id,
+        Empleado.eliminado == False,
+    ).first()
+    if not existe:
+        raise HTTPException(status_code=404, detail="Profesional no encontrado")
 
 
 def expirar_turnos_vencidos(db: Session, salon_id: int = None) -> int:
@@ -50,6 +66,12 @@ def expirar_turnos_vencidos(db: Session, salon_id: int = None) -> int:
         # Defensa: jamás borrar un turno que tenga plata cobrada
         if db.query(Pago).filter(Pago.turno_id == t.id, Pago.estado == "aprobada").first():
             continue
+        # Para marketing es una "consulta perdida": dejarla en el Sheet antes de borrarla
+        sheets_service.sync_turno(db, t, "reserva.abandonada", estado_forzado="abandonada")
+        # Armar la fila cargó turno.servicios/pagos: descartarlos para que el
+        # db.delete(t) de abajo no intente desvincular filas ya borradas
+        # (StaleDataError, mismo problema que en delete_turno).
+        db.expire(t, ["servicios", "pagos"])
         db.query(TurnoServicio).filter(TurnoServicio.turno_id == t.id).delete(synchronize_session=False)
         db.query(Pago).filter(Pago.turno_id == t.id).delete(synchronize_session=False)
         db.delete(t)
@@ -117,9 +139,15 @@ def _check_horario_salon(db: Session, salon_id: int, fecha_hora: datetime):
         )
 
 
-def create_turno(db: Session, turno: TurnoCreate, salon_id: int):
+def create_turno(db: Session, turno: TurnoCreate, salon_id: int, sincronizar_sheet: bool = True):
+    """
+    `sincronizar_sheet=False` lo usa la reserva pública, que completa los montos
+    de la seña después de crear el turno y recién ahí lo manda al Sheet.
+    """
     # 0. Liberar holds de seña vencidos antes de chequear conflictos
     expirar_turnos_vencidos(db, salon_id)
+
+    _check_empleado_vigente(db, turno.empleado_id, salon_id)
 
     # 1. Verificar si el día ya está cerrado
     nuevo_inicio = to_argentina_naive(turno.fecha_hora)
@@ -138,6 +166,17 @@ def create_turno(db: Session, turno: TurnoCreate, salon_id: int):
 
     nuevo_fin    = nuevo_inicio + timedelta(minutes=total_duracion)
     dia_del_turno = nuevo_inicio.date()
+
+    # 2b. El turno no puede terminar después del cierre del salón (defensa de fondo:
+    # la disponibilidad ya no ofrece esos horarios, pero esto cubre llamadas directas).
+    salon_horarios = {h.dia_semana: h for h in get_salon_horarios(db, salon_id)}
+    h_dia = salon_horarios.get(nuevo_inicio.weekday())
+    if h_dia is not None and h_dia.activo and nuevo_fin.date() == dia_del_turno and nuevo_fin.time() > h_dia.hora_cierre:
+        raise HTTPException(
+            status_code=400,
+            detail=f"El servicio ({total_duracion} min) no entra antes del cierre "
+                   f"({h_dia.hora_cierre.strftime('%H:%M')}). Elegí un horario más temprano.",
+        )
 
     # 3. Verificar conflictos de empleado
     turnos_empleado = db.query(Turno).filter(
@@ -177,6 +216,7 @@ def create_turno(db: Session, turno: TurnoCreate, salon_id: int):
         observaciones=turno.observaciones,
         cliente_id=turno.cliente_id,
         empleado_id=turno.empleado_id,
+        creado_en=datetime.now(ARG_TZ).replace(tzinfo=None),
     )
     db.add(db_turno)
     db.flush()
@@ -195,6 +235,8 @@ def create_turno(db: Session, turno: TurnoCreate, salon_id: int):
     # Webhook: solo turnos en firme (los pendiente_pago son efímeros hasta que se paga)
     if db_turno.estado not in ("pendiente_pago", "expirado"):
         webhook_service.emit(db, salon_id, "turno.creado", webhook_service.turno_payload(db_turno))
+    if sincronizar_sheet:
+        sheets_service.sync_turno(db, db_turno, "turno.creado")
     return db_turno
 
 
@@ -218,6 +260,9 @@ def update_turno(db: Session, turno_id: int, turno_update: TurnoUpdate, salon_id
         check_dia_abierto(db, salon_id, nueva_fecha.date())
         _check_horario_salon(db, salon_id, nueva_fecha)
         update_data["fecha_hora"] = nueva_fecha
+
+    if update_data.get("empleado_id") not in (None, db_turno.empleado_id):
+        _check_empleado_vigente(db, update_data["empleado_id"], salon_id)
 
     # Verificar conflictos de horario si cambia fecha_hora o empleado_id
     if "fecha_hora" in update_data or "empleado_id" in update_data:
@@ -259,6 +304,13 @@ def update_turno(db: Session, turno_id: int, turno_update: TurnoUpdate, salon_id
             db_turno.duracion = nueva_duracion
         del update_data["servicios_ids"]
 
+    estado_anterior = db_turno.estado
+    nuevo_estado = update_data.get("estado", estado_anterior)
+    if nuevo_estado != estado_anterior:
+        db_turno.cancelado_en = (
+            datetime.now(ARG_TZ).replace(tzinfo=None) if nuevo_estado == "cancelado" else None
+        )
+
     for field, value in update_data.items():
         setattr(db_turno, field, value)
 
@@ -266,11 +318,16 @@ def update_turno(db: Session, turno_id: int, turno_update: TurnoUpdate, salon_id
     db.refresh(db_turno)
 
     webhook_service.emit(db, salon_id, "turno.actualizado", webhook_service.turno_payload(db_turno))
+    sheets_service.sync_turno(
+        db, db_turno,
+        f"turno.{nuevo_estado}" if nuevo_estado != estado_anterior else "turno.actualizado",
+    )
     return db_turno
 
 
 def delete_turno(db: Session, turno_id: int, salon_id: int):
     from app.models.pago import Pago
+    from app.models.comprobante import Comprobante
 
     db_turno = db.query(Turno).filter(
         Turno.id == turno_id,
@@ -290,6 +347,7 @@ def delete_turno(db: Session, turno_id: int, salon_id: int):
             )
         # Armar el payload del webhook ANTES de borrar (después ya no existe)
         payload = webhook_service.turno_payload(db_turno)
+        sheets_service.sync_turno(db, db_turno, "turno.eliminado", estado_forzado="eliminado")
         # Eliminar registros hijos y el turno en bloque. Se usa delete() por query
         # (no db.delete(db_turno)) a propósito: como el payload cargó la relación
         # turno.servicios, un delete ORM del turno intentaría "desvincular" esos
@@ -300,6 +358,9 @@ def delete_turno(db: Session, turno_id: int, salon_id: int):
         db.query(Pago).filter(Pago.turno_id == turno_id).delete(
             synchronize_session=False
         )
+        db.query(Comprobante).filter(Comprobante.turno_id == turno_id).delete(
+            synchronize_session=False
+        )
         db.query(Turno).filter(Turno.id == turno_id).delete(
             synchronize_session=False
         )
@@ -308,9 +369,100 @@ def delete_turno(db: Session, turno_id: int, salon_id: int):
     return db_turno
 
 
+def confirmar_sena_transferencia(db: Session, turno_id: int, salon_id: int):
+    """
+    La secretaria confirma que la seña por transferencia se acreditó.
+    Registra el ingreso en Caja (método Transferencia), pone el turno en
+    'confirmado' y dispara el email de confirmación. Idempotente.
+    """
+    from app.models.pago import Pago
+    from app.services import email_service
+
+    turno = get_turno(db, turno_id, salon_id)
+    if not turno:
+        return None
+
+    # Idempotencia: ya estaba confirmada
+    if turno.sena_estado == "pagada":
+        return turno
+
+    if (turno.metodo_pago or "").lower() != "transferencia" or (turno.monto_sena or 0) <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Este turno no tiene una seña por transferencia pendiente.",
+        )
+
+    ahora = datetime.now(ARG_TZ).replace(tzinfo=None)
+    db.add(Pago(
+        turno_id=turno.id,
+        monto=turno.monto_sena or 0,
+        metodo_pago="Transferencia",
+        tipo="sena",
+        estado="aprobada",
+        observaciones="Seña por transferencia (confirmada por el local)",
+        fecha_pago=ahora,
+    ))
+    turno.estado      = "confirmado"
+    turno.sena_estado = "pagada"
+    turno.expira_en   = None
+    db.commit()
+    db.refresh(turno)
+
+    webhook_service.emit(db, salon_id, "turno.confirmado", webhook_service.turno_payload(turno))
+    sheets_service.sync_turno(db, turno, "sena.pagada", detalle=f"Transferencia ${turno.monto_sena or 0}")
+    email_service.enviar_confirmacion_turno(db, turno)
+    return turno
+
+
 # ─── Disponibilidad Semanal ──────────────────────────────────────────────────
 
-def get_horarios_semanales(db: Session, empleado_id: int, fecha_inicio: date, salon_id: int):
+def get_intervalo_servicio(db: Session, servicio_id: int, salon_id: int) -> int:
+    """
+    Cada cuántos minutos se ofrece un turno de arranque para este servicio.
+
+    Por defecto 60 (un turno por hora, como siempre). Si el servicio pertenece a
+    una categoría marcada como evento, manda el intervalo de esa jornada: así el
+    dueño puede meter, por ejemplo, turnos cada 20 minutos ese día puntual.
+
+    Se resuelve en el backend a propósito y no se acepta como parámetro del
+    cliente, para que nadie pueda pedir un intervalo arbitrario.
+    """
+    if not servicio_id:
+        return INTERVALO_DEFAULT
+    servicio = db.query(Servicio).filter(
+        Servicio.id == servicio_id,
+        Servicio.salon_id == salon_id,
+    ).first()
+    if not servicio or not servicio.categoria:
+        return INTERVALO_DEFAULT
+    return servicio.categoria.intervalo_minutos or INTERVALO_DEFAULT
+
+
+def validar_hora_limite(db: Session, empleado_id: int, servicios_ids, fecha_hora: datetime, duracion: int):
+    """El turno tiene que terminar antes de la hora tope del profesional para esos servicios."""
+    from app.services.servicio_service import hora_limite_empleado
+
+    limite = hora_limite_empleado(db, empleado_id, servicios_ids)
+    if limite is None:
+        return
+    fin = fecha_hora + timedelta(minutes=duracion or 0)
+    if fin > datetime.combine(fecha_hora.date(), limite):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Ese profesional atiende este servicio solo hasta las {limite.strftime('%H:%M')}. Elegí un horario más temprano u otro profesional.",
+        )
+
+
+def get_horarios_semanales(
+    db: Session, empleado_id: int, fecha_inicio: date, salon_id: int,
+    duracion: int = None, intervalo: int = None, servicios_ids=None,
+):
+    from app.services.servicio_service import hora_limite_empleado
+
+    _check_empleado_vigente(db, empleado_id, salon_id)
+    # Tope horario que el salón le puso al profesional para estos servicios
+    hora_limite = hora_limite_empleado(db, empleado_id, servicios_ids)
+
     # Liberar holds de seña vencidos para que no aparezcan como ocupados
     expirar_turnos_vencidos(db, salon_id)
 
@@ -351,6 +503,9 @@ def get_horarios_semanales(db: Session, empleado_id: int, fecha_inicio: date, sa
             resultado[fecha_actual.isoformat()] = []
             continue
 
+        if hora_limite is not None:
+            hora_fin_efectiva = min(hora_fin_efectiva, hora_limite)
+
         if hora_inicio_efectiva >= hora_fin_efectiva:
             resultado[fecha_actual.isoformat()] = []
             continue
@@ -366,9 +521,14 @@ def get_horarios_semanales(db: Session, empleado_id: int, fecha_inicio: date, sa
             func.date(Turno.fecha_hora) == fecha_actual,
         ).all()
 
-        INTERVALO = 15
-        while actual + timedelta(minutes=INTERVALO) <= fin:
-            slot_fin = actual + timedelta(minutes=INTERVALO)
+        # Granularidad de inicio: 1 hora por defecto, o lo que defina el evento.
+        INTERVALO = intervalo if (intervalo and intervalo > 0) else INTERVALO_DEFAULT
+        # La ventana a chequear = duración del servicio elegido (si no vino, 1 hora).
+        # Así un horario solo está "libre" si entra el servicio COMPLETO sin pisar
+        # otro turno, y no se ofrecen horarios que terminarían pasado el cierre.
+        ventana = duracion if (duracion and duracion > 0) else INTERVALO
+        while actual + timedelta(minutes=ventana) <= fin:
+            slot_fin = actual + timedelta(minutes=ventana)
             turno_existente = None
             for t in turnos_dia:
                 t_inicio = to_argentina_naive(t.fecha_hora)
@@ -418,6 +578,9 @@ def get_recordatorios(
     ).filter(
         Turno.salon_id == salon_id,
         Turno.estado.in_(["pendiente", "confirmado"]),
+        # Sin la seña acreditada el turno no está firme: no se le recuerda al
+        # cliente un turno que todavía no pagó.
+        Turno.sena_estado != "pendiente",
         Turno.fecha_hora >= ahora,
         Turno.fecha_hora <= limite,
         Turno.reminder_pre_sent == False,

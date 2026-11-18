@@ -12,6 +12,7 @@ from app.models.turno_servicio import TurnoServicio
 from app.models.gasto import Gasto
 from app.models.cierre_caja import CierreCaja
 from app.schemas.pago import PagoCreate, PagoUpdate
+from app.services import sheets_service
 from app.schemas.cierre_caja import CierreCajaCreate
 
 ARG_TZ = timezone(timedelta(hours=-3))
@@ -116,6 +117,10 @@ def registrar_cobro(db: Session, salon_id: int, turno_id: int, lineas: list, obs
 
     db.commit()
     db.refresh(turno)
+    detalle = ", ".join(f"{l.get('metodo_pago') or '?'} ${round(float(l['monto']), 2)}" for l in lineas)
+    sheets_service.sync_turno(
+        db, turno, "venta.cobrada" if turno.estado == "completado" else "pago.registrado", detalle,
+    )
     return {**estado_pago_turno(db, turno), "estado": turno.estado}
 
 
@@ -145,6 +150,7 @@ def update_pago(db: Session, pago_id: int, pago_update: PagoUpdate, salon_id: in
         setattr(db_pago, field, value)
     db.commit()
     db.refresh(db_pago)
+    sheets_service.sync_turno_id(db, salon_id, db_pago.turno_id, "pago.modificado", f"Pago #{db_pago.id}")
     return db_pago
 
 
@@ -159,6 +165,7 @@ def delete_pago(db: Session, pago_id: int, salon_id: int):
             turno.estado = "confirmado"
     db.delete(db_pago)
     db.commit()
+    sheets_service.sync_turno_id(db, salon_id, db_pago.turno_id, "pago.eliminado", f"Pago #{db_pago.id} ${db_pago.monto}")
     return db_pago
 
 

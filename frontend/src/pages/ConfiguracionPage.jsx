@@ -25,6 +25,15 @@ const DEFAULT_CONFIG = {
   mp_public_key:    '',
   sena_porcentaje:  0,
   sena_obligatoria: false,
+  // Seña por transferencia
+  transferencia_activa:  false,
+  transferencia_cbu:     '',
+  transferencia_alias:   '',
+  transferencia_titular: '',
+  // Webhooks salientes (el secreto nunca vuelve del backend)
+  webhook_url:         '',
+  webhook_configurado: false,
+  webhook_activo:      false,
 };
 
 function timeToStr(t) {
@@ -173,7 +182,7 @@ function TabHorarios({ horarios, setDia }) {
 }
 
 // ─── Sub-tab: Info del local ──────────────────────────────────────────────────
-function TabInfo({ config, setField }) {
+function TabInfo({ config, setField, configPassword }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved]   = useState(false);
   const [error, setError]   = useState('');
@@ -199,10 +208,11 @@ function TabInfo({ config, setField }) {
         reservas_online:       true,
         max_dias_anticipacion: 60,
         min_hs_anticipacion:   1,
+        config_password:       configPassword,
       });
       setSaved(true);
-    } catch {
-      setError('Error al guardar. Intentá de nuevo.');
+    } catch (e) {
+      setError(e?.response?.data?.detail || 'Error al guardar. Intentá de nuevo.');
     } finally {
       setSaving(false);
     }
@@ -275,7 +285,7 @@ function TabInfo({ config, setField }) {
 }
 
 // ─── Sub-tab: Mercado Pago ────────────────────────────────────────────────────
-function TabPagos({ config, setField }) {
+function TabPagos({ config, setField, configPassword }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved]   = useState(false);
   const [error, setError]   = useState('');
@@ -298,6 +308,14 @@ function TabPagos({ config, setField }) {
       setError('Si la seña es obligatoria, el porcentaje debe ser mayor a 0.');
       return;
     }
+    if (config.transferencia_activa && !String(config.transferencia_cbu || '').trim()) {
+      setError('Para activar la seña por transferencia, ingresá el CBU/CVU.');
+      return;
+    }
+    if (config.transferencia_activa && pct <= 0) {
+      setError('Para cobrar seña por transferencia, el porcentaje debe ser mayor a 0.');
+      return;
+    }
     try {
       setSaving(true);
       const payload = {
@@ -310,6 +328,12 @@ function TabPagos({ config, setField }) {
         mp_public_key:    config.mp_public_key,
         sena_porcentaje:  pct,
         sena_obligatoria: config.sena_obligatoria,
+        // Seña por transferencia
+        transferencia_activa:  config.transferencia_activa,
+        transferencia_cbu:     config.transferencia_cbu,
+        transferencia_alias:   config.transferencia_alias,
+        transferencia_titular: config.transferencia_titular,
+        config_password:       configPassword,
       };
       // El token solo se envía si se ingresó uno nuevo (write-only)
       if (tokenInput.trim()) payload.mp_access_token = tokenInput.trim();
@@ -321,8 +345,8 @@ function TabPagos({ config, setField }) {
         setTokenInput('');
       }
       setSaved(true);
-    } catch {
-      setError('Error al guardar. Intentá de nuevo.');
+    } catch (e) {
+      setError(e?.response?.data?.detail || 'Error al guardar. Intentá de nuevo.');
     } finally {
       setSaving(false);
     }
@@ -406,6 +430,464 @@ function TabPagos({ config, setField }) {
         </div>
       </FieldRow>
 
+      <div style={{ borderTop: '1px solid var(--border)', margin: '28px 0 20px' }} />
+
+      <h3 style={{ fontSize: '15px', fontFamily: 'var(--font-display)', margin: '0 0 6px' }}>
+        Seña por transferencia
+      </h3>
+      <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '20px', lineHeight: 1.5 }}>
+        Alternativa a la tarjeta: el cliente ve tu CBU/Alias, transfiere y manda el comprobante por WhatsApp.
+        La seña queda <strong>pendiente</strong> hasta que la confirmás desde <strong>Turnos</strong>.
+        Usa el mismo porcentaje de seña de arriba.
+      </p>
+
+      <FieldRow label="Activar transferencia" hint="Ofrece la transferencia como método de seña en la reserva online.">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <Toggle value={config.transferencia_activa} onChange={v => { setField('transferencia_activa', v); setSaved(false); }} />
+          <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+            {config.transferencia_activa ? 'Activa' : 'Inactiva'}
+          </span>
+        </div>
+      </FieldRow>
+
+      <FieldRow label="CBU / CVU" hint="Se muestra al cliente para que transfiera la seña.">
+        <input
+          type="text"
+          autoComplete="off"
+          value={config.transferencia_cbu}
+          onChange={e => { setField('transferencia_cbu', e.target.value); setSaved(false); }}
+          placeholder="0000003100000000000000"
+          style={inputSt}
+        />
+      </FieldRow>
+
+      <FieldRow label="Alias" hint="Alias bancario (más fácil de copiar para el cliente).">
+        <input
+          type="text"
+          autoComplete="off"
+          value={config.transferencia_alias}
+          onChange={e => { setField('transferencia_alias', e.target.value); setSaved(false); }}
+          placeholder="blue.moon.salon"
+          style={inputSt}
+        />
+      </FieldRow>
+
+      <FieldRow label="Titular de la cuenta" hint="Nombre que figura en la cuenta (opcional).">
+        <input
+          type="text"
+          autoComplete="off"
+          value={config.transferencia_titular}
+          onChange={e => { setField('transferencia_titular', e.target.value); setSaved(false); }}
+          placeholder="Blue Moon Centro de Estética"
+          style={inputSt}
+        />
+      </FieldRow>
+
+      <SaveBar onSave={handleSave} saving={saving} saved={saved} error={error} />
+    </div>
+  );
+}
+
+// ─── Sub-tab: Webhooks (integración con sistemas externos) ───────────────────
+const EVENTOS_WEBHOOK = [
+  ['turno.creado',     'Cuando alguien reserva un turno'],
+  ['turno.actualizado','Cuando se edita un turno existente'],
+  ['turno.eliminado',  'Cuando se borra un turno'],
+  ['turno.confirmado', 'Cuando se acredita la seña (solo si cobrás seña)'],
+];
+
+function fechaHora(iso) {
+  return new Date(iso).toLocaleString('es-AR', {
+    day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit',
+  });
+}
+
+function TabWebhooks({ config, setField, configPassword }) {
+  const [saving, setSaving]   = useState(false);
+  const [saved, setSaved]     = useState(false);
+  const [error, setError]     = useState('');
+  const [secretInput, setSecretInput] = useState('');
+  const [entregas, setEntregas]       = useState([]);
+  const [cargandoLog, setCargandoLog] = useState(true);
+  const [probando, setProbando]       = useState(false);
+  const [resultadoPrueba, setResultadoPrueba] = useState(null);
+
+  const cargarEntregas = useCallback(async () => {
+    try {
+      setCargandoLog(true);
+      const res = await configSalonApi.webhookEntregas(50);
+      setEntregas(res.data || []);
+    } catch {
+      setEntregas([]);
+    } finally {
+      setCargandoLog(false);
+    }
+  }, []);
+
+  useEffect(() => { cargarEntregas(); }, [cargarEntregas]);
+
+  const handleSave = async () => {
+    setError('');
+    const url = String(config.webhook_url || '').trim();
+    if (config.webhook_activo && !url) {
+      setError('Para activar los webhooks, ingresá la URL de destino.');
+      return;
+    }
+    if (url && !/^https?:\/\//i.test(url)) {
+      setError('La URL tiene que empezar con http:// o https://');
+      return;
+    }
+    if (config.webhook_activo && !config.webhook_configurado && !secretInput.trim()) {
+      setError('Para activar los webhooks, ingresá el secreto compartido.');
+      return;
+    }
+    try {
+      setSaving(true);
+      const payload = {
+        reservas_online:       config.reservas_online,
+        max_dias_anticipacion: config.max_dias_anticipacion,
+        min_hs_anticipacion:   config.min_hs_anticipacion,
+        webhook_url:    url,
+        webhook_activo: config.webhook_activo,
+        config_password: configPassword,
+      };
+      // El secreto solo se manda si se escribió uno nuevo (write-only)
+      if (secretInput.trim()) payload.webhook_secret = secretInput.trim();
+
+      const res = await configSalonApi.update(payload);
+      setField('webhook_configurado', res.data?.webhook_configurado);
+      setSecretInput('');
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (e) {
+      setError(e?.response?.data?.detail || 'No se pudo guardar.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleProbar = async () => {
+    setResultadoPrueba(null);
+    try {
+      setProbando(true);
+      const res = await configSalonApi.webhookProbar();
+      setResultadoPrueba(res.data);
+      await cargarEntregas();
+    } catch (e) {
+      setResultadoPrueba({ ok: false, detalle: e?.response?.data?.detail || 'No se pudo enviar la prueba.' });
+    } finally {
+      setProbando(false);
+    }
+  };
+
+  return (
+    <div>
+      <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.6, margin: '0 0 20px' }}>
+        Avisamos a otro sistema cada vez que pasa algo con un turno, mandándole un POST
+        a la URL que pongas acá. Sirve para integrar la turnera con un sistema de gestión
+        externo. Si no estás integrando nada, dejalo apagado.
+      </p>
+
+      <FieldRow
+        label="Activar webhooks"
+        hint="Con esto apagado no se envía nada. Es el único interruptor: no se activan por evento."
+      >
+        <Toggle
+          value={!!config.webhook_activo}
+          onChange={v => { setField('webhook_activo', v); setSaved(false); }}
+        />
+      </FieldRow>
+
+      <FieldRow label="URL de destino" hint="A dónde mandamos el POST. Tiene que ser pública y HTTPS.">
+        <input
+          style={inputSt}
+          value={config.webhook_url || ''}
+          onChange={e => { setField('webhook_url', e.target.value); setSaved(false); }}
+          placeholder="https://ejemplo.com/functions/v1/stratus-webhook"
+        />
+      </FieldRow>
+
+      <FieldRow
+        label="Secreto compartido"
+        hint={config.webhook_configurado
+          ? 'Ya hay un secreto guardado. Escribí uno nuevo solo si querés reemplazarlo.'
+          : 'Con esto firmamos cada envío (HMAC-SHA256, header X-Stratus-Signature) para que el receptor pueda verificar que vino de nosotros.'}
+      >
+        <input
+          style={inputSt}
+          type="password"
+          value={secretInput}
+          onChange={e => { setSecretInput(e.target.value); setSaved(false); }}
+          placeholder={config.webhook_configurado ? '•••••••• (guardado)' : 'Pegá acá el secreto'}
+        />
+      </FieldRow>
+
+      <FieldRow label="Eventos que enviamos" hint="Se envían todos mientras los webhooks estén activos.">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
+          {EVENTOS_WEBHOOK.map(([nombre, desc]) => (
+            <div key={nombre} style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
+              <code style={{
+                fontSize: '12px', color: 'var(--gold)', background: 'var(--gold-dim)',
+                border: '1px solid var(--gold-border)', borderRadius: '4px',
+                padding: '2px 7px', whiteSpace: 'nowrap',
+              }}>
+                {nombre}
+              </code>
+              <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{desc}</span>
+            </div>
+          ))}
+        </div>
+      </FieldRow>
+
+      <SaveBar onSave={handleSave} saving={saving} saved={saved} error={error} />
+
+      {/* Prueba manual */}
+      <div style={{
+        marginTop: '32px', padding: '18px 20px',
+        border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)',
+        background: 'var(--bg-surface)',
+      }}>
+        <h3 style={{ fontSize: '15px', fontFamily: 'var(--font-display)', margin: '0 0 6px' }}>
+          Probar la conexión
+        </h3>
+        <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '0 0 14px', lineHeight: 1.5 }}>
+          Manda un <code>turno.creado</code> de prueba (con <code>"prueba": true</code> en los datos)
+          a la URL guardada y te dice qué respondió. No crea ningún turno real.
+        </p>
+        <button
+          onClick={handleProbar}
+          disabled={probando || !config.webhook_url}
+          style={{
+            padding: '8px 18px', borderRadius: 'var(--radius-sm)',
+            border: '1px solid var(--gold-border)', background: 'var(--gold-dim)',
+            color: 'var(--gold)', fontSize: '13px', fontFamily: 'var(--font-body)',
+            cursor: (probando || !config.webhook_url) ? 'not-allowed' : 'pointer',
+            opacity: (probando || !config.webhook_url) ? 0.6 : 1,
+          }}
+        >
+          {probando ? 'Enviando...' : 'Enviar evento de prueba'}
+        </button>
+
+        {resultadoPrueba && (
+          <div style={{
+            marginTop: '14px', padding: '10px 12px', borderRadius: '6px',
+            fontSize: '13px', lineHeight: 1.5,
+            background: resultadoPrueba.ok ? 'rgba(76,175,125,0.1)' : 'rgba(229,62,62,0.1)',
+            border: `1px solid ${resultadoPrueba.ok ? 'rgba(76,175,125,0.4)' : 'rgba(229,62,62,0.4)'}`,
+            color: resultadoPrueba.ok ? 'var(--color-success, #4caf7d)' : '#e53e3e',
+          }}>
+            {resultadoPrueba.ok ? '✓ ' : '✕ '}{resultadoPrueba.detalle}
+          </div>
+        )}
+      </div>
+
+      {/* Historial de envíos */}
+      <div style={{ marginTop: '28px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+          <h3 style={{ fontSize: '15px', fontFamily: 'var(--font-display)', margin: 0 }}>
+            Últimos envíos
+          </h3>
+          <button
+            onClick={cargarEntregas}
+            style={{
+              background: 'transparent', border: 'none', cursor: 'pointer',
+              color: 'var(--text-muted)', fontSize: '12px', fontFamily: 'var(--font-body)',
+            }}
+          >
+            ↻ Actualizar
+          </button>
+        </div>
+        <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '0 0 12px', lineHeight: 1.5 }}>
+          No hay reintentos: si un envío falla, ese aviso se pierde. Este historial sirve
+          para darse cuenta.
+        </p>
+
+        {cargandoLog ? (
+          <div style={{ padding: '20px', fontSize: '13px', color: 'var(--text-muted)' }}>Cargando...</div>
+        ) : entregas.length === 0 ? (
+          <div style={{
+            padding: '20px', fontSize: '13px', color: 'var(--text-muted)',
+            border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)',
+          }}>
+            Todavía no se envió ningún webhook.
+          </div>
+        ) : (
+          <div style={{
+            border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', overflow: 'hidden',
+          }}>
+            {entregas.map((e, i) => (
+              <div
+                key={e.id}
+                style={{
+                  display: 'grid', gridTemplateColumns: '150px 1fr 90px 70px',
+                  gap: '12px', alignItems: 'center', padding: '10px 14px',
+                  borderBottom: i < entregas.length - 1 ? '1px solid var(--border)' : 'none',
+                  fontSize: '12px',
+                }}
+              >
+                <span style={{ color: 'var(--text-muted)' }}>{fechaHora(e.enviado_en)}</span>
+                <span style={{ color: 'var(--text-primary)', minWidth: 0 }}>
+                  <code style={{ color: 'var(--gold)' }}>{e.evento}</code>
+                  {e.turno_id ? (
+                    <span style={{ color: 'var(--text-muted)' }}> · turno #{e.turno_id}</span>
+                  ) : null}
+                  {e.error && (
+                    <div style={{
+                      color: '#e53e3e', marginTop: '3px', overflow: 'hidden',
+                      textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    }} title={e.error}>
+                      {e.error}
+                    </div>
+                  )}
+                </span>
+                <span style={{
+                  fontWeight: 600,
+                  color: e.ok ? 'var(--color-success, #4caf7d)' : '#e53e3e',
+                }}>
+                  {e.http_status ?? 'sin respuesta'}
+                </span>
+                <span style={{ color: 'var(--text-muted)', textAlign: 'right' }}>
+                  {e.duracion_ms != null ? `${e.duracion_ms} ms` : '—'}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Pantalla de desbloqueo (candado de Configuración) ────────────────────────
+function UnlockScreen({ onUnlock }) {
+  const [password, setPassword] = useState('');
+  const [error, setError]       = useState('');
+  const [checking, setChecking] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    if (!password.trim()) return;
+    try {
+      setChecking(true);
+      const res = await configSalonApi.verifyPassword(password);
+      if (res.data?.ok) {
+        onUnlock(password);
+      } else {
+        setError('Clave incorrecta.');
+      }
+    } catch {
+      setError('No se pudo verificar la clave. Intentá de nuevo.');
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  return (
+    <div style={{ maxWidth: '420px', margin: '40px auto', textAlign: 'center' }}>
+      <div style={{ fontSize: '40px', marginBottom: '12px' }}>🔒</div>
+      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 400, marginBottom: '8px' }}>
+        Sección protegida
+      </h2>
+      <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '24px', lineHeight: 1.5 }}>
+        Ingresá la clave de configuración para acceder a los datos del local, Mercado Pago y transferencia.
+      </p>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <input
+          type="password"
+          autoFocus
+          autoComplete="off"
+          value={password}
+          onChange={e => { setPassword(e.target.value); setError(''); }}
+          placeholder="Clave de configuración"
+          style={{ ...inputSt, textAlign: 'center' }}
+        />
+        {error && <div style={{ fontSize: '13px', color: 'var(--danger)' }}>{error}</div>}
+        <button
+          type="submit"
+          disabled={checking || !password.trim()}
+          style={{
+            padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--gold-border)',
+            background: 'var(--gold-dim)', color: 'var(--gold)', fontSize: '14px', cursor: 'pointer',
+            fontFamily: 'var(--font-body)', fontWeight: 500, opacity: checking ? 0.6 : 1,
+          }}
+        >
+          {checking ? 'Verificando...' : 'Desbloquear'}
+        </button>
+      </form>
+    </div>
+  );
+}
+
+// ─── Sub-tab: Seguridad (clave de la sección) ─────────────────────────────────
+function TabSeguridad({ lockActivo, onLockChange, configPassword, setConfigPassword }) {
+  const [current, setCurrent] = useState('');
+  const [nueva, setNueva]     = useState('');
+  const [repetir, setRepetir] = useState('');
+  const [saving, setSaving]   = useState(false);
+  const [saved, setSaved]     = useState(false);
+  const [error, setError]     = useState('');
+
+  const handleSave = async () => {
+    setError(''); setSaved(false);
+    if (nueva && nueva !== repetir) {
+      setError('Las claves nuevas no coinciden.');
+      return;
+    }
+    if (nueva && nueva.trim().length < 4) {
+      setError('La clave debe tener al menos 4 caracteres.');
+      return;
+    }
+    try {
+      setSaving(true);
+      // current: si ya hay candado, la actual es la que se usó para desbloquear
+      await configSalonApi.setPassword(lockActivo ? (current || configPassword) : null, nueva);
+      onLockChange(!!nueva.trim());
+      setConfigPassword(nueva.trim() || '');
+      setCurrent(''); setNueva(''); setRepetir('');
+      setSaved(true);
+    } catch (e) {
+      setError(e?.response?.data?.detail || 'No se pudo guardar la clave.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div>
+      <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '8px', lineHeight: 1.5 }}>
+        Protegé esta sección con una <strong>clave</strong>. Sirve para que, aunque varias personas
+        usen la cuenta de administrador, solo quien tenga la clave pueda ver y cambiar los datos
+        sensibles (Mercado Pago, CBU/alias, datos del local).
+      </p>
+      <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '24px', lineHeight: 1.5 }}>
+        Estado actual: <strong style={{ color: lockActivo ? 'var(--gold)' : 'var(--text-secondary)' }}>
+          {lockActivo ? '🔒 Protegida' : '🔓 Sin protección'}
+        </strong>
+      </p>
+
+      {lockActivo && (
+        <FieldRow label="Clave actual" hint="Necesaria para cambiar o quitar la protección.">
+          <input type="password" autoComplete="off" value={current}
+            onChange={e => { setCurrent(e.target.value); setSaved(false); }}
+            placeholder="Clave actual" style={inputSt} />
+        </FieldRow>
+      )}
+
+      <FieldRow label={lockActivo ? 'Nueva clave' : 'Clave'} hint="Dejala vacía para quitar la protección.">
+        <input type="password" autoComplete="new-password" value={nueva}
+          onChange={e => { setNueva(e.target.value); setSaved(false); }}
+          placeholder="Mínimo 4 caracteres" style={inputSt} />
+      </FieldRow>
+
+      {nueva && (
+        <FieldRow label="Repetir clave" hint="Escribí de nuevo la clave para confirmar.">
+          <input type="password" autoComplete="new-password" value={repetir}
+            onChange={e => { setRepetir(e.target.value); setSaved(false); }}
+            placeholder="Repetí la clave" style={inputSt} />
+        </FieldRow>
+      )}
+
       <SaveBar onSave={handleSave} saving={saving} saved={saved} error={error} />
     </div>
   );
@@ -417,6 +899,10 @@ export default function ConfiguracionPage() {
   const [config, setConfig]       = useState(DEFAULT_CONFIG);
   const [horarios, setHorarios]   = useState(DEFAULT_HORARIOS);
   const [loading, setLoading]     = useState(true);
+  // Candado de la sección
+  const [lockActivo, setLockActivo]         = useState(false);
+  const [unlocked, setUnlocked]             = useState(false);
+  const [configPassword, setConfigPassword] = useState('');
 
   useEffect(() => {
     Promise.all([
@@ -425,6 +911,9 @@ export default function ConfiguracionPage() {
     ]).then(([cfgRes, horRes]) => {
       if (cfgRes?.data) {
         const d = cfgRes.data;
+        const locked = !!d.config_lock_activo;
+        setLockActivo(locked);
+        setUnlocked(!locked);  // sin candado = acceso directo
         setConfig({
           nombre_salon: d.nombre_salon || '',
           telefono:     d.telefono     || '',
@@ -438,6 +927,13 @@ export default function ConfiguracionPage() {
           mp_public_key:    d.mp_public_key || '',
           sena_porcentaje:  d.sena_porcentaje ?? 0,
           sena_obligatoria: d.sena_obligatoria ?? false,
+          transferencia_activa:  d.transferencia_activa ?? false,
+          transferencia_cbu:     d.transferencia_cbu     || '',
+          transferencia_alias:   d.transferencia_alias   || '',
+          transferencia_titular: d.transferencia_titular || '',
+          webhook_url:         d.webhook_url || '',
+          webhook_configurado: d.webhook_configurado ?? false,
+          webhook_activo:      d.webhook_activo ?? false,
         });
       }
       if (horRes?.data?.length > 0) {
@@ -464,10 +960,24 @@ export default function ConfiguracionPage() {
     return <div style={{ color: 'var(--text-muted)', fontSize: '14px', padding: '20px 0' }}>Cargando configuración...</div>;
   }
 
+  // Candado activo y todavía sin desbloquear → pedir la clave
+  if (lockActivo && !unlocked) {
+    return (
+      <div style={{ maxWidth: '760px' }}>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: 400, color: 'var(--text-primary)', marginBottom: '8px' }}>
+          Configuración
+        </h2>
+        <UnlockScreen onUnlock={(pwd) => { setConfigPassword(pwd); setUnlocked(true); }} />
+      </div>
+    );
+  }
+
   const TABS = [
-    { key: 'horarios', label: 'Horarios' },
-    { key: 'info',     label: 'Info del local' },
-    { key: 'pagos',    label: 'Mercado Pago' },
+    { key: 'horarios',  label: 'Horarios' },
+    { key: 'info',      label: 'Info del local' },
+    { key: 'pagos',     label: 'Mercado Pago' },
+    { key: 'webhooks',  label: 'Webhooks' },
+    { key: 'seguridad', label: '🔒 Seguridad' },
   ];
 
   return (
@@ -513,10 +1023,21 @@ export default function ConfiguracionPage() {
         <TabHorarios horarios={horarios} setDia={setDia} />
       )}
       {activeTab === 'info' && (
-        <TabInfo config={config} setField={setField} />
+        <TabInfo config={config} setField={setField} configPassword={configPassword} />
       )}
       {activeTab === 'pagos' && (
-        <TabPagos config={config} setField={setField} />
+        <TabPagos config={config} setField={setField} configPassword={configPassword} />
+      )}
+      {activeTab === 'webhooks' && (
+        <TabWebhooks config={config} setField={setField} configPassword={configPassword} />
+      )}
+      {activeTab === 'seguridad' && (
+        <TabSeguridad
+          lockActivo={lockActivo}
+          onLockChange={setLockActivo}
+          configPassword={configPassword}
+          setConfigPassword={setConfigPassword}
+        />
       )}
 
     </div>

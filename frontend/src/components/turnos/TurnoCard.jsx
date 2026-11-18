@@ -1,7 +1,7 @@
 import Badge  from '../ui/Badge';
 import Avatar from '../ui/Avatar';
 import Button from '../ui/Button';
-import { formatTime, formatDate, formatDuration, estadoColor, formatCurrency } from '../../utils/formatters';
+import { formatTime, formatDate, formatDuration, estadoColor, formatCurrency, walkinNombre } from '../../utils/formatters';
 import styles from '../../styles/components/turnos/TurnoCard.module.css';
 
 const ESTADO_LABEL = {
@@ -21,7 +21,7 @@ const ghostMini = {
   cursor: 'pointer', fontFamily: 'var(--font-body)', whiteSpace: 'nowrap',
 };
 
-export default function TurnoCard({ turno, onEdit, onDelete, onCobrar, onMarcar }) {
+export default function TurnoCard({ turno, onEdit, onDelete, onCobrar, onMarcar, onConfirmarSena, onVerComprobante, onAdjuntarComprobante, onReasignar }) {
   const cliente  = turno.cliente  || null;
   const empleado = turno.empleado || {};
   const servicios = turno.servicios?.map(ts => ts.servicio?.nombre || ts.nombre).filter(Boolean) || [];
@@ -31,8 +31,28 @@ export default function TurnoCard({ turno, onEdit, onDelete, onCobrar, onMarcar 
   const saldo      = turno.saldo != null ? turno.saldo : null;
   const completado = turno.estado === 'completado';
   const senaPagada = turno.sena_estado === 'pagada' && (turno.monto_sena || 0) > 0;
+  // Seña por transferencia esperando que la secretaria confirme la acreditación
+  const senaTransferPendiente =
+    turno.sena_estado === 'pendiente' &&
+    (turno.metodo_pago || '').toLowerCase() === 'transferencia' &&
+    (turno.monto_sena || 0) > 0;
   // Cobrable = turno activo en el local con saldo pendiente
   const cobrable   = ['pendiente', 'confirmado'].includes(turno.estado) && (saldo == null || saldo > 0);
+  // Turno pagado por transferencia: siempre debería tener un comprobante a mano.
+  // Si el cliente lo mandó por WhatsApp en vez de subirlo, el salón lo adjunta acá.
+  const esTransferencia = (turno.metodo_pago || '').toLowerCase() === 'transferencia';
+
+  // Hace cuánto espera la seña. Los turnos anteriores a esta función no tienen
+  // creado_en, así que ahí mostramos el estado sin el tiempo.
+  const esperaSena = (() => {
+    if (turno.sena_estado !== 'pendiente') return null;
+    if (!turno.creado_en) return 'Seña pendiente';
+    const horas = Math.floor((Date.now() - new Date(turno.creado_en).getTime()) / 3600000);
+    if (isNaN(horas) || horas < 1) return 'Seña pendiente · recién';
+    if (horas < 24) return `Seña pendiente · hace ${horas} h`;
+    const dias = Math.floor(horas / 24);
+    return `Seña pendiente · hace ${dias} ${dias === 1 ? 'día' : 'días'}`;
+  })();
 
   const walkinTelefono = (() => {
     if (!isWalkin || !turno.observaciones) return null;
@@ -58,7 +78,7 @@ export default function TurnoCard({ turno, onEdit, onDelete, onCobrar, onMarcar 
         )}
         <div>
           <div className={`${styles.clientName} ${isWalkin ? styles.walkinName : ''}`}>
-            {isWalkin ? 'Sin turno' : `${cliente.nombre} ${cliente.apellido || ''}`}
+            {isWalkin ? (walkinNombre(turno.observaciones) || 'Sin turno') : `${cliente.nombre} ${cliente.apellido || ''}`}
           </div>
           <div className={styles.clientInfo}>
             {isWalkin
@@ -86,13 +106,21 @@ export default function TurnoCard({ turno, onEdit, onDelete, onCobrar, onMarcar 
           </Badge>
           {isWalkin && <Badge variant="warning">Sin turno</Badge>}
           {senaPagada && !completado && (
-            <span style={chip('rgba(76,175,125,0.14)', '#4caf7d')}>Seña ✓ {formatCurrency(turno.monto_sena)}</span>
+            <span style={chip('rgba(76,175,125,0.14)', '#4caf7d')}>{`Seña ✓ ${formatCurrency(turno.monto_sena)}`}</span>
+          )}
+          {senaTransferPendiente && (
+            <span style={chip('rgba(224,163,58,0.16)', '#e0a33a')}>
+              {`🏦 Seña transf. pendiente ${formatCurrency(turno.monto_sena)}`}
+            </span>
           )}
           {cobrable && saldo != null && saldo > 0 && (
-            <span style={chip('rgba(224,163,58,0.16)', '#e0a33a')}>Restan {formatCurrency(saldo)}</span>
+            <span style={chip('rgba(224,163,58,0.16)', '#e0a33a')}>{`Restan ${formatCurrency(saldo)}`}</span>
           )}
           {completado && (
             <span style={chip('rgba(76,175,125,0.14)', '#4caf7d')}>Pagado ✓</span>
+          )}
+          {esperaSena && (
+            <span style={chip('rgba(224,163,58,0.16)', '#e0a33a')}>⏳ {esperaSena}</span>
           )}
         </div>
         {servicios.length > 0 && (
@@ -107,6 +135,25 @@ export default function TurnoCard({ turno, onEdit, onDelete, onCobrar, onMarcar 
 
       {/* Acciones */}
       <div className={styles.actions} style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end' }}>
+        {turno.comprobante_subido ? (
+          <button onClick={() => onVerComprobante?.(turno)} title="Ver el comprobante de la transferencia"
+            style={{ ...ghostMini, display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+            📎 Ver comprobante
+          </button>
+        ) : esTransferencia && (
+          <button onClick={() => onAdjuntarComprobante?.(turno)}
+            title="El cliente no lo subió al sitio: adjuntá el que te mandó por WhatsApp"
+            style={{ ...ghostMini, display: 'inline-flex', alignItems: 'center', gap: '5px',
+                     color: 'var(--text-muted)', borderStyle: 'dashed' }}>
+            ＋ Adjuntar comprobante
+          </button>
+        )}
+        {senaTransferPendiente && (
+          <button onClick={() => onConfirmarSena?.(turno)} title="Confirmar que la seña por transferencia se acreditó"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid #4caf7d55', background: 'rgba(76,175,125,0.12)', color: '#4caf7d', fontSize: '12.5px', cursor: 'pointer', fontWeight: 500, fontFamily: 'var(--font-body)' }}>
+            ✓ Confirmar seña
+          </button>
+        )}
         {cobrable && (
           <button onClick={() => onCobrar?.(turno)} title="Cobrar y completar"
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--gold-border)', background: 'var(--gold-dim)', color: 'var(--gold)', fontSize: '12.5px', cursor: 'pointer', fontWeight: 500, fontFamily: 'var(--font-body)' }}>
@@ -119,6 +166,9 @@ export default function TurnoCard({ turno, onEdit, onDelete, onCobrar, onMarcar 
             <button onClick={() => onMarcar?.(turno, 'no_show')} title="El cliente no vino" style={ghostMini}>No vino</button>
             <button onClick={() => onMarcar?.(turno, 'cancelado')} title="Cancelar turno" style={ghostMini}>Cancelar</button>
           </>
+        )}
+        {['pendiente', 'confirmado', 'pendiente_pago'].includes(turno.estado) && onReasignar && (
+          <button onClick={() => onReasignar(turno)} title="Pasar el turno a otro profesional" style={ghostMini}>⇄ Reasignar</button>
         )}
         <Button variant="ghost"  size="sm" onClick={() => onEdit(turno)}>✎</Button>
         <Button variant="danger" size="sm" onClick={() => onDelete(turno.id)}>✕</Button>

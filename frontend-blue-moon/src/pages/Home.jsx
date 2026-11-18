@@ -5,6 +5,13 @@ import heroMoodboard from '../assets/hero-moodboard.jpg';
 import heroSalon from '../assets/hero-salon.jpg';
 import logoDark from '../assets/logo-dark.svg';
 import aboutFilosofia from '../assets/about-filosofia.jpg';
+import servCosmetologia from '../assets/servicios/cosmetologia.jpeg';
+import servNails from '../assets/servicios/nails.jpeg';
+import servLash from '../assets/servicios/lash.jpeg';
+import servMasajes from '../assets/servicios/masajes.jpeg';
+import servLaser from '../assets/servicios/laser.jpeg';
+import servCejas from '../assets/servicios/cejas.jpeg';
+import servClinica from '../assets/servicios/clinica.jpeg';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
@@ -13,13 +20,13 @@ const IMG = {
   salon:   heroSalon,
   about:   aboutFilosofia,
   cta:     heroSalon,
-  nails:   'https://images.unsplash.com/photo-1604654894610-df63bc536371?auto=format&fit=crop&w=900&q=80',
-  cosmeto: 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=900&q=80',
-  lash:    'https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?auto=format&fit=crop&w=900&q=80',
-  masajes: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=900&q=80',
-  laser:   'https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&w=900&q=80',
-  cejas:   'https://images.unsplash.com/photo-1589710751893-f9a6770ad71b?auto=format&fit=crop&w=900&q=80',
-  clinica: 'https://images.unsplash.com/photo-1552693673-1bf958298935?auto=format&fit=crop&w=900&q=80',
+  nails:   servNails,
+  cosmeto: servCosmetologia,
+  lash:    servLash,
+  masajes: servMasajes,
+  laser:   servLaser,
+  cejas:   servCejas,
+  clinica: servClinica,
 };
 
 const SERVICIOS = [
@@ -29,6 +36,7 @@ const SERVICIOS = [
     sub: 'Manicura & Nail Art',
     desc: 'Esmaltado semipermanente, kapping y diseños personalizados. Manos impecables que lucen durante semanas.',
     img: IMG.nails,
+    imgPos: 'center 40%',  // baja el encuadre para que las uñas queden completas
   },
   {
     id: 'cosmetologia',
@@ -230,7 +238,7 @@ const STYLES = `
     font-size: clamp(2.2rem, 5vw, 3.4rem); line-height: 1.08;
     letter-spacing: -0.01em; color: var(--text);
   }
-  .bm-h2 em { font-style: italic; font-weight: 400; color: var(--accent); }
+  .bm-h2 em { font-family: var(--font-ornamental); font-style: italic; font-weight: 400; color: var(--accent); }
   .bm-lead {
     font-size: 1.02rem; font-weight: 300; color: var(--text-3);
     line-height: 1.75; max-width: 480px; margin-top: 1.1rem;
@@ -363,7 +371,7 @@ const STYLES = `
     font-size: clamp(2.4rem, 6vw, 4rem); line-height: 1.05; color: #fff;
     margin-bottom: 1.2rem;
   }
-  .bm-cta-title em { font-style: italic; font-weight: 400; color: #D5DCC8; }
+  .bm-cta-title em { font-family: var(--font-ornamental); font-style: italic; font-weight: 400; color: #D5DCC8; }
   .bm-cta-sub {
     font-size: 1.02rem; font-weight: 300; color: rgba(255,255,255,0.8);
     line-height: 1.7; max-width: 440px; margin-bottom: 2.5rem;
@@ -497,6 +505,7 @@ export default function Home() {
               <button key={s.id} className="bm-serv-card" onClick={goBooking}>
                 <div className="bm-serv-imgwrap">
                   <img className="bm-serv-img" src={s.img}
+                    style={{ objectPosition: s.imgPos || 'center' }}
                     alt={`${s.nombre} — ${s.sub} en Blue Moon`} loading="lazy" />
                 </div>
                 <div className="bm-serv-body">

@@ -1,7 +1,10 @@
 from .salon import Salon
 from .cliente import Cliente
 from .empleado import Empleado
+from .categoria_servicio import CategoriaServicio
 from .servicio import Servicio
+from .evento import Evento, EventoFecha
+from .empleado_servicio import empleado_servicios
 from .turno import Turno
 from .turno_servicio import TurnoServicio
 from .pago import Pago
@@ -13,3 +16,5 @@ from .usuario import Usuario
 from .gasto import Gasto
 from .cierre_caja import CierreCaja
 from .api_key import ApiKey
+from .webhook_entrega import WebhookEntrega
+from .comprobante import Comprobante

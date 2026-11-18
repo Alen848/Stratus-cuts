@@ -45,6 +45,8 @@ class Turno(TurnoBase):
     monto_sena:      Optional[float] = None
     saldo_pendiente: Optional[float] = None
     sena_estado:     Optional[str]   = None
+    comprobante_subido: bool = False
+    creado_en:       Optional[datetime] = None   # para mostrar hace cuánto espera la seña
     # Calculados (total del turno, lo pagado y lo que resta cobrar)
     total_turno:     Optional[float] = None
     total_pagado:    Optional[float] = None

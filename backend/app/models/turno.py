@@ -24,6 +24,10 @@ class Turno(Base):
     mp_payment_id    = Column(String(50), nullable=True, index=True)
     mp_preference_id = Column(String(80), nullable=True)
     expira_en        = Column(DateTime, nullable=True)  # vencimiento del bloqueo en pendiente_pago
+    comprobante_subido = Column(Boolean, default=False, nullable=False)  # el cliente adjuntó comprobante de transferencia
+    creado_en        = Column(DateTime, nullable=True)   # cuándo se reservó (para medir la espera de la seña)
+    sena_recordatorio_sent = Column(Boolean, default=False, nullable=False)  # ya se le pidió el comprobante por email
+    cancelado_en     = Column(DateTime, nullable=True)   # cuándo pasó a 'cancelado' (NULL en los anteriores a oct 2026)
 
     # Recordatorios WhatsApp
     reminder_pre_sent        = Column(Boolean, default=False, nullable=False)  # recordatorio previo al turno

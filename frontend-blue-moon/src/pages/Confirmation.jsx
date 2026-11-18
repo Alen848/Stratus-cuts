@@ -1,6 +1,7 @@
 import { useLocation, Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { getTurnoEstado } from '../services/api';
+import { getTurnoEstado, subirComprobante, getPagoConfig } from '../services/api';
+import { money } from '../utils/format';
 
 const STYLES = `
   .conf-wrap {
@@ -177,7 +178,8 @@ const fmtFecha = (iso) => {
   const d = new Date(String(iso).replace('T', ' ').split('.')[0]);
   return isNaN(d) ? '—' : d.toLocaleString('es-AR', { dateStyle: 'full', timeStyle: 'short' });
 };
-const money = (n) => (n == null ? null : `$${Number(n).toLocaleString('es-AR')}`);
+// El formato de importes vive en utils/format para que la reserva y la
+// confirmación muestren siempre lo mismo.
 const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : '');
 
 function Card({ icon, title, subtitle, rows }) {
@@ -210,15 +212,45 @@ function Card({ icon, title, subtitle, rows }) {
   );
 }
 
+
+
 const Confirmation = () => {
   const location = useLocation();
   const stateTurno = location.state?.turno;
+  const stateTransfer = location.state?.transferencia;
 
   const params = new URLSearchParams(location.search);
   const turnoIdUrl = params.get('external_reference') || params.get('turno');
 
   const [estado, setEstado] = useState(null);
   const [cargando, setCargando] = useState(!stateTurno && !!turnoIdUrl);
+  // Cuando el cliente vuelve desde el email a subir el comprobante, reconstruimos
+  // los datos de transferencia a partir del turno + la config pública del salón.
+  const [transferDesdeUrl, setTransferDesdeUrl] = useState(null);
+
+  // Subida del comprobante de transferencia
+  const [uploadState, setUploadState] = useState('idle'); // idle | uploading | done | error
+  const [uploadErr, setUploadErr]     = useState('');
+
+  const handleComprobante = async (e, turnoId) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // permite re-elegir el mismo archivo
+    if (!file || !turnoId) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadState('error');
+      setUploadErr('El archivo supera los 5 MB.');
+      return;
+    }
+    setUploadErr('');
+    setUploadState('uploading');
+    try {
+      await subirComprobante(turnoId, file);
+      setUploadState('done');
+    } catch (err) {
+      setUploadState('error');
+      setUploadErr(err?.response?.data?.detail || 'No se pudo subir el comprobante. Probá de nuevo.');
+    }
+  };
 
   // Vuelta de Mercado Pago: consultar el estado real (el webhook puede demorar)
   useEffect(() => {
@@ -242,6 +274,115 @@ const Confirmation = () => {
     poll();
     return () => { cancelled = true; };
   }, [turnoIdUrl, stateTurno]);
+
+  // Link del email: turno por transferencia con la seña sin acreditar => que
+  // pueda subir el comprobante, con los datos bancarios a la vista.
+  useEffect(() => {
+    if (!estado || !turnoIdUrl) return;
+    const esTransferPendiente =
+      (estado.metodo_pago || '').toLowerCase() === 'transferencia' &&
+      estado.sena_estado === 'pendiente' &&
+      !estado.comprobante_subido;
+    if (!esTransferPendiente) { setTransferDesdeUrl(null); return; }
+    getPagoConfig()
+      .then(r => {
+        const cfg = r.data || {};
+        setTransferDesdeUrl({
+          turno_id: Number(turnoIdUrl),
+          cbu: cfg.transferencia_cbu,
+          alias: cfg.transferencia_alias,
+          titular: cfg.transferencia_titular,
+          monto_sena: estado.monto_sena,
+          saldo_pendiente: estado.saldo_pendiente,
+          monto_total: estado.monto_total,
+        });
+      })
+      .catch(() => setTransferDesdeUrl(null));
+  }, [estado, turnoIdUrl]);
+
+  // ── Modo 0: seña por transferencia (datos bancarios + subida del comprobante) ──
+  // Se llega recién reservado (stateTransfer) o desde el link del email (transferDesdeUrl).
+  if (stateTransfer || transferDesdeUrl) {
+    const tr = stateTransfer || transferDesdeUrl;
+
+    const bankRow = (label, value) => value ? (
+      <div className="conf-row">
+        <span className="conf-row-label">{label}</span>
+        <span className="conf-row-value" style={{ fontWeight: 500 }}>{value}</span>
+      </div>
+    ) : null;
+
+    return (
+      <>
+        <style>{STYLES}</style>
+        <div className="conf-wrap">
+          <div className="conf-icon">{ICON_CLOCK}</div>
+          <div className="conf-heading">
+            <h1 className="conf-title">¡Turno reservado!</h1>
+            <p className="conf-subtitle">
+              Para confirmarlo, transferí la seña y adjuntá el comprobante acá abajo.
+              El local confirma tu turno al recibirlo.
+            </p>
+          </div>
+
+          <div className="conf-card">
+            <div className="conf-card-header">
+              <span className="conf-card-header-label">Datos para transferir</span>
+            </div>
+            {bankRow('Seña a transferir', money(tr.monto_sena))}
+            {bankRow('CBU / CVU', tr.cbu)}
+            {bankRow('Alias', tr.alias)}
+            {bankRow('Titular', tr.titular)}
+            {bankRow('Resto en el local', money(tr.saldo_pendiente))}
+          </div>
+
+          {uploadState === 'done' ? (
+            <div style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem',
+              padding: '1rem 1.4rem', borderRadius: '8px', width: '100%',
+              background: 'rgba(var(--success-rgb),0.10)', border: '1px solid rgba(var(--success-rgb),0.28)',
+            }}>
+              <strong style={{ color: 'var(--text)' }}>✅ ¡Comprobante enviado!</strong>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-3)', textAlign: 'center' }}>
+                El local va a verificar tu transferencia y confirmar el turno. ¡Gracias!
+              </span>
+            </div>
+          ) : (
+            <>
+              <label
+                className="conf-cta"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem',
+                  cursor: uploadState === 'uploading' ? 'default' : 'pointer',
+                  opacity: uploadState === 'uploading' ? 0.65 : 1, width: '100%',
+                }}
+              >
+                {uploadState === 'uploading' ? 'Subiendo comprobante…' : '📎 Adjuntar comprobante'}
+                <input
+                  type="file"
+                  accept="image/*,application/pdf"
+                  onChange={(e) => handleComprobante(e, tr.turno_id)}
+                  disabled={uploadState === 'uploading'}
+                  style={{ display: 'none' }}
+                />
+              </label>
+              {uploadState === 'error' && (
+                <span style={{ fontSize: '0.82rem', color: 'var(--danger, #c0392b)', textAlign: 'center' }}>
+                  {uploadErr}
+                </span>
+              )}
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-4)', textAlign: 'center' }}>
+                Subí una foto o PDF del comprobante (hasta 5 MB). Tu turno queda
+                confirmado cuando el local verifique la transferencia.
+              </span>
+            </>
+          )}
+
+          <Link to="/" className="conf-cta" style={{ background: 'transparent' }}>Volver al inicio</Link>
+        </div>
+      </>
+    );
+  }
 
   // ── Modo 1: reserva sin seña (navegación interna) ──
   if (stateTurno) {

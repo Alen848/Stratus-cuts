@@ -18,9 +18,16 @@ const NAV_ITEMS = [
 
 export default function Sidebar() {
   const { salonName, isSidebarOpen, closeSidebar, isSidebarCollapsed, toggleCollapse } = useApp();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const isAdmin = user?.rol === 'admin' || user?.rol === 'superadmin';
   const visibleItems = NAV_ITEMS.filter(item => item === null || !item.adminOnly || isAdmin);
+
+  const handleLogout = () => {
+    if (window.confirm('¿Cerrar sesión?')) {
+      closeSidebar();
+      logout();
+    }
+  };
 
   return (
     <aside className={`
@@ -64,6 +71,26 @@ export default function Sidebar() {
       <button className={styles.collapseBtn} onClick={toggleCollapse}>
         {isSidebarCollapsed ? '⇢' : '⇠'}
       </button>
+
+      <div style={{ padding: '0 12px 4px' }}>
+        <button
+          type="button"
+          onClick={handleLogout}
+          title={isSidebarCollapsed ? 'Cerrar sesión' : ''}
+          className={styles.navLink}
+          style={{ width: '100%', cursor: 'pointer', fontFamily: 'inherit', color: 'var(--danger)' }}
+        >
+          <span className={styles.navIcon} aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+          </span>
+          <span className={styles.navLabel}>Cerrar sesión</span>
+        </button>
+      </div>
 
       <div className={styles.footer}>
         {isSidebarCollapsed ? '©' : `Stratus Industries © ${new Date().getFullYear()}`}

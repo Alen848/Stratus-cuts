@@ -70,3 +70,11 @@ export const estadoColor = (estado) => {
   };
   return map[estado?.toLowerCase()] || 'default';
 };
+// ─── Cliente sin turno ────────────────────────────────────────────────────────
+// El walk-in no tiene cliente asociado: el nombre viaja en observaciones
+// como "Nombre: Juan Pérez | Tel: ... | Monto: $..."
+
+export const walkinNombre = (observaciones) => {
+  const match = (observaciones || '').match(/Nombre:\s*([^|]+)/);
+  return match ? match[1].trim() : null;
+};

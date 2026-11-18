@@ -4,7 +4,7 @@ Prefijo: /public/{slug}/...
 El slug identifica el salón.
 """
 import os
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, Query
 from sqlalchemy.orm import Session
 from typing import List
 from datetime import date as DateType, datetime, timezone, timedelta
@@ -13,12 +13,14 @@ from app.database.connection import get_db
 from app.models.salon import Salon
 from app.models.config_salon import ConfigSalon
 from app.models.turno import Turno
+from app.models.comprobante import Comprobante
 from app.services import (
     empleado_service, servicio_service, cliente_service, turno_service,
-    reserva_service, config_salon_service,
+    reserva_service, config_salon_service, categoria_servicio_service,
 )
 from app.schemas.empleado import Empleado
 from app.schemas.servicio import Servicio
+from app.schemas.categoria_servicio import CategoriaServicio
 from app.schemas.cliente import ClienteCreate
 from app.schemas.reserva import ReservaPublicaCreate
 from app.limiter import limiter
@@ -66,15 +68,39 @@ def public_servicios(slug: str, db: Session = Depends(get_db)):
     return servicio_service.get_servicios(db, salon_id=salon.id)
 
 
+@router.get("/{slug}/categorias", response_model=List[CategoriaServicio])
+def public_categorias(slug: str, db: Session = Depends(get_db)):
+    """Categorías (agrupadores) de servicios, ordenadas para mostrar en la reserva."""
+    salon = _get_salon(slug, db)
+    return categoria_servicio_service.get_categorias(db, salon_id=salon.id)
+
+
 @router.get("/{slug}/disponibilidad/{empleado_id}")
 def public_disponibilidad(
     slug: str,
     empleado_id: int,
     fecha_inicio: DateType,
+    duracion: int = None,
+    servicio_id: int = None,
+    servicios_ids: List[int] = Query(None),
     db: Session = Depends(get_db),
 ):
+    """
+    `servicio_id` es opcional y solo se usa para saber cada cuántos minutos
+    ofrecer turnos: los eventos especiales pueden tener un intervalo más corto
+    que la hora habitual. El intervalo se resuelve acá y no se acepta del
+    cliente, para que no puedan pedir una grilla arbitraria.
+
+    `servicios_ids` son todos los servicios elegidos: se usan para aplicar la
+    hora tope que el profesional tenga en alguno de ellos.
+    """
     salon = _get_salon(slug, db)
-    return turno_service.get_horarios_semanales(db, empleado_id, fecha_inicio, salon_id=salon.id)
+    intervalo = turno_service.get_intervalo_servicio(db, servicio_id, salon.id)
+    return turno_service.get_horarios_semanales(
+        db, empleado_id, fecha_inicio, salon_id=salon.id,
+        duracion=duracion, intervalo=intervalo,
+        servicios_ids=servicios_ids or ([servicio_id] if servicio_id else None),
+    )
 
 
 @router.post("/{slug}/clientes")
@@ -119,6 +145,20 @@ def public_create_turno(request: Request, slug: str, turno: ReservaPublicaCreate
             detail=f"No se pueden reservar turnos con más de {max_dias} días de anticipación.",
         )
 
+    # Servicios de "fecha especial": solo se reservan en sus días puntuales
+    servicio_service.validar_fechas_especiales(
+        db, turno.servicios_ids, fecha_turno.date(), salon.id
+    )
+
+    # Hora tope del profesional para estos servicios (ej.: hasta las 15 el día de depilación)
+    duracion_total = sum(
+        s.duracion_minutos for s in
+        (servicio_service.get_servicio(db, sid, salon.id) for sid in turno.servicios_ids) if s
+    )
+    turno_service.validar_hora_limite(
+        db, turno.empleado_id, turno.servicios_ids, fecha_turno, duracion_total
+    )
+
     # La notification_url debe ser pública y HTTPS. Detrás de un proxy,
     # request.base_url puede ser incorrecta, por eso priorizamos BACKEND_PUBLIC_URL.
     base = (os.getenv("BACKEND_PUBLIC_URL") or str(request.base_url)).rstrip("/")
@@ -132,10 +172,26 @@ def public_create_turno(request: Request, slug: str, turno: ReservaPublicaCreate
     if not resultado["requiere_pago"]:
         return resultado["turno"]
 
-    # Con seña: el frontend debe redirigir a init_point para pagar
     t = resultado["turno"]
+
+    # Seña por transferencia: el turno queda reservado; devolvemos los datos bancarios
+    # para que el cliente transfiera y suba el comprobante en la confirmación.
+    if resultado.get("metodo") == "transferencia":
+        return {
+            "requiere_pago": True,
+            "metodo": "transferencia",
+            "turno_id": t.id,
+            "estado": t.estado,
+            "monto_total": resultado["monto_total"],
+            "monto_sena": resultado["monto_sena"],
+            "saldo_pendiente": resultado["saldo_pendiente"],
+            "transferencia": resultado["transferencia"],
+        }
+
+    # Con seña por tarjeta: el frontend debe redirigir a init_point para pagar
     return {
         "requiere_pago": True,
+        "metodo": "tarjeta",
         "turno_id": t.id,
         "estado": t.estado,
         "init_point": resultado["init_point"],
@@ -178,6 +234,47 @@ async def public_mp_webhook(slug: str, request: Request, db: Session = Depends(g
     return {"ok": True}
 
 
+MAX_COMPROBANTE_BYTES = 5 * 1024 * 1024  # 5 MB
+
+
+@router.post("/{slug}/turnos/{turno_id}/comprobante")
+@limiter.limit("10/minute")
+async def public_subir_comprobante(
+    request: Request, slug: str, turno_id: int,
+    file: UploadFile = File(...), db: Session = Depends(get_db),
+):
+    """El cliente adjunta el comprobante de la transferencia de la seña."""
+    salon = _get_salon(slug, db)
+    turno = db.query(Turno).filter(Turno.id == turno_id, Turno.salon_id == salon.id).first()
+    if not turno:
+        raise HTTPException(status_code=404, detail="Turno no encontrado.")
+    # Solo se admite para reservas con seña por transferencia aún pendiente
+    if (turno.metodo_pago or "").lower() != "transferencia" or turno.sena_estado != "pendiente":
+        raise HTTPException(status_code=400, detail="Este turno no admite comprobante de transferencia.")
+
+    ct = (file.content_type or "").lower()
+    if not (ct.startswith("image/") or ct == "application/pdf"):
+        raise HTTPException(status_code=400, detail="El archivo debe ser una imagen o un PDF.")
+
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="El archivo está vacío.")
+    if len(data) > MAX_COMPROBANTE_BYTES:
+        raise HTTPException(status_code=400, detail="El archivo supera los 5 MB.")
+
+    # Upsert: un comprobante por turno (si vuelve a subir, se reemplaza)
+    comp = db.query(Comprobante).filter(Comprobante.turno_id == turno.id).first()
+    if not comp:
+        comp = Comprobante(turno_id=turno.id, salon_id=salon.id)
+        db.add(comp)
+    comp.filename     = (file.filename or "comprobante")[:255]
+    comp.content_type = ct[:100]
+    comp.data         = data
+    turno.comprobante_subido = True
+    db.commit()
+    return {"ok": True}
+
+
 @router.get("/{slug}/pago-config")
 def public_pago_config(slug: str, db: Session = Depends(get_db)):
     """
@@ -188,11 +285,25 @@ def public_pago_config(slug: str, db: Session = Depends(get_db)):
     cfg = db.query(ConfigSalon).filter(ConfigSalon.salon_id == salon.id).first()
     token = config_salon_service.get_mp_access_token(db, salon.id)
     porcentaje = (cfg.sena_porcentaje if cfg else 0) or 0
-    habilitado = bool(cfg and cfg.mp_activo and token and porcentaje > 0)
+
+    mp_habilitado = bool(cfg and cfg.mp_activo and token and porcentaje > 0)
+    transferencia_habilitada = bool(
+        cfg and cfg.transferencia_activa and cfg.transferencia_cbu and porcentaje > 0
+    )
+    # 'habilitado' = hay ALGÚN método de seña disponible (compat con el front)
+    habilitado = mp_habilitado or transferencia_habilitada
+
     return {
         "habilitado": habilitado,
         "sena_porcentaje": porcentaje,
         "sena_obligatoria": bool(cfg and cfg.sena_obligatoria),
+        # Métodos de seña disponibles
+        "mp_habilitado": mp_habilitado,
+        "transferencia_habilitada": transferencia_habilitada,
+        # Datos bancarios para mostrar (solo si transferencia está habilitada)
+        "transferencia_cbu": (cfg.transferencia_cbu if transferencia_habilitada else None),
+        "transferencia_alias": (cfg.transferencia_alias if transferencia_habilitada else None),
+        "transferencia_titular": (cfg.transferencia_titular if transferencia_habilitada else None),
     }
 
 
@@ -207,6 +318,9 @@ def public_estado_turno(slug: str, turno_id: int, db: Session = Depends(get_db))
     return {
         "estado": t.estado,
         "sena_estado": t.sena_estado,
+        # Para que el link del email de "falta tu comprobante" sepa qué mostrar
+        "metodo_pago": t.metodo_pago,
+        "comprobante_subido": bool(t.comprobante_subido),
         "monto_total": t.monto_total,
         "monto_sena": t.monto_sena,
         "saldo_pendiente": t.saldo_pendiente,

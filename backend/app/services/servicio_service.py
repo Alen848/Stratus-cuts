@@ -1,3 +1,4 @@
+from datetime import date as DateType
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 from app.models.servicio import Servicio
@@ -14,12 +15,93 @@ def get_servicio(db: Session, servicio_id: int, salon_id: int):
 def get_servicios(db: Session, salon_id: int, skip: int = 0, limit: int = 100):
     return db.query(Servicio).filter(
         Servicio.salon_id == salon_id
-    ).offset(skip).limit(limit).all()
+    ).order_by(Servicio.nombre).offset(skip).limit(limit).all()
+
+
+def _validar_categoria(db: Session, categoria_id, salon_id: int):
+    """La categoría debe existir y pertenecer al mismo salón."""
+    if categoria_id is None:
+        return
+    from app.models.categoria_servicio import CategoriaServicio
+
+    existe = db.query(CategoriaServicio).filter(
+        CategoriaServicio.id == categoria_id,
+        CategoriaServicio.salon_id == salon_id,
+    ).first()
+    if not existe:
+        raise HTTPException(status_code=400, detail="La categoría indicada no existe.")
+
+
+def _empleados_del_salon(db: Session, empleado_ids, salon_id: int):
+    """Objetos Empleado del salón cuyos ids se pasan (ignora los ajenos)."""
+    from app.models.empleado import Empleado
+
+    if not empleado_ids:
+        return []
+    return db.query(Empleado).filter(
+        Empleado.salon_id == salon_id,
+        Empleado.id.in_(empleado_ids),
+        Empleado.eliminado == False,
+    ).all()
+
+
+def _guardar_horas_limite(db: Session, servicio_id: int, horas_limite: dict):
+    """
+    Escribe la hora tope de cada profesional asignado al servicio. Las filas de
+    empleado_servicios ya tienen que existir (flush previo); a quien no figure
+    en `horas_limite` se le borra el tope.
+    """
+    from app.models.empleado_servicio import empleado_servicios
+
+    db.execute(
+        empleado_servicios.update()
+        .where(empleado_servicios.c.servicio_id == servicio_id)
+        .values(hora_limite=None)
+    )
+    for empleado_id, hora in (horas_limite or {}).items():
+        if hora is None:
+            continue
+        db.execute(
+            empleado_servicios.update()
+            .where(
+                empleado_servicios.c.servicio_id == servicio_id,
+                empleado_servicios.c.empleado_id == int(empleado_id),
+            )
+            .values(hora_limite=hora)
+        )
+
+
+def hora_limite_empleado(db: Session, empleado_id: int, servicios_ids):
+    """
+    Hora tope del profesional para esta combinación de servicios: la más
+    temprana entre los que tengan una. None si ninguno la tiene.
+    """
+    from app.models.empleado_servicio import empleado_servicios
+
+    if not servicios_ids:
+        return None
+    horas = db.execute(
+        empleado_servicios.select().where(
+            empleado_servicios.c.empleado_id == empleado_id,
+            empleado_servicios.c.servicio_id.in_(servicios_ids),
+            empleado_servicios.c.hora_limite.isnot(None),
+        )
+    ).all()
+    return min((r.hora_limite for r in horas), default=None)
 
 
 def create_servicio(db: Session, servicio: ServicioCreate, salon_id: int):
-    db_servicio = Servicio(salon_id=salon_id, **servicio.model_dump())
+    _validar_categoria(db, servicio.categoria_id, salon_id)
+    data = servicio.model_dump()
+    empleado_ids = data.pop("empleado_ids", None)
+    horas_limite = data.pop("horas_limite", None)
+    db_servicio = Servicio(salon_id=salon_id, **data)
+    if empleado_ids:
+        db_servicio.empleados = _empleados_del_salon(db, empleado_ids, salon_id)
     db.add(db_servicio)
+    db.flush()
+    if horas_limite:
+        _guardar_horas_limite(db, db_servicio.id, horas_limite)
     db.commit()
     db.refresh(db_servicio)
     return db_servicio
@@ -29,11 +111,54 @@ def update_servicio(db: Session, servicio_id: int, servicio: ServicioUpdate, sal
     db_servicio = get_servicio(db, servicio_id, salon_id)
     if not db_servicio:
         return None
-    for key, value in servicio.model_dump(exclude_unset=True).items():
+    cambios = servicio.model_dump(exclude_unset=True)
+    if "categoria_id" in cambios:
+        _validar_categoria(db, cambios["categoria_id"], salon_id)
+    # Solo tocar la asignación de profesionales si vino explícita en el payload
+    empleado_ids = cambios.pop("empleado_ids", None)
+    horas_limite = cambios.pop("horas_limite", None)
+    if empleado_ids is not None:
+        db_servicio.empleados = _empleados_del_salon(db, empleado_ids, salon_id)
+    for key, value in cambios.items():
         setattr(db_servicio, key, value)
+    if horas_limite is not None:
+        db.flush()
+        _guardar_horas_limite(db, db_servicio.id, horas_limite)
     db.commit()
     db.refresh(db_servicio)
     return db_servicio
+
+
+def validar_fechas_especiales(db: Session, servicios_ids, fecha: DateType, salon_id: int):
+    """
+    Si alguno de los servicios elegidos es de "fecha especial", la reserva solo
+    vale en uno de sus días. Lanza HTTPException 400 si no.
+
+    Se valida en el backend y no solo en el front: la UI puede esconder los días,
+    pero un POST directo a /public/{slug}/turnos podría mandar cualquier fecha.
+    """
+    if not servicios_ids:
+        return
+
+    servicios = db.query(Servicio).filter(
+        Servicio.salon_id == salon_id,
+        Servicio.id.in_(servicios_ids),
+    ).all()
+
+    for s in servicios:
+        fechas = s.fechas_especiales
+        if not fechas:
+            continue  # servicio normal: disponible siempre
+        if fecha not in fechas:
+            proximas = [f for f in fechas if f >= DateType.today()]
+            evento = s.categoria.nombre if s.categoria else s.nombre
+            detalle = f'"{evento}" solo se realiza en fechas puntuales.'
+            if proximas:
+                legibles = ", ".join(f.strftime("%d/%m/%Y") for f in proximas[:3])
+                detalle += f" Próximas fechas disponibles: {legibles}."
+            else:
+                detalle += " No hay próximas fechas cargadas."
+            raise HTTPException(status_code=400, detail=detalle)
 
 
 def delete_servicio(db: Session, servicio_id: int, salon_id: int):

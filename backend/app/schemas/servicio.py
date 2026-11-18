@@ -1,11 +1,17 @@
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List, Dict
+from datetime import date as DateType, time as TimeType
 
 class ServicioBase(BaseModel):
     nombre:           str           = Field(max_length=100)
-    descripcion:      Optional[str] = Field(None, max_length=500)
+    descripcion:      Optional[str] = Field(None, max_length=1000)
     duracion_minutos: int
     precio:           float
+    categoria_id:     Optional[int] = None
+    # Profesionales que realizan este servicio (lado inverso de empleado.servicio_ids)
+    empleado_ids:     List[int]     = []
+    # Hora tope por profesional: {empleado_id: "15:00"}. Sin entrada = sin tope.
+    horas_limite:     Dict[int, TimeType] = {}
 
 class ServicioCreate(ServicioBase):
     pass
@@ -15,9 +21,16 @@ class ServicioUpdate(BaseModel):
     descripcion:      Optional[str]   = None
     duracion_minutos: Optional[int]   = None
     precio:           Optional[float] = None
+    categoria_id:     Optional[int]   = None
+    empleado_ids:     Optional[List[int]] = None
+    horas_limite:     Optional[Dict[int, Optional[TimeType]]] = None
 
 class Servicio(ServicioBase):
     id: int
+    # Derivados de la categoría: si es un evento especial, el servicio solo se
+    # reserva en esas fechas. Son de solo lectura — se editan desde la categoría.
+    es_evento_especial: bool           = False
+    fechas_especiales:  List[DateType] = []
 
     class Config:
         from_attributes = True

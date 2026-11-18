@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, Float, String, Boolean, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from app.database.connection import Base
+from app.models.empleado_servicio import empleado_servicios
 
 class Empleado(Base):
     __tablename__ = "empleados"
@@ -17,9 +18,20 @@ class Empleado(Base):
     activo              = Column(Boolean, default=True)
     sueldo_base         = Column(Float, nullable=True)
     comision_porcentaje = Column(Float, default=0.0, nullable=True)
+    # Baja: el profesional ya no trabaja en el salón. Desaparece de listados,
+    # reservas y disponibilidad, pero sus turnos pasados (y los pagos que la
+    # Caja ya registró) se conservan. Distinto de `activo`, que es un switch
+    # editable desde el admin.
+    eliminado           = Column(Boolean, default=False, nullable=False)
 
     # Relaciones
     turnos = relationship("Turno", back_populates="empleado")
     horarios = relationship("HorarioEmpleado", back_populates="empleado")
     bloqueos = relationship("BloqueoAgenda", back_populates="empleado")
     usuario = relationship("Usuario", back_populates="empleado", uselist=False)
+    # Servicios que realiza este profesional (M2M). Vacío = hace todos.
+    servicios = relationship("Servicio", secondary=empleado_servicios, backref="empleados")
+
+    @property
+    def servicio_ids(self):
+        return [s.id for s in self.servicios]

@@ -4,7 +4,7 @@ import { useClientes }  from '../hooks/useClientes';
 import { useEmpleados } from '../hooks/useEmpleados';
 import StatCard from '../components/ui/StatCard';
 import Avatar   from '../components/ui/Avatar';
-import { formatTime } from '../utils/formatters';
+import { formatTime, walkinNombre } from '../utils/formatters';
 import styles from '../styles/pages/DashboardPage.module.css';
 
 // ─── Configuración de la grilla ───────────────────────────────────────────────
@@ -238,7 +238,7 @@ export default function DashboardPage() {
                       const svcs   = t.servicios?.map(ts => ts.servicio?.nombre).filter(Boolean) ?? [];
                       const nombre = c.nombre
                         ? `${c.nombre}${c.apellido ? ' '+c.apellido : ''}`.trim()
-                        : 'Sin turno';
+                        : (walkinNombre(t.observaciones) || 'Sin turno');
 
                       return (
                         <div

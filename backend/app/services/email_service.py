@@ -155,3 +155,103 @@ def enviar_confirmacion_turno(db: Session, turno, salon=None, config=None) -> No
         ).start()
     except Exception:
         pass
+
+
+def enviar_recordatorio_sena(db: Session, turno, salon=None, config=None) -> None:
+    """
+    Le pide al cliente el comprobante de la transferencia cuando reservó y no lo
+    adjuntó. Incluye el link para subirlo, porque una vez que cerró la página de
+    confirmación no tiene otra forma de volver.
+
+    Best-effort: nunca lanza excepción.
+    """
+    try:
+        if _smtp() is None:
+            return
+        cliente = turno.cliente
+        email = getattr(cliente, "email", None) if cliente else None
+        if not email:
+            return
+
+        if salon is None:
+            from app.models.salon import Salon
+            salon = db.query(Salon).filter(Salon.id == turno.salon_id).first()
+        if config is None:
+            from app.models.config_salon import ConfigSalon
+            config = db.query(ConfigSalon).filter(ConfigSalon.salon_id == turno.salon_id).first()
+
+        salon_nombre = (salon.nombre if salon else "el salón")
+        cliente_nombre = (cliente.nombre if cliente else "").strip() or "Hola"
+        fecha = _fecha_legible(turno.fecha_hora)
+        servicios = [ts.servicio.nombre for ts in turno.servicios if ts.servicio]
+        sena = f"${(turno.monto_sena or 0):,.0f}".replace(",", ".")
+
+        # Link público para subir el comprobante (la página de confirmación lo
+        # reconoce por el id del turno). Sale de la URL del salón, que es por
+        # salón: el backend es compartido, una URL global mandaría a los clientes
+        # de un salón al sitio de otro. FRONTEND_URL queda solo como respaldo.
+        base = (getattr(config, "url_reserva", None) or os.getenv("FRONTEND_URL") or "").strip()
+        base = base.rstrip("/")
+        for sufijo in ("/booking", "/reservar"):
+            if base.endswith(sufijo):
+                base = base[: -len(sufijo)]
+        link = f"{base}/confirmation?turno={turno.id}" if base else None
+
+        cbu   = getattr(config, "transferencia_cbu", None) if config else None
+        alias = getattr(config, "transferencia_alias", None) if config else None
+        datos_html = ""
+        datos_txt = ""
+        if cbu or alias:
+            datos_html = (
+                f"<tr><td style='padding:6px 0;color:#6b6b6b'>CBU / CVU</td>"
+                f"<td style='padding:6px 0;text-align:right;font-weight:600'>{cbu or '—'}</td></tr>"
+                f"<tr><td style='padding:6px 0;color:#6b6b6b'>Alias</td>"
+                f"<td style='padding:6px 0;text-align:right;font-weight:600'>{alias or '—'}</td></tr>"
+            )
+            datos_txt = f"\nCBU/CVU: {cbu or '—'}\nAlias: {alias or '—'}"
+
+        boton_html = (
+            f"<p style='margin:24px 0 0;text-align:center'>"
+            f"<a href='{link}' style='display:inline-block;background:#1a1a1a;color:#fff;"
+            f"text-decoration:none;padding:13px 26px;border-radius:6px;font-weight:600'>"
+            f"Subir mi comprobante</a></p>"
+        ) if link else ""
+        boton_txt = f"\n\nSubí tu comprobante acá: {link}" if link else ""
+
+        asunto = f"Nos falta tu comprobante para confirmar el turno — {salon_nombre}"
+
+        html = f"""\
+<div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:0 auto;color:#1a1a1a">
+  <div style="background:#1a1a1a;color:#fff;padding:24px;border-radius:12px 12px 0 0">
+    <div style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.7">{salon_nombre}</div>
+    <div style="font-size:22px;font-weight:700;margin-top:6px">Nos falta tu comprobante ⏳</div>
+  </div>
+  <div style="border:1px solid #eee;border-top:none;border-radius:0 0 12px 12px;padding:24px">
+    <p style="margin:0 0 16px">Hola <strong>{cliente_nombre}</strong>, reservaste este turno pero todavía
+    no recibimos el comprobante de la seña, así que <strong>aún no está confirmado</strong>.</p>
+    <table style="width:100%;border-collapse:collapse;font-size:15px">
+      <tr><td style="padding:6px 0;color:#6b6b6b">Servicio</td>
+          <td style="padding:6px 0;text-align:right;font-weight:600">{', '.join(servicios) or '—'}</td></tr>
+      <tr><td style="padding:6px 0;color:#6b6b6b">Fecha y hora</td>
+          <td style="padding:6px 0;text-align:right;font-weight:600">{fecha}</td></tr>
+      <tr><td style="padding:6px 0;color:#6b6b6b">Seña</td>
+          <td style="padding:6px 0;text-align:right;font-weight:600">{sena}</td></tr>
+      {datos_html}
+    </table>
+    {boton_html}
+    <p style="margin:20px 0 0;font-size:13px;color:#6b6b6b">Si ya transferiste, subí el comprobante
+    para que podamos confirmarte el turno. ¡Gracias!</p>
+  </div>
+</div>"""
+
+        texto = (f"Nos falta tu comprobante para confirmar tu turno en {salon_nombre}.\n\n"
+                 f"Servicio: {', '.join(servicios) or '—'}\n"
+                 f"Fecha y hora: {fecha}\n"
+                 f"Seña: {sena}{datos_txt}{boton_txt}\n\n"
+                 f"Si ya transferiste, subí el comprobante para confirmar el turno.")
+
+        threading.Thread(
+            target=_enviar, args=(email, asunto, html, texto), daemon=True
+        ).start()
+    except Exception:
+        pass

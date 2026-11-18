@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional
+from datetime import datetime
 
 
 class ConfigSalonUpdate(BaseModel):
@@ -18,10 +19,19 @@ class ConfigSalonUpdate(BaseModel):
     sena_porcentaje:  Optional[int]  = None
     sena_obligatoria: Optional[bool] = None
 
+    # ── Seña por transferencia ───────────────────────────────────────────────
+    transferencia_activa:  Optional[bool] = None
+    transferencia_cbu:     Optional[str]  = None
+    transferencia_alias:   Optional[str]  = None
+    transferencia_titular: Optional[str]  = None
+
     # ── Webhooks salientes (integración externa) ─────────────────────────────
     webhook_url:    Optional[str]  = None
     webhook_secret: Optional[str]  = None   # write-only
     webhook_activo: Optional[bool] = None
+
+    # Clave de Configuración: si hay candado activo, se exige para guardar
+    config_password: Optional[str] = None   # write-only, se verifica y no se guarda como campo
 
 
 class ConfigSalonOut(BaseModel):
@@ -42,10 +52,45 @@ class ConfigSalonOut(BaseModel):
     sena_porcentaje:  int
     sena_obligatoria: bool
 
+    # ── Seña por transferencia (los datos bancarios sí se muestran) ──────────
+    transferencia_activa:  bool
+    transferencia_cbu:     Optional[str]
+    transferencia_alias:   Optional[str]
+    transferencia_titular: Optional[str]
+
     # ── Webhooks (NUNCA se devuelve el secreto) ──────────────────────────────
     webhook_url:        Optional[str]
     webhook_configurado: bool         # True si hay un secreto guardado
     webhook_activo:     bool
 
+    # Candado de Configuración (nunca se devuelve el hash, solo si está activo)
+    config_lock_activo: bool          # True si hay una clave de configuración seteada
+
     class Config:
         from_attributes = True
+
+
+class WebhookEntregaOut(BaseModel):
+    """Una fila del historial de webhooks enviados."""
+    id:          int
+    evento:      str
+    url:         str
+    http_status: Optional[int]      # None = no hubo respuesta (timeout, DNS, ...)
+    error:       Optional[str]
+    duracion_ms: Optional[int]
+    turno_id:    Optional[int]
+    enviado_en:  datetime
+    ok:          bool               # derivado: True si el status fue 2xx
+
+    class Config:
+        from_attributes = True
+
+
+class ConfigPasswordSet(BaseModel):
+    """Setear/cambiar/quitar la clave de Configuración."""
+    current_password: Optional[str] = None   # requerida si ya hay una clave activa
+    nueva_password:   Optional[str] = None    # vacía/None = quitar el candado
+
+
+class ConfigPasswordVerify(BaseModel):
+    password: str
