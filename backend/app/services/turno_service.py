@@ -118,7 +118,9 @@ def get_turnos(db: Session, salon_id: int, skip: int = 0, limit: int = 100):
         Turno.salon_id == salon_id,
         # Ocultar reservas online en curso/no pagadas: solo turnos en firme
         ~Turno.estado.in_(("pendiente_pago", "expirado")),
-    ).offset(skip).limit(limit).all()
+    # Orden fijo: sin ORDER BY, paginar con offset/limit puede repetir o
+    # saltear turnos entre páginas.
+    ).order_by(Turno.id).offset(skip).limit(limit).all()
     return [_attach_saldo(t) for t in turnos]
 
 

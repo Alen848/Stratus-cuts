@@ -9,8 +9,16 @@ export function useTurnos() {
   const fetchTurnos = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await turnosApi.getTurnos();
-      setTurnos(res.data);
+      // El backend pagina: pedir páginas hasta traer todos. Con una sola
+      // llamada (límite 100) los turnos nuevos quedaban fuera del panel.
+      const PAGINA = 500;
+      const todos = [];
+      for (let skip = 0; ; skip += PAGINA) {
+        const res = await turnosApi.getTurnos(skip, PAGINA);
+        todos.push(...res.data);
+        if (res.data.length < PAGINA) break;
+      }
+      setTurnos(todos);
     } catch (e) {
       setError(e);
     } finally {
